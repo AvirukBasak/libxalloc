@@ -12,6 +12,8 @@
 #define __ALLOC_H__CLEANUP_TRIGGER_COUNT__ (32)
 #endif
 
+#define MAX(a,b) (a>b?a:b)
+
 typedef struct __ALLOC_H__mhead_st __ALLOC_H__mhead_t;
 typedef struct __ALLOC_H__membloc_st __ALLOC_H__membloc_t;
 
@@ -46,7 +48,9 @@ size_t __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
 
 /** cleans up heap and if possible reduces heap break point */
 void __ALLOC_H__clean()
-{}
+{
+    __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
+}
 
 /** searches for a specific block data based on its address */
 __ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr)
@@ -64,14 +68,16 @@ __ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr)
 void *alloc_m(size_t size)
 {
     if (!__ALLOC_H__memory) {
-        __ALLOC_H__memory = mmap(NULL, sizeof(__ALLOC_H__mhead_t), PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
+        __ALLOC_H__memory = mmap(NULL, MAX(4096, sizeof(__ALLOC_H__mhead_t)),
+                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
         __ALLOC_H__memory->blockc = 0;
         __ALLOC_H__memory->start = NULL;
         __ALLOC_H__memory->end = NULL;
     }
     void *ptr = sbrk(size);
     if (ptr == (void *) -1) abort();
-    __ALLOC_H__membloc_t *allocator = mmap(NULL, sizeof(__ALLOC_H__membloc_t), PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
+    __ALLOC_H__membloc_t *allocator = mmap(NULL, MAX(4096, sizeof(__ALLOC_H__membloc_t)),
+            PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
     if (allocator == MAP_FAILED) abort();
     allocator->ptr = ptr;
     allocator->size = size;
@@ -98,5 +104,10 @@ void alloc_free(void *ptr)
     block->free = true;
     __ALLOC_H__triggerc--;
     if (!__ALLOC_H__triggerc) __ALLOC_H__clean();
-    __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
+}
+
+/** explicitly runs cleanup */
+void alloc_cleanf()
+{
+    __ALLOC_H__clean();
 }

@@ -1,4 +1,4 @@
-# C/C++ template
+# Alloc
 Custom heap memory allocator using `sbrk` and `mmap`.
 
 ## Usage

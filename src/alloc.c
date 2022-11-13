@@ -9,7 +9,7 @@
 #include "alloc.h"
 
 #ifndef __ALLOC_H__CLEANUP_TRIGGER_COUNT__
-#define __ALLOC_H__CLEANUP_TRIGGER_COUNT__ (4096)
+#define __ALLOC_H__CLEANUP_TRIGGER_COUNT__ (32)
 #endif
 
 typedef struct __ALLOC_H__mhead_st __ALLOC_H__mhead_t;
@@ -40,8 +40,9 @@ struct __ALLOC_H__membloc_st
 /** linked list of block data */
 __ALLOC_H__mhead_t *__ALLOC_H__memory = NULL;
 
-/** cleanup trigger count; when count reaches 0, cleanup function is called; count is then reset */
-size_t __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__ +1;
+/** cleanup trigger count; when count reaches 0, cleanup function is called; count is then reset
+    by default, cleanup is triggered after a total of 32 alloc_* calls */
+size_t __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
 
 /** cleans up heap and if possible reduces heap break point */
 void __ALLOC_H__clean()
@@ -50,6 +51,12 @@ void __ALLOC_H__clean()
 /** searches for a specific block data based on its address */
 __ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr)
 {
+    typedef __ALLOC_H__membloc_t *node;
+    node p = __ALLOC_H__memory->start;
+    while (p) {
+        if (p->ptr == ptr) return p;
+        p = p->nxt;
+    }
     return NULL;
 }
 
@@ -72,6 +79,7 @@ void *alloc_m(size_t size)
     allocator->nxt = __ALLOC_H__memory->start;
     allocator->prv = NULL;
     __ALLOC_H__memory->start = allocator;
+    __ALLOC_H__memory->blockc++;
     return ptr;
 }
 

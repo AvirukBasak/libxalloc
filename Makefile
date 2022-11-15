@@ -37,7 +37,7 @@ LIBRARIES   := $(LIB_DIR)/libavl/avl.o
 
 ## release build
 
-all: mkdirp $(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT) $(TARGET)
+all: mkdirp $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT) $(TARGET)
 
 OBJECTS     := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
 
@@ -50,7 +50,7 @@ $(TARGET): $(OBJECTS)
 
 ## debug build
 
-dbg: mkdirp $(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT) $(DBG_TARGET)
+dbg: mkdirp $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT) $(DBG_TARGET)
 
 DBG_OBJECTS := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%-dbg.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
 
@@ -61,7 +61,7 @@ $(DBG_OBJECTS): $(SOURCES)
 $(DBG_TARGET): $(DBG_OBJECTS)
 	ar rcs $(DBG_TARGET) $(BUILD_DIR)/*-dbg.$(OBJEXT) $(LIBRARIES)
 
-$(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
+$(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 	@grep --no-filename -v '^#\s*include\s*"' $(HEADERS) > $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT)
 	$(info make $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT))
 

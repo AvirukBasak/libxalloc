@@ -21,7 +21,7 @@ CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
 DBG         := gdb -q
 
 INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)
-LIB         := -L$(LIB_DIR) -l$(LIB_NAME) -lavl -lm
+LIB         := -L$(LIB_DIR) -lavl -lm
 
 # targets
 
@@ -68,12 +68,12 @@ $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 ## execution
 
 test: mkdirp $(TARGET) $(TESTSRC)
-	@$(CC) $(CFLAGS) $(INCLUDE) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test -L$(BIN_DIR) $(LIB)
+	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test -L$(BIN_DIR) -lalloc
 	./$(BIN_DIR)/test
 	@rm ./$(BIN_DIR)/test
 
 testdbg: mkdirp $(LIBRARIES) $(DBG_OBJECTS) $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) $(INCLUDE) $(DBG_OBJECTS) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg
+	@$(CC) $(CDBGFLAGS) $(INCLUDE) $(DBG_OBJECTS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
 	$(DBG) $(BIN_DIR)/test-dbg
 	@rm ./$(BIN_DIR)/test-dbg
 

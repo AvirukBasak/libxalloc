@@ -1,0 +1,1271 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Additional Exercises for Tables,  Prev: Table Headers,  Up: The Table ADT
+
+2.12 Additional Exercises
+=========================
+
+Exercises:
+
+*1. Compare and contrast the design of `libavl''s tables with that of
+the set container in the C++ Standard Template Library.
+
+2. What is the smallest set of table routines such that all of the other
+routines can be implemented in terms of the interfaces of that set as
+defined above?
+
+
+File: libavl.info,  Node: Search Algorithms,  Next: Binary Search Trees,  Prev: The Table ADT,  Up: Top
+
+3 Search Algorithms
+*******************
+
+   In `libavl', we are primarily concerned with binary search trees and
+balanced binary trees.  If you're already familiar with these concepts,
+then you can move right into the code, starting from the next chapter.
+But if you're not, then a little motivation and an explanation of
+exactly what a binary search tree is can't hurt.  That's the goal of
+this chapter.
+
+   More particularly, this chapter concerns itself with algorithms for
+searching.  Searching is one of the core problems in organizing a table.
+As it will turn out, arranging a table for fast searching also
+facilitates some other table features.
+
+* Menu:
+
+* Sequential Search::
+* Sequential Search with Sentinel::
+* Sequential Search of Ordered Array::
+* Sequential Search of Ordered Array with Sentinel::
+* Binary Search of Ordered Array::
+* Binary Search Tree in Array::
+* Dynamic Lists::
+
+
+File: libavl.info,  Node: Sequential Search,  Next: Sequential Search with Sentinel,  Prev: Search Algorithms,  Up: Search Algorithms
+
+3.1 Sequential Search
+=====================
+
+   Suppose that you have a bunch of things (books, magazines, CDs, ...)
+in a pile, and you're looking for one of them.  You'd probably start by
+looking at the item at the top of the pile to check whether it was the
+one you were looking for.  If it wasn't, you'd check the next item down
+the pile, and so on, until you either found the one you wanted or ran
+out of items.
+
+   In computer science terminology, this is a "sequential search"
+(*note sequential search::).  It is easy to implement sequential search
+for an array or a linked list.  If, for the moment, we limit ourselves
+to items of type int, we can write a function to sequentially search an
+array like this:
+
+16. <Sequentially search an array of ints 16> =
+/* Returns the smallest i such that array[i] == key,
+   or -1 if key is not in array[]. 
+   array[] must be an array of n ints. */
+int
+seq_search (int array[], int n, int key)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    if (array[i] == key)
+      return i;
+  return -1;
+}
+
+This code is included in *Note 595: seq-testc and *Note 600: Search
+functions.
+
+   We can hardly hope to improve on the data requirements, space, or
+complexity of simple sequential search, as they're about as good as we
+can want.  But the speed of sequential search leaves something to be
+desired.  The next section describes a simple modification of the
+sequential search algorithm that can sometimes lead to big improvements
+in performance.
+
+See also:  *Note Knuth 1998b::, algorithm 6.1S; *Note Kernighan 1976::,
+section 8.2; *Note Cormen 1990::, section 11.2; *Note Bentley 2000::,
+sections 9.2 and 13.2, appendix 1.
+
+Exercises:
+
+1. Write a simple test framework for seq_search().  It should read
+sample data from stdin and collect them into an array, then search for
+each item in the array in turn and compare the results to those
+expected, reporting any discrepancies on stdout and exiting with an
+appropriate return value.  You need not allow for the possibility of
+duplicate input values and may limit the maximum number of input values.
+
+
+File: libavl.info,  Node: Sequential Search with Sentinel,  Next: Sequential Search of Ordered Array,  Prev: Sequential Search,  Up: Search Algorithms
+
+3.2 Sequential Search with Sentinel
+===================================
+
+   Try to think of some ways to improve the speed of sequential search.
+It should be clear that, to speed up a program, it pays to concentrate
+on the parts that use the most time to begin with.  In this case, it's
+the loop.
+
+   Consider what happens each time through the loop:
+
+  1. The loop counter i is incremented and compared against n.
+
+  2. array[i] is compared against key.
+
+   If we could somehow eliminate one of these comparisons, the loop
+might be a lot faster.  So, let's try... why do we need step 1?  It's
+because, otherwise, we might run off the end of array[], causing
+undefined behavior, which is in turn because we aren't sure that key is
+in array[].  If we knew that key was in array[], then we could skip
+step 1.
+
+   But, hey! we _can_ ensure that the item we're looking for is in the
+array.  How?  By putting a copy of it at the end of the array.  This
+copy is called a "sentinel" (*note sentinel::), and the search
+technique as a whole is called "sequential search with sentinel" (*note
+sequential search with sentinel::).  Here's the code:
+
+17. <Sequentially search an array of ints using a sentinel 17> =
+/* Returns the smallest i such that array[i] == key,
+   or -1 if key is not in array[]. 
+   array[] must be an modifiable array of n ints
+   with room for a (n + 1)th element. */
+int
+seq_sentinel_search (int array[], int n, int key)
+{
+  int *p;
+
+  array[n] = key;
+  for (p = array; *p != key; p++)
+    /* Nothing to do. */;
+  return p - array < n ? p - array : -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+   Notice how the code above uses a pointer, int *p, rather than a
+counter i as in <*Note Sequentially search an array of |int|s:: 16>
+earlier.  For the most part, this is simply a style preference: for
+iterating through an array, C programmers usually prefer pointers to
+array indexes.  Under older compilers, code using pointers often
+compiled into faster code as well, but modern C compilers usually
+produce the same code whether pointers or indexes are used.
+
+   The return statement in this function uses two somewhat advanced
+features of C: the conditional or "ternary" operator ?: and pointer
+arithmetic.  The former is a bit like an expression form of an if
+statement.  The expression a ? b : c first evaluates a.  Then, if
+a != 0, b is evaluated and the expression takes that value.  Otherwise,
+a == 0, c is evaluated, and the result is the expression's value.
+
+   Pointer arithmetic is used in two ways here.  First, the expression
+p++ acts to advance p to point to the next int in array.  This is
+analogous to the way that i++ would increase the value of an integer or
+floating point variable i by one.  Second, the expression p - array
+results in the "difference" between p and array, i.e., the number of
+int elements between the locations to which they point.  For more
+information on these topics, please consult a good C reference, such as
+*Note Kernighan 1988::.
+
+   Searching with a sentinel requires that the array be modifiable and
+large enough to hold an extra element.  Sometimes these are inherently
+problematic--the array may not be modifiable or it might be too
+small--and sometimes they are problems because of external
+circumstances.  For instance, a program with more than one concurrent
+"thread" (*note thread::) cannot modify a shared array for sentinel
+search without expensive locking.
+
+   Sequential sentinel search is an improvement on ordinary sequential
+search, but as it turns out there's still room for
+improvement--especially in the runtime for unsuccessful searches, which
+still always take n comparisons.  In the next section, we'll see one
+technique that can reduce the time required for unsuccessful searches,
+at the cost of longer runtime for successful searches.
+
+See also:  *Note Knuth 1998b::, algorithm 6.1Q; *Note Cormen 1990::,
+section 11.2; *Note Bentley 2000::, section 9.2.
+
+
+File: libavl.info,  Node: Sequential Search of Ordered Array,  Next: Sequential Search of Ordered Array with Sentinel,  Prev: Sequential Search with Sentinel,  Up: Search Algorithms
+
+3.3 Sequential Search of Ordered Array
+======================================
+
+   Let's jump back to the pile-of-things analogy from the beginning of
+this chapter (*note Sequential Search::).  This time, suppose that
+instead of being in random order, the pile you're searching through is
+ordered on the property that you're examining; e.g., magazines sorted by
+publication date, if you're looking for, say, the July 1988 issue.
+
+   Think about how this would simplify searching through the pile.  Now
+you can sometimes tell that the magazine you're looking for isn't in the
+pile before you get to the bottom, because it's not between the
+magazines that it otherwise would be.  On the other hand, you still
+might have to go through the entire pile if the magazine you're looking
+for is newer than the newest magazine in the pile (or older than the
+oldest, depending on the ordering that you chose).
+
+   Back in the world of computers, we can apply the same idea to
+searching a sorted array:
+
+18. <Sequentially search a sorted array of ints 18> =
+/* Returns the smallest i such that array[i] == key,
+   or -1 if key is not in array[]. 
+   array[] must be an array of n ints sorted in ascending order. */
+int
+seq_sorted_search (int array[], int n, int key)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    if (key <= array[i])
+      return key == array[i] ? i : -1;
+
+  return -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+   At first it might be a little tricky to see exactly how
+seq_sorted_search() works, so we'll work through a few examples.
+Suppose that array[] has the four elements {3, 5, 6, 8}, so that n is
+4.  If key is 6, then the first time through the loop the if condition
+is 6 <= 3, or false, so the loop repeats with i == 1.  The second time
+through the loop we again have a false condition, 6 <= 5, and the loop
+repeats again.  The third time the if condition, 6 <= 6, is true, so
+control passes to the if statement's dependent return.  This return
+verifies that 6 == 6 and returns i, or 2, as the function's value.
+
+   On the other hand, suppose key is 4, a value not in array[].  For
+the first iteration, when i is 0, the if condition, 4 <= 3, is false,
+but in the second iteration we have 4 <= 5, which is true.  However,
+this time key == array[i] is 4 == 5, or false, so -1 is returned.
+
+See also:  *Note Sedgewick 1998::, program 12.4.
+
+
+File: libavl.info,  Node: Sequential Search of Ordered Array with Sentinel,  Next: Binary Search of Ordered Array,  Prev: Sequential Search of Ordered Array,  Up: Search Algorithms
+
+3.4 Sequential Search of Ordered Array with Sentinel
+====================================================
+
+   When we implemented sequential search in a sorted array, we lost the
+benefits of having a sentinel.  But we can reintroduce a sentinel in the
+same way we did before, and obtain some of the same benefits.  It's
+pretty clear how to proceed:
+
+19. <Sequentially search a sorted array of ints using a sentinel 19> =
+/* Returns the smallest i such that array[i] == key,
+   or -1 if key is not in array[].  
+   array[] must be an modifiable array of n ints,
+   sorted in ascending order,
+   with room for a (n + 1)th element at the end. */
+int
+seq_sorted_sentinel_search (int array[], int n, int key)
+{
+  int *p;
+
+  array[n] = key;
+  for (p = array; *p < key; p++)
+    /* Nothing to do. */;
+  return p - array < n && *p == key ? p - array : -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+   With a bit of additional cleverness we can eliminate one objection to
+this sentinel approach.  Suppose that instead of using the value being
+searched for as the sentinel value, we used the maximum possible value
+for the type in question.  If we did this, then we could use almost the
+same code for searching the array.
+
+   The advantage of this approach is that there would be no need to
+modify the array in order to search for different values, because the
+sentinel is the same value for all searches.  This eliminates the
+potential problem of searching an array in multiple contexts, due to
+nested searches, threads, or signals, for instance.  (In the code
+below, we will still put the sentinel into the array, because our
+generic test program won't know to put it in for us in advance, but in
+real-world code we could avoid the assignment.)
+
+   We can easily write code for implementation of this technique:
+
+20. <Sequentially search a sorted array of ints using a sentinel (2) 20> =
+/* Returns the smallest i such that array[i] == key,
+   or -1 if key is not in array[].  
+   array[] must be an array of n ints,
+   sorted in ascending order, 
+   with room for an (n + 1)th element to set to INT_MAX. */
+int
+seq_sorted_sentinel_search_2 (int array[], int n, int key)
+{
+  int *p;
+
+  array[n] = INT_MAX;
+  for (p = array; *p < key; p++)
+    /* Nothing to do. */;
+  return p - array < n && *p == key ? p - array : -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+Exercises:
+
+1. When can't the largest possible value for the type be used as a
+sentinel?
+
+
+File: libavl.info,  Node: Binary Search of Ordered Array,  Next: Binary Search Tree in Array,  Prev: Sequential Search of Ordered Array with Sentinel,  Up: Search Algorithms
+
+3.5 Binary Search of Ordered Array
+==================================
+
+   At this point we've squeezed just about all the performance we can
+out of sequential search in portable C.  For an algorithm that searches
+faster than our final refinement of sequential search, we'll have to
+reconsider our entire approach.
+
+   What's the fundamental idea behind sequential search?  It's that we
+examine array elements in order.  That's a fundamental limitation: if
+we're looking for an element in the middle of the array, we have to
+examine every element that comes before it.  If a search algorithm is
+going to be faster than sequential search, it will have to look at fewer
+elements.
+
+   One way to look at search algorithms based on repeated comparisons
+is to consider what we learn about the array's content at each step.
+Suppose that array[] has n elements in sorted order, without duplicates,
+that array[j] contains key, and that we are trying to learn the value
+j.  In sequential search, we learn only a little about the data set
+from each comparison with array[i]: either key == array[i] so that i ==
+j, or key != array[i] so that i != j and therefore j > i.  As a result,
+we eliminate only one possibility at each step.
+
+   Suppose that we haven't made any comparisons yet, so that we know
+nothing about the contents of array[].  If we compare key to array[i]
+for arbitrary i such that 0 <= i < n, what do we learn?  There are
+three possibilities:
+
+   * key < array[i]: Now we know that key < array[i] < array[i + 1] <
+     ...  < array[n - 1].(1) Therefore, 0 <= j < i.
+
+   * key == array[i]: We're done: j == i.
+
+   * key > array[i]: Now we know that key > array[i] > array[i - 1] >
+     ...  > array[0].  Therefore, i < j < n.
+
+   So, after one step, if we're not done, we know that j > i or that j
+< i.  If we're equally likely to be looking for each element in
+array[], then the best choice of i is n / 2: for that value, we
+eliminate about half of the possibilities either way.  (If n is odd,
+we'll round down.)
+
+   After the first step, we're back to essentially the same situation:
+we know that key is in array[j] for some j in a range of about n / 2.
+So we can repeat the same process.  Eventually, we will either find key
+and thus j, or we will eliminate all the possibilities.
+
+   Let's try an example.  For simplicity, let array[] contain the values
+100 through 114 in numerical order, so that array[i] is 100 + i and n
+is 15.  Suppose further that key is 110.  The steps that we'd go
+through to find j are described below.  At each step, the facts are
+listed: the known range that j can take, the selected value of i, the
+results of comparing key to array[i], and what was learned from the
+comparison.
+
+  1. 0 <= j <= 14: i becomes (0 + 14) / 2 == 7. 110 > array[i] == 107,
+     so now we know that j > 7.
+
+  2. 8 <= j <= 14: i becomes (8 + 14) / 2 == 11. 110 < array[i] == 111,
+     so now we know that j < 11.
+
+  3. 8 <= j <= 10: i becomes (8 + 10) / 2 == 9. 110 > array[i] == 109,
+     so now we know that j > 9.
+
+  4. 10 <= j <= 10: i becomes (10 + 10) / 2 == 10.  110 == array[i] ==
+     110, so we're done and i == j == 10.
+
+   In case you hadn't yet figured it out, this technique is called
+"binary search" (*note binary search::).  We can make an initial C
+implementation pretty easily:
+
+21. <Binary search of ordered array 21> =
+/* Returns the offset within array[] of an element equal to key,
+   or -1 if key is not in array[].  
+   array[] must be an array of n ints sorted in ascending order. */
+int
+binary_search (int array[], int n, int key)
+{
+  int min = 0;
+  int max = n - 1;
+
+  while (max >= min)
+    {
+      int i = (min + max) / 2;
+      if (key < array[i])
+        max = i - 1;
+      else if (key > array[i])
+        min = i + 1;
+      else
+        return i;
+    }
+
+  return -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+   The maximum number of comparisons for a binary search in an array of
+n elements is about log2(n), as opposed to a maximum of n comparisons
+for sequential search.  For moderate to large values of n, this is a
+lot better.
+
+   On the other hand, for small values of n, binary search may actually
+be slower because it is more complicated than sequential search.  We
+also have to put our array in sorted order before we can use binary
+search.  Efficiently sorting an n-element array takes time proportional
+to n * log2(n) for large n.  So binary search is preferred if n is
+large enough (see the answer to Exercise 4 for one typical value) and if
+we are going to do enough searches to justify the cost of the initial
+sort.
+
+   Further small refinements are possible on binary search of an ordered
+array.  Try some of the exercises below for more information.
+
+See also:  *Note Knuth 1998b::, algorithm 6.2.1B; *Note Kernighan
+1988::, section 3.3; *Note Bentley 2000::, chapters 4 and 5, section
+9.3, appendix 1; *Note Sedgewick 1998::, program 12.6.
+
+Exercises:
+
+1. Function binary_search() above uses three local variables: min and
+max for the ends of the remaining search range and i for its midpoint.
+Write and test a binary search function that uses only two variables: i
+for the midpoint as before and m representing the width of the range on
+either side of i.  You may require the existence of a dummy element
+just before the beginning of the array.  Be sure, if so, to specify
+what its value should be.
+
+2. The standard C library provides a function, bsearch(), for searching
+ordered arrays.  Commonly, bsearch() is implemented as a binary search,
+though ANSI C does not require it.  Do the following:
+
+  a. Write a function compatible with the interface for binary_search()
+     that uses bsearch() "under the hood."  You'll also have to write an
+     additional callback function for use by bsearch().
+
+  b. Write and test your own version of bsearch(), implementing it
+     using a binary search.  (Use a different name to avoid conflicts
+     with the C library.)
+
+3. An earlier exercise presented a simple test framework for
+seq_search(), but now we have more search functions.  Write a test
+framework that will handle all of them presented so far.  Add code for
+timing successful and unsuccessful searches.  Let the user specify, on
+the command line, the algorithm to use, the size of the array to search,
+and the number of search iterations to run.
+
+4. Run the test framework from the previous exercise on your own system
+for each algorithm.  Try different array sizes and compiler optimization
+levels.  Be sure to use enough iterations to make the searches take at
+least a few seconds each.  Analyze the results: do they make sense?
+Try to explain any apparent discrepancies.
+
+   ---------- Footnotes ----------
+
+   (1) This sort of notation means very different things in C and
+mathematics.  In mathematics, writing a < b < c asserts both of the
+relations a < b and b < c, whereas in C, it expresses the evaluation of
+a < b, then the comparison of the 0 or 1 result to the value of c.  In
+mathematics this notation is invaluable, but in C it is rarely
+meaningful.  As a result, this book uses this notation only in the
+mathematical sense.
+
+
+File: libavl.info,  Node: Binary Search Tree in Array,  Next: Dynamic Lists,  Prev: Binary Search of Ordered Array,  Up: Search Algorithms
+
+3.6 Binary Search Tree in Array
+===============================
+
+   Binary search is pretty fast.  Suppose that we wish to speed it up
+anyhow.  Then, the obvious speed-up targets in <*Note Binary search of
+ordered array:: 21> above are the while condition and the calculations
+determining values of i, min, and max.  If we could eliminate these,
+we'd have an incrementally faster technique, all else being equal.  And,
+as it turns out, we _can_ eliminate both of them, the former by use of
+a sentinel and the latter by precalculation.
+
+   Let's consider precalculating i, min, and max first.  Think about
+the nature of the choices that binary search makes at each step.
+Specifically, in <*Note Binary search of ordered array:: 21> above,
+consider the dependence of min and max upon i.  Is it ever possible for
+min and max to have different values for the same i and n?
+
+   The answer is no.  For any given i and n, min and max are fixed.
+This is important because it means that we can represent the entire
+"state" of a binary search of an n-element array by the single variable
+i.  In other words, if we know i and n, we know all the choices that
+have been made to this point and we know the two possible choices of i
+for the next step.
+
+   This is the key insight in eliminating calculations.  We can use an
+array in which the items are labeled with the next two possible choices.
+
+   An example is indicated.  Let's continue with our example of an array
+containing the 16 integers 100 to 115.  We define an entry in the array
+to contain the item value and the array index of the item to examine
+next for search values smaller and larger than the item:
+
+22. <Binary search tree entry 22> =
+/* One entry in a binary search tree stored in an array. */
+struct binary_tree_entry
+  {
+    int value;          /* This item in the binary search tree. */
+    int smaller;        /* Array index of next item for smaller targets. */
+    int larger;         /* Array index of next item for larger targets. */
+  };
+
+This code is included in *Note 617: bin-ary-testc.
+
+   Of course, it's necessary to fill in the values for smaller and
+larger.  A few moments' reflection should allow you to figure out one
+method for doing so.  Here's the full array, for reference:
+
+const struct binary_tree_entry bins[16] =
+  {
+    {100, 15, 15},
+    {101, 0, 2},
+    {102, 15, 15},
+    {103, 1, 5},
+    {104, 15, 15},
+    {105, 4, 6},
+    {106, 15, 15},
+    {107, 3, 11},
+    {108, 15, 15},
+    {109, 8, 10},
+    {110, 15, 15},
+    {111, 9, 13},
+    {112, 15, 15},
+    {113, 12, 14},
+    {114, 15, 15},
+    {0, 0, 0},
+  };
+
+   For now, consider only bins[]'s first 15 rows.  Within these rows,
+the first column is value, the item value, and the second and third
+columns are smaller and larger, respectively.  Values 0 through 14 for
+smaller and larger indicate the index of the next element of bins[] to
+examine.  Value 15 indicates "element not found".  Element array[15] is
+not used for storing data.
+
+   Try searching for key == 110 in bins[], starting from element 7, the
+midpoint:
+
+  1. i == 7: 110 > bins[i].value == 107, so let i = bins[i].larger, or
+     11.
+
+  2. i == 11: 110 < bins[i].value == 111, so let i = bins[i].smaller,
+     or 10.
+
+  3. i == 10: 110 == bins[i].value == 110, so we're done.
+
+   We can implement this search in C code.  The function uses the
+common C idiom of writing for (;;) for an "infinite" loop:
+
+23. <Search of binary search tree stored as array 23> =
+/* Returns i such that array[i].value == key,
+   or -1 if key is not in array[]. 
+   array[] is an array of n elements forming a binary search tree, 
+   with its root at array[n / 2],
+   and space for an (n + 1)th value at the end. */
+int
+binary_search_tree_array (struct binary_tree_entry array[], int n,
+                          int key)
+{
+  int i = n / 2;
+
+  array[n].value = key;
+  for (;;)
+    if (key > array[i].value)
+      i = array[i].larger;
+    else if (key < array[i].value)
+      i = array[i].smaller;
+    else
+      return i != n ? i : -1;
+}
+
+This code is included in *Note 617: bin-ary-testc.
+
+   Examination of the code above should reveal the purpose of bins[15].
+It is used as a sentinel value, allowing the search to always terminate
+without the use of an extra test on each loop iteration.
+
+   The result of augmenting binary search with "pointer" values like
+smaller and larger is called a "binary search tree" (*note binary
+search tree::).
+
+Exercises:
+
+1. Write a function to automatically initialize smaller and larger
+within bins[].
+
+2. Write a simple automatic test program for binary_search_tree_array().
+Let the user specify the size of the array to test on the command line.
+You may want to use your results from the previous exercise.
+
+
+File: libavl.info,  Node: Dynamic Lists,  Prev: Binary Search Tree in Array,  Up: Search Algorithms
+
+3.7 Dynamic Lists
+=================
+
+   Up until now, we've considered only lists whose contents are fixed
+and unchanging, that is, "static" (*note static::) lists.  But in real
+programs, many lists are "dynamic" (*note dynamic::), with their
+contents changing rapidly and unpredictably.  For the case of dynamic
+lists, we need to reconsider some of the attributes of the types of
+lists that we've examined.(1)
+
+   Specifically, we want to know how long it takes to insert a new
+element into a list and to remove an existing element from a list.
+Think about it for each type of list examined so far:
+
+Unordered array
+     Adding items to the list is easy and fast, unless the array grows
+     too large for the block and has to be copied into a new area of
+     memory. Just copy the new item to the end of the list and increase
+     the size by one.
+
+     Removing an item from the list is almost as simple. If the item to
+     delete happens to be located at the very end of the array, just
+     reduce the size of the list by one. If it's located at any other
+     spot, you must also copy the element that is located at the very
+     end onto the location that the deleted element used to occupy.
+
+Ordered array
+     In terms of inserting and removing elements, ordered arrays are
+     mechanically the same as unordered arrays.  The difference is that
+     insertions and deletions can only be at one end of the array if
+     the item in question is the largest or smallest in the list.  The
+     practical upshot is that dynamic ordered arrays are only efficient
+     if items are added and removed in sorted order.
+
+Binary search tree
+     Insertions and deletions are where binary search trees have their
+     chance to shine.  Insertions and deletions are efficient in binary
+     search trees whether they're made at the beginning, middle, or end
+     of the lists.
+
+   Clearly, binary search trees are superior to ordered or unordered
+arrays in situations that require insertion and deletion in random
+positions.  But insertion and deletion operations in binary search
+trees require a bit of explanation if you've never seen them before.
+This is what the next chapter is for, so read on.
+
+   ---------- Footnotes ----------
+
+   (1) These uses of the words "static" and "dynamic" are different
+from their meanings in the phrases "static allocation" and "dynamic
+allocation."  *Note Glossary::, for more details.
+
+
+File: libavl.info,  Node: Binary Search Trees,  Next: AVL Trees,  Prev: Search Algorithms,  Up: Top
+
+4 Binary Search Trees
+*********************
+
+   The previous chapter motivated the need for binary search trees.
+This chapter implements a table ADT backed by a binary search tree.
+Along the way, we'll see how binary search trees are constructed and
+manipulated in abstract terms as well as in concrete C code.
+
+   The library includes a header file <*Note bsth:: 24> and an
+implementation file <*Note bstc:: 25>, outlined below.  We borrow most
+of the header file from the generic table headers designed a couple of
+chapters back, simply replacing tbl by bst, the prefix used in this
+table module.
+
+24. <bst.h 24> =
+<*Note License:: 1>
+#ifndef BST_H
+#define BST_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note BST maximum height:: 28>
+<*Note BST table structure:: 27>
+<*Note BST node structure:: 26>
+<*Note BST traverser structure:: 61>
+<*Note Table function prototypes:: 15>
+<*Note BST extra function prototypes:: 88>
+
+#endif /* bst.h */
+
+<*Note Table assertion function control directives:: 593>
+
+25. <bst.c 25> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "bst.h"
+
+<*Note BST operations:: 29>
+
+Exercises:
+
+1. What is the purpose of #ifndef BST_H ... #endif in <*Note bsth::
+24> above?
+
+* Menu:
+
+* BST Vocabulary::
+* BST Data Types::
+* BST Rotations::
+* BST Operations::
+* Creating a BST::
+* Searching a BST::
+* Inserting into a BST::
+* Deleting from a BST::
+* Traversing a BST::
+* Copying a BST::
+* Destroying a BST::
+* Balancing a BST::
+* Joining BSTs::
+* Testing our BST functions::
+* Additional Exercises for BSTs::
+
+
+File: libavl.info,  Node: BST Vocabulary,  Next: BST Data Types,  Prev: Binary Search Trees,  Up: Binary Search Trees
+
+4.1 Vocabulary
+==============
+
+   When binary search trees, or BSTs, were introduced in the previous
+chapter, the reason that they were called binary search trees wasn't
+explained.  The diagram below should help to clear up matters, and
+incidentally let us define some BST-related vocabulary:
+
+                                   107
+                       ____....---'   `---...___
+                      103                       111
+                __..-'   `._              __..-'   `._
+               101          105          109          113
+             _'   \       _'   \       _'   \       _'   \
+            100    102   104    106   108    110   112    114
+ 
+ This diagram illustrates the binary search tree example from the
+previous chapter.  The circle or "node" (*note node::) at the top,
+labeled 107, is the starting point of any search.  As such, it is
+called the "root" (*note root::) of the tree.  The node connected to it
+below to the left, labeled 103, is the root's "left child" (*note left
+child::), and node 111 to its lower right is its "right child" (*note
+right child::).  A node's left child corresponds to smaller from the
+array-based BST of the previous chapter, and a right child corresponds
+to larger.
+
+Some nodes, such as 106 here, don't have any children.  Such a node is
+called a "leaf" (*note leaf::) or "terminal node" (*note terminal
+node::).  Although not shown here, it's also possible for a node to
+have only one child, either on the left or the right side.  A node with
+at least one child is called a "nonterminal node" (*note nonterminal
+node::).
+
+   Each node in a binary search tree is, conceptually, the root of its
+own tree.  Such a tree is called a "subtree" (*note subtree::) of the
+tree that contains it.  The left child of a node and recursively all of
+that child's children is a subtree of the node, called the "left
+subtree" (*note left subtree::) of the node.  The term "right subtree"
+(*note right subtree::) is defined similarly for the right side of the
+node.  For instance, above, nodes 104, 105, and 106 are the right
+subtree of node 103, with 105 as the subtree's root.
+
+   A BST without any nodes is called an "empty tree" (*note empty
+tree::).  Both subtrees of all even-numbered nodes in the BST above are
+empty trees.
+
+   In a binary search tree, the left child of a node, if it exists, has
+a smaller value than the node, and the right child of a node has a
+larger value.  The more general term "binary tree" (*note binary
+tree::), on the other hand, refers to a data structure with the same
+form as a binary search tree, but which does not necessarily share this
+property.  There are also related, but different, structures simply
+called "trees".
+
+   In this book, all our binary trees are binary search trees, and this
+book will not discuss plain trees at all.  As a result, we will often
+be a bit loose in terminology and use the term "binary tree" or "tree"
+when "binary search tree" is the proper term.
+
+   Although this book discusses binary search trees exclusively, it is
+instructive to occasionally display, as a counterexample, a diagram of
+a binary tree whose nodes are out of order and therefore not a BST.
+Such diagrams are marked ** to reinforce their non-BST nature to the
+casual browser.
+
+See also:  *Note Knuth 1997::, section 2.3; *Note Knuth 1998b::,
+section 6.2.2; *Note Cormen 1990::, section 13.1; *Note Sedgewick
+1998::, section 5.4.
+
+* Menu:
+
+* Differing Definitions::
+
+
+File: libavl.info,  Node: Differing Definitions,  Prev: BST Vocabulary,  Up: BST Vocabulary
+
+4.1.1 Aside: Differing Definitions
+----------------------------------
+
+   The definitions in the previous section are the ones used in this
+book.  They are the definitions that programmers often use in designing
+and implementing real programs.  However, they are slightly different
+from the definitions used in formal computer science textbooks.  This
+section gives these formal definitions and contrasts them against our
+own.
+
+   The most important difference is in the definition of a binary tree
+itself.  Formally, a binary tree is either an "external node" or an
+"internal node" connected to a pair of binary trees called the internal
+node's left subtree and right subtree.  Internal nodes correspond to
+our notion of nodes, and external nodes correspond roughly to nodes'
+empty left or right subtrees.  The generic term "node" includes both
+internal and external nodes.
+
+   Every internal node always has exactly two children, although those
+children may be external nodes, so we must also revise definitions that
+depend on a node's number of children.  Then, a "leaf" is an internal
+node with two external node children and a "nonterminal node" is an
+internal node at least one of whose children is an internal node.
+Finally, an "empty tree" is a binary tree that contains of only an
+external node.
+
+   Tree diagrams in books that use these formal definitions show both
+internal and external nodes.  Typically, internal nodes are shown as
+circles, external nodes as square boxes.  Here's an example BST in the
+format used in this book, shown alongside an identical BST in the
+format used in formal computer science books:
+
+                                            4
+                        4             __..-' `_
+                       / \           2         5
+                      2   5       _.' `_      / \
+                      ^          1      3    []  []
+                     1 3        / \    / \
+                               []  [] []  []
+ 
+  See also:  *Note Sedgewick 1998::, section 5.4.
+
+
+File: libavl.info,  Node: BST Data Types,  Next: BST Rotations,  Prev: BST Vocabulary,  Up: Binary Search Trees
+
+4.2 Data Types
+==============
+
+The types for memory allocation and managing data as void * pointers
+were discussed previously (*note The Table ADT::), but to build a table
+implementation using BSTs we must define some additional types.  In
+particular, we need struct bst_node to represent an individual node and
+struct bst_table to represent an entire table.  The following sections
+take care of this.
+
+* Menu:
+
+* BST Node Structure::
+* BST Structure::
+* BST Maximum Height::
+
+
+File: libavl.info,  Node: BST Node Structure,  Next: BST Structure,  Prev: BST Data Types,  Up: BST Data Types
+
+4.2.1 Node Structure
+--------------------
+
+   When binary search trees were introduced in the last chapter, we used
+indexes into an array to reference items' smaller and larger values.
+But in C, BSTs are usually constructed using pointers.  This is a more
+general technique, because pointers aren't restricted to references
+within a single array.
+
+26. <BST node structure 26> =
+/* A binary search tree node. */
+struct bst_node
+  {
+    struct bst_node *bst_link[2];   /* Subtrees. */
+    void *bst_data;                 /* Pointer to data. */
+  };
+
+This code is included in *Note 24: bsth.
+
+   In struct bst_node, bst_link[0] takes the place of smaller, and
+bst_link[1] takes the place of larger.  If, in our array implementation
+of binary search trees, either of these would have pointed to the
+sentinel, it instead is assigned NULL, the null pointer constant.
+
+   In addition, bst_data replaces value.  We use a void * generic
+pointer here, instead of int as used in the last chapter, to let any
+kind of data be stored in the BST.  *Note Comparison Function::, for
+more information on void * pointers.
+
+
+File: libavl.info,  Node: BST Structure,  Next: BST Maximum Height,  Prev: BST Node Structure,  Up: BST Data Types
+
+4.2.2 Tree Structure
+--------------------
+
+   The struct bst_table structure ties together all of the data needed
+to keep track of a table implemented as a binary search tree:
+
+27. <BST table structure 27> =
+/* Tree data structure. */
+struct bst_table
+  {
+    struct bst_node *bst_root;          /* Tree's root. */
+    bst_comparison_func *bst_compare;   /* Comparison function. */
+    void *bst_param;                    /* Extra argument to bst_compare. */
+    struct libavl_allocator *bst_alloc; /* Memory allocator. */
+    size_t bst_count;                   /* Number of items in tree. */
+    unsigned long bst_generation;       /* Generation number. */
+  };
+
+This code is included in *Note 24: bsth, *Note 142: avlh, and *Note
+192: rbh.
+
+   Most of struct bst_table's members should be familiar.  Member
+bst_root points to the root node of the BST.  Together, bst_compare and
+bst_param specify how items are compared (*note Item and Copy
+Functions::).  The members of bst_alloc specify how to allocate memory
+for the BST (*note Memory Allocation::).  The number of items in the BST
+is stored in bst_count (*note Count::).
+
+   The final member, bst_generation, is a "generation number".  When a
+tree is created, it starts out at zero.  After that, it is incremented
+every time the tree is modified in a way that might disturb a traverser.
+We'll talk more about the generation number later (*note Better
+Iterative Traversal::).
+
+Exercises:
+
+*1. Why is it a good idea to include bst_count in struct bst_table?
+Under what circumstances would it be better to omit it?
+
+
+File: libavl.info,  Node: BST Maximum Height,  Prev: BST Structure,  Up: BST Data Types
+
+4.2.3 Maximum Height
+--------------------
+
+   For efficiency, some of the BST routines use a stack of a fixed
+maximum height.  This maximum height affects the maximum number of
+nodes that can be fully supported by `libavl' in any given tree,
+because a binary tree of height n contains at most 2**n - 1 nodes.
+
+   The BST_MAX_HEIGHT macro sets the maximum height of a BST.  The
+default value of 32 allows for trees with up to 2**32 - 1 =
+4,294,967,295 nodes.  On today's common 32-bit computers that support
+only 4 GB of memory at most, this is hardly a limit, because memory
+would be exhausted long before the tree became too big.
+
+   The BST routines that use fixed stacks also detect stack overflow and
+call a routine to "balance" or restructure the tree in order to reduce
+its height to the permissible range.  The limit on the BST height is
+therefore not a severe restriction.
+
+28. <BST maximum height 28> =
+/* Maximum BST height. */
+#ifndef BST_MAX_HEIGHT
+#define BST_MAX_HEIGHT 32
+#endif
+
+This code is included in *Note 24: bsth, *Note 142: avlh, *Note 297:
+tavlh, *Note 415: rtavlh, and *Note 519: pavlh.
+
+Exercises:
+
+1. Suggest a reason why the BST_MAX_HEIGHT macro is defined
+conditionally.  Are there any potential pitfalls?
+
+
+File: libavl.info,  Node: BST Rotations,  Next: BST Operations,  Prev: BST Data Types,  Up: Binary Search Trees
+
+4.3 Rotations
+=============
+
+   Soon we'll jump right in and start implementing the table functions
+for BSTs.  But before that, there's one more topic to discuss, because
+they'll keep coming up from time to time throughout the rest of the
+book.  This topic is the concept of a "rotation" (*note rotation::).  A
+rotation is a simple transformation of a binary tree that looks like
+this:
+
+                               |        |
+                               Y        X
+                              / \      / \
+                             X   c    a   Y
+                             ^            ^
+                            a b          b c
+ 
+ In this diagram, X and Y represent nodes and a, b, and c are arbitrary
+binary trees that may be empty.  A rotation that changes a binary tree
+of the form shown on the left to the form shown on the right is called
+a "right rotation" (*note right rotation::) on Y.  Going the other way,
+it is a "left rotation" (*note left rotation::) on X.
+
+This figure also introduces new graphical conventions.  First, the line
+leading vertically down to the root explicitly shows that the BST may
+be a subtree of a larger tree.  Also, the use of both uppercase and
+lowercase letters emphasizes the distinction between individual nodes
+and subtrees: uppercase letters are nodes, lowercase letters represent
+(possibly empty) subtrees.
+
+   A rotation changes the local structure of a binary tree without
+changing its ordering as seen through inorder traversal.  That's a
+subtle statement, so let's dissect it bit by bit.  Rotations have the
+following properties:
+
+Rotations change the structure of a binary tree.
+     In particular, rotations can often, depending on the tree's shape,
+     be used to change the height of a part of a binary tree.
+
+Rotations change the local structure of a binary tree.
+     Any given rotation only affects the node rotated and its immediate
+     children.  The node's ancestors and its children's children are
+     unchanged.
+
+Rotations do not change the ordering of a binary tree.
+     If a binary tree is a binary search tree before a rotation, it is a
+     binary search tree after a rotation.  So, we can safely use
+     rotations to rearrange a BST-based structure, without concerns
+     about upsetting its ordering.
+
+See also:  *Note Cormen 1990::, section 14.2; *Note Sedgewick 1998::,
+section 12.8.
+
+Exercises:
+
+1. For each of the binary search trees below, perform a right rotation
+at node 4.
+
+                          4          4       4
+                         / \        /       / \
+                        2   5      2       2   6
+                        ^         /        ^   ^
+                       1 3       1        1 3 5 7
+
+2. Write a pair of functions, one to perform a right rotation at a given
+BST node, one to perform a left rotation.  What should be the type of
+the functions' parameter?
+
+
+File: libavl.info,  Node: BST Operations,  Next: Creating a BST,  Prev: BST Rotations,  Up: Binary Search Trees
+
+4.4 Operations
+==============
+
+   Now can start to implement the operations that we'll want to perform
+on BSTs.  Here's the outline of the functions we'll implement.  We use
+the generic table insertion convenience functions from
+Exercise 3.8-3 to implement bst_insert() and bst_replace(), as well the
+generic assertion function implementations from Exercise 3.9-2 to
+implement tbl_assert_insert() and tbl_assert_delete().  We also include
+a copy of the default memory allocation functions for use with BSTs:
+
+29. <BST operations 29> =
+<*Note BST creation function:: 30>
+<*Note BST search function:: 31>
+<*Note BST item insertion function:: 32>
+<*Note Table insertion convenience functions:: 592>
+<*Note BST item deletion function:: 37>
+<*Note BST traversal functions:: 63>
+<*Note BST copy function:: 83>
+<*Note BST destruction function:: 84>
+<*Note BST balance function:: 87>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 25: bstc.
+
+
+File: libavl.info,  Node: Creating a BST,  Next: Searching a BST,  Prev: BST Operations,  Up: Binary Search Trees
+
+4.5 Creation
+============
+
+   We need to write bst_create() to create an empty BST.  All it takes
+is a little bit of memory allocation and initialization:
+
+30. <BST creation function 30> =
+struct bst_table *
+bst_create (bst_comparison_func *compare, void *param,
+            struct libavl_allocator *allocator)
+{
+  struct bst_table *tree;
+
+  assert (compare != NULL);
+
+  if (allocator == NULL)
+    allocator = &bst_allocator_default;
+
+  tree = allocator->libavl_malloc (allocator, sizeof *tree);
+  if (tree == NULL)
+    return NULL;
+
+  tree->bst_root = NULL;
+  tree->bst_compare = compare;
+  tree->bst_param = param;
+  tree->bst_alloc = allocator;
+  tree->bst_count = 0;
+  tree->bst_generation = 0;
+
+  return tree;
+}
+
+This code is included in *Note 29: BST operations, *Note 145: AVL
+functions, and *Note 196: RB functions.
+
+
+File: libavl.info,  Node: Searching a BST,  Next: Inserting into a BST,  Prev: Creating a BST,  Up: Binary Search Trees
+
+4.6 Search
+==========
+
+   Searching a binary search tree works just the same way as it did
+before when we were doing it inside an array.  We can implement
+bst_find() immediately:
+
+31. <BST search function 31> =
+void *
+bst_find (const struct bst_table *tree, const void *item)
+{
+  const struct bst_node *p;
+
+  assert (tree != NULL && item != NULL);
+  for (p = tree->bst_root; p != NULL; )
+    {
+      int cmp = tree->bst_compare (item, p->bst_data, tree->bst_param);
+
+      if (cmp < 0)
+        p = p->bst_link[0];
+      else if (cmp > 0)
+        p = p->bst_link[1];
+      else /* cmp == 0 */
+        return p->bst_data;
+    }
+
+  return NULL;
+}
+
+This code is included in *Note 29: BST operations, *Note 145: AVL
+functions, *Note 196: RB functions, *Note 489: PBST functions, *Note
+522: PAVL functions, and *Note 554: PRB functions.
+
+See also:  *Note Knuth 1998b::, section 6.2.2; *Note Cormen 1990::,
+section 13.2; *Note Kernighan 1988::, section 3.3; *Note Bentley
+2000::, chapters 4 and 5, section 9.3, appendix 1; *Note Sedgewick
+1998::, program 12.7.
+
+
+File: libavl.info,  Node: Inserting into a BST,  Next: Deleting from a BST,  Prev: Searching a BST,  Up: Binary Search Trees
+
+4.7 Insertion
+=============
+
+   Inserting new nodes into a binary search tree is easy.  To start out,
+we work the same way as in a search, traversing the tree from the top
+down, as if we were searching for the item that we're inserting.  If we
+find one, the item is already in the tree, and we need not insert it
+again.  But if the new item is not in the tree, eventually we "fall
+off" the bottom of the tree.  At this point we graft the new item as a
+child of the node that we last examined.
+
+   An example is in order.  Consider this binary search tree:
+
+                                    5
+                                   / `_
+                                  3    8
+                                  ^   /
+                                 2 4 6
+ 
+ Suppose that we wish to insert a new item, 7, into the tree.  7 is
+greater than 5, so examine 5's right child, 8.  7 is less than 8, so
+examine 8's left child, 6.  7 is greater than 6, but 6 has no right
+child.  So, make 7 the right child of 6:
+
+                                   5
+                                  / `._
+                                 3     8
+                                 ^   _'
+                                2 4 6
+                                     \
+                                      7
+ 
+ We cast this in a form compatible with the abstract description as
+follows:
+
+32. <BST item insertion function 32> =
+void **
+bst_probe (struct bst_table *tree, void *item)
+{
+  struct bst_node *p, *q; /* Current node in search and its parent. */
+  int dir;                /* Side of q on which p is located. */
+  struct bst_node *n;     /* Newly inserted node. */
+
+  assert (tree != NULL && item != NULL);
+
+  for (q = NULL, p = tree->bst_root; p != NULL; q = p, p = p->bst_link[dir])
+    {
+      int cmp = tree->bst_compare (item, p->bst_data, tree->bst_param);
+      if (cmp == 0)
+        return &p->bst_data;
+      dir = cmp > 0;
+    }
+
+  n = tree->bst_alloc->libavl_malloc (tree->bst_alloc, sizeof *p);
+  if (n == NULL)
+    return NULL;
+
+  tree->bst_count++;
+  n->bst_link[0] = n->bst_link[1] = NULL;
+  n->bst_data = item;
+  if (q != NULL)
+    q->bst_link[dir] = n;
+  else
+    tree->bst_root = n;
+
+  return &n->bst_data;
+}
+
+This code is included in *Note 29: BST operations.
+
+See also:  *Note Knuth 1998b::, algorithm 6.2.2T; *Note Cormen 1990::,
+section 13.3; *Note Bentley 2000::, section 13.3; *Note Sedgewick
+1998::, program 12.7.
+
+Exercises:
+
+1. Explain the expression p = (struct bst_node *) &tree->bst_root.
+Suggest an alternative.
+
+2. Rewrite bst_probe() to use only a single local variable of type
+struct bst_node **.
+
+3. Suppose we want to make a new copy of an existing binary search tree,
+preserving the original tree's shape, by inserting items into a new,
+currently empty tree.  What constraints are there on the order of item
+insertion?
+
+4. Write a function that calls a provided bst_item_func for each node
+in a provided BST in an order suitable for reproducing the original
+BST, as discussed in Exercise 3.
+
+* Menu:
+
+* Root Insertion in a BST::
+

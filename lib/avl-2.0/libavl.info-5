@@ -1,0 +1,1652 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Implementing compress(),  Prev: Balancing Implementation,  Up: Transforming a Vine into a Balanced BST
+
+4.12.2.3 Implementing compress()
+................................
+
+   The final bit of code we need is that for performing a compression.
+The following code performs a compression consisting of count
+applications of the compression transformation starting at root:
+
+95. <BST compression function 95> =
+/* Performs a compression transformation count times,
+   starting at root. */
+static void
+compress (struct bst_node *root, unsigned long count)
+{
+  assert (root != NULL);
+
+  while (count--)
+    {
+      struct bst_node *red = root->bst_link[0];
+      struct bst_node *black = red->bst_link[0];
+
+      root->bst_link[0] = black;
+      red->bst_link[0] = black->bst_link[1];
+      black->bst_link[1] = red;
+      root = black;
+    }
+}
+
+This code is included in *Note 90: Vine to balanced BST function and
+*Note 512: Vine to balanced PBST function.
+
+   The operation of compress() should be obvious, given the discussion
+earlier.  *Note Balancing General Trees::, above, for a review.
+
+See also:  *Note Stout 1986::, vine_to_tree procedure.
+
+
+File: libavl.info,  Node: Joining BSTs,  Next: Testing our BST functions,  Prev: Balancing a BST,  Up: Binary Search Trees
+
+4.13 Aside: Joining BSTs
+========================
+
+   Occasionally we may want to take a pair of BSTs and merge or "join"
+their contents, forming a single BST that contains all the items in the
+two original BSTs.  It's easy to do this with a series of calls to
+bst_insert(), but we can optimize the process if we write a function
+exclusively for the purpose.  We'll write such a function in this
+section.
+
+   There are two restrictions on the trees to be joined.  First, the
+BSTs' contents must be disjoint.  That is, no item in one may match any
+item in the other.  Second, the BSTs must have compatible comparison
+functions.  Typically, they are the same.  Speaking more precisely, if
+f() and g() are the comparison functions, p and q are nodes in either
+BST, and r and s are the BSTs' user-provided extra comparison
+parameters, then the expressions f(p, q, r), f(p, q, s), g(p, q, r),
+and g(p, q, s) must all have the same value for all possible choices of
+p and q.
+
+   Suppose we're trying to join the trees shown below:
+
+                            4,a           7,b
+                          _'   \         /   \
+                         1      6       3     8
+                          \      \      ^
+                           2      9    0 5
+
+Our first inclination is to try a "divide and conquer" approach by
+reducing the problem of joining a and b to the subproblems of joining
+a's left subtree with b's left subtree and joining a's right subtree
+with b's right subtree.  Let us postulate for the moment that we are
+able to solve these subproblems and that the solutions that we come up
+with are the following:
+
+                                  3       8
+                              _.-' \      ^
+                             0      5    6 9
+                              \
+                               1
+                                \
+                                 2
+
+To convert this partial solution into a full solution we must combine
+these two subtrees into a single tree and at the same time reintroduce
+the nodes a and b into the combined tree.  It is easy enough to do this
+by making a (or b) the root of the combined tree with these two
+subtrees as its children, then inserting b (or a) into the combined
+tree.  Unfortunately, in neither case will this actually work out
+properly for our example.  The diagram below illustrates one
+possibility, the result of combining the two subtrees as the child of
+node 4, then inserting node 7 into the final tree.  As you can see,
+nodes 4 and 5 are out of order:(1)
+
+                                  4
+                                _' `._
+                               3      8
+                           _.-' \   _' \
+                          0      5 6    9    **
+                           \        \
+                            1        7
+                             \
+                              2
+ 
+ Now let's step back and analyze why this attempt failed.  It was
+essentially because, when we recombined the subtrees, a node in the
+combined tree's left subtree had a value larger than the root.  If we
+trace it back to the original trees to be joined, we see that this was
+because node 5 in the left subtree of b is greater than a.  (If we had
+chosen 7 as the root of the combined tree we would have found instead
+node 6 in the right subtree of b to be the culprit.)
+
+On the other hand, if every node in the left subtree of a had a value
+less than b's value, and every node in the right subtree of a had a
+value greater than b's value, there would be no problem.  Hey, wait a
+second... we can force that condition.  If we perform a root insertion
+(*note Root Insertion in a BST::) of b into subtree a, then we end up
+with one pair of subtrees whose node values are all less than 7 (the
+new and former left subtrees of node 7) and one pair of subtrees whose
+node values are all greater than 7 (the new and former right subtrees
+of node 7).  Conceptually it looks like this, although in reality we
+would need to remove node 7 from the tree on the right as we inserted
+it into the tree on the left:
+
+                                 7         7
+                               _' \       / \
+                              4    9     3   8
+                            _' \         ^
+                           1    6       0 5
+                            \
+                             2
+
+We can then combine the two subtrees with values less than 7 with each
+other, and similarly for the ones with values greater than 7, using the
+same algorithm recursively, and safely set the resulting subtrees as
+the left and right subtrees of node 7, respectively.  The final product
+is a correctly joined binary tree:
+
+                                      7
+                                   _.' \
+                                  3     8
+                              _.-' \     \
+                             0      5     9
+                              \     ^
+                               1   4 6
+                                \
+                                 2
+ 
+ Of course, since we've defined a join recursively in terms of itself,
+there must be some maximum depth to the recursion, some simple case
+that can be defined without further recursion.  This is easy: the join
+of an empty tree with another tree is the second tree.
+
+Implementation
+..............
+
+It's easy to implement this algorithm recursively.  The only nonobvious
+part of the code below is the treatment of node b.  We want to insert
+node b, but not b's children, into the subtree rooted at a.  However,
+we still need to keep track of b's children.  So we temporarily save
+b's children as b0 and b1 and set its child pointers to NULL before the
+root insertion.
+
+   This code makes use of root_insert() from <*Note Robust root
+insertion of existing node in arbitrary subtree:: 625>.
+
+96. <BST join function, recursive version 96> =
+/* Joins a and b, which are subtrees of tree,
+   and returns the resulting tree. */
+static struct bst_node *
+join (struct bst_table *tree, struct bst_node *a, struct bst_node *b)
+{
+  if (b == NULL)
+    return a;
+  else if (a == NULL)
+    return b;
+  else
+    {
+      struct bst_node *b0 = b->bst_link[0];
+      struct bst_node *b1 = b->bst_link[1];
+      b->bst_link[0] = b->bst_link[1] = NULL;
+      root_insert (tree, &a, b);
+      a->bst_link[0] = join (tree, b0, a->bst_link[0]);
+      a->bst_link[1] = join (tree, b1, a->bst_link[1]);
+      return a;
+    }
+}
+
+/* Joins a and b, which must be disjoint and have compatible
+   comparison functions.
+   b is destroyed in the process. */
+void
+bst_join (struct bst_table *a, struct bst_table *b)
+{
+  a->bst_root = join (a, a->bst_root, b->bst_root);
+  a->bst_count += b->bst_count;
+  free (b);
+}
+
+See also:  *Note Sedgewick 1998::, program 12.16.
+
+Exercises:
+
+1. Rewrite bst_join() to avoid use of recursion.
+
+   ---------- Footnotes ----------
+
+   (1) The ** notation in the diagram emphasizes that this is a
+counterexample.
+
+
+File: libavl.info,  Node: Testing our BST functions,  Next: Additional Exercises for BSTs,  Prev: Joining BSTs,  Up: Binary Search Trees
+
+4.14 Testing
+============
+
+   Whew!  We're finally done with building functions for performing BST
+operations.  But we haven't tested any of our code.  Testing is an
+essential step in writing programs, because untested software cannot be
+assumed to work.
+
+   Let's build a test program that exercises all of the functions we
+wrote.  We'll also do our best to make parts of it generic, so that we
+can reuse test code in later chapters when we want to test other
+BST-based structures.
+
+   The first step is to figure out how to test the code.  One goal in
+testing is to exercise as much of the code as possible.  Ideally, every
+line of code would be executed sometime during testing.  Often, this is
+difficult or impossible, but the principle remains valid, with the goal
+modified to testing as much of the code as possible.
+
+   In applying this principle to the BST code, we have to consider why
+each line of code is executed.  If we look at the code for most
+functions in <*Note bstc:: 25>, we can see that, if we execute them for
+any BST of reasonable size, most or all of their code will be tested.
+
+   This is encouraging.  It means that we can just construct some trees
+and try out the BST functions on them, check that the results make
+sense, and have a pretty good idea that they work.  Moreover, if we
+build trees in a random fashion, and delete their nodes in a random
+order, and do it several times, we'll even have a good idea that the
+bst_probe() and bst_delete() cases have all come up and worked
+properly.  (If you want to be sure, then you can insert printf() calls
+for each case to record when they trip.)  This is not the same as a
+proof of correctness, but proofs of correctness can only be constructed
+by computer scientists with fancy degrees, not by mere clever
+programmers.
+
+   There are three notably missing pieces of code coverage if we just do
+the above.  These are stack overflow handling, memory allocation failure
+handling, and traverser code to deal with modified trees.  But we can
+mop up these extra problems with a little extra effort:(1)
+
+   * Stack overflow handling can be tested by forcing the stack to
+     overflow.  Stack overflow can occur in many places, so for best
+     effect we must test each possible spot.  We will write special
+     tests for these problems.
+
+   * Memory allocation failure handling can be tested by simulating
+     memory allocation failures.  We will write a replacement memory
+     allocator that "fails" after a specified number of calls.  This
+     allocator will also allow for memory leak detection.
+
+   * Traverser code to deal with modified trees.  This can be tested by
+     modifying trees during traversal and making sure that the traversal
+     functions still work as expected.
+
+   The testing code can be broken into the following groups of
+functions:
+
+Testing and verification
+     These functions actually try out the BST routines and do their
+     best to make sure that their results are correct.
+
+Test set generation
+     Generates the order of node insertion and deletion, for use during
+     testing.
+
+Memory manager
+     Handles memory issues, including memory leak detection and failure
+     simulation.
+
+User interaction
+     Figures out what the user wants to test in this run.
+
+Main program
+     Glues everything else together by calling functions in the proper
+     order.
+
+Utilities
+     Miscellaneous routines that don't fit comfortably into another
+     category.
+
+   Most of the test code will also work nicely for testing other binary
+tree-based structures.  This code is grouped into a single file, <*Note
+testc:: 97>, which has the following structure:
+
+97. <test.c 97> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "test.h"
+
+<*Note Test declarations:: 121>
+<*Note Test utility functions:: 134>
+<*Note Memory tracker:: 126>
+<*Note Option parser:: 586>
+<*Note Command line parser:: 589>
+<*Note Insertion and deletion order generation:: 642>
+<*Note Random number seeding:: 643>
+<*Note Test main program:: 140>
+
+   The code specifically for testing BSTs goes into <*Note bst-testc::
+98>, outlined like this:
+
+98. <bst-test.c 98> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "bst.h"
+#include "test.h"
+
+<*Note BST print function:: 119>
+<*Note BST traverser check function:: 104>
+<*Note Compare two BSTs for structure and content:: 106>
+<*Note Recursively verify BST structure:: 113>
+<*Note BST verify function:: 109>
+<*Note BST test function:: 100>
+<*Note BST overflow test function:: 122>
+
+   The interface between <*Note testc:: 97> and <*Note bst-testc::
+98> is contained in <*Note testh:: 99>:
+
+99. <test.h 99> =
+<*Note License:: 1>
+#ifndef TEST_H
+#define TEST_H 1
+
+<*Note Memory allocator:: 5>
+<*Note Test prototypes:: 101>
+
+#endif /* test.h */
+
+   Although much of the test program code is nontrivial, only some of
+the interesting parts fall within the scope of this book.  The remainder
+will be listed without comment or relegated to the exercises.  The most
+tedious code is listed in an appendix (*note Supplementary Code::).
+
+* Menu:
+
+* Testing BSTs::
+* Test Set Generation::
+* Testing Overflow::
+* Memory Manager::
+* User Interaction::
+* Utility Functions::
+* Main Program::
+
+   ---------- Footnotes ----------
+
+   (1) Some might scoff at this amount of detail, calling it wasted
+effort, but this thorough testing in fact revealed a number of subtle
+bugs during development of `libavl' that had otherwise gone unnoticed.
+
+
+File: libavl.info,  Node: Testing BSTs,  Next: Test Set Generation,  Prev: Testing our BST functions,  Up: Testing our BST functions
+
+4.14.1 Testing BSTs
+-------------------
+
+   As suggested above, the main way we will test the BST routines is by
+using them and checking the results, with checks performed by slow but
+simple routines.  The idea is that bugs in the BST routines are unlikely
+to be mirrored in the check routines, and vice versa.  This way,
+identical results from the BST and checks tend to indicate that both
+implementations are correct.
+
+   The main test routine is designed to exercise as many of the BST
+functions as possible.  It starts by creating a BST and inserting nodes
+into it, then deleting the nodes.  Midway, various traversals are
+tested, including the ability to traverse a tree while its content is
+changing.  After each operation that modifies the tree, its structure
+and content are verified for correspondence with expectations.  The
+function for copying a BST is also tested.  This function, test(), has
+the following outline:
+
+100. <BST test function 100> =
+/* Tests tree functions.  
+   insert[] and delete[] must contain some permutation of values
+   0...n - 1.
+   Uses allocator as the allocator for tree and node data.
+   Higher values of verbosity produce more debug output. */
+int
+test_correctness (struct libavl_allocator *allocator,
+                  int insert[], int delete[], int n, int verbosity)
+{
+  struct bst_table *tree;
+  int okay = 1;
+  int i;
+
+  <*Note Test creating a BST and inserting into it:: 102>
+  <*Note Test BST traversal during modifications:: 103>
+  <*Note Test deleting nodes from the BST and making copies of it:: 105>
+  <*Note Test deleting from an empty tree:: 107>
+  <*Note Test destroying the tree:: 108>
+
+  return okay;
+}
+
+This code is included in *Note 98: bst-testc, *Note 186: avl-testc,
+*Note 238: rb-testc, *Note 330: tavl-testc, *Note 368: trb-testc, *Note
+449: rtavl-testc, *Note 482: rtrb-testc, *Note 548: pavl-testc, and
+*Note 583: prb-testc.
+
+101. <Test prototypes 101> =
+int test_correctness (struct libavl_allocator *allocator,
+                      int insert[], int delete[], int n, int verbosity);
+
+See also *Note 123: Test prototypes-2 and *Note 135: Test prototypes-3.
+This code is included in *Note 99: testh.
+
+   The first step is to create a BST and insert items into it in the
+order specified by the caller.  We use the comparison function
+compare_ints() from <*Note Comparison function for |int|s:: 3> to put
+the tree's items into ordinary numerical order.  After each insertion we
+call verify_tree(), which we'll write later and which checks that the
+tree actually contains the items that it should:
+
+102. <Test creating a BST and inserting into it 102> =
+tree = bst_create (compare_ints, NULL, allocator);
+if (tree == NULL)
+  {
+    if (verbosity >= 0)
+      printf ("  Out of memory creating tree.\n");
+    return 1;
+  }
+
+for (i = 0; i < n; i++)
+  {
+    if (verbosity >= 2)
+      printf ("  Inserting %d...\n", insert[i]);
+
+    /* Add the ith element to the tree. */
+    {
+      void **p = bst_probe (tree, &insert[i]);
+      if (p == NULL)
+        {
+          if (verbosity >= 0)
+            printf ("    Out of memory in insertion.\n");
+          bst_destroy (tree, NULL);
+          return 1;
+        }
+      if (*p != &insert[i])
+        printf ("    Duplicate item in tree!\n");
+    }
+
+    if (verbosity >= 3)
+      print_whole_tree (tree, "    Afterward");
+
+    if (!verify_tree (tree, insert, i + 1))
+      return 0;
+  }
+
+This code is included in *Note 100: BST test function and *Note 295:
+TBST test function.
+
+   If the tree is being modified during traversal, that causes a little
+more stress on the tree routines, so we should test this specially.  We
+initialize one traverser, x, at a selected item, then delete and
+reinsert a different item in order to invalidate that traverser.  We
+make a copy, y, of the traverser in order to check that bst_t_copy()
+works properly and initialize a third traverser, z, with the inserted
+item.  After the deletion and reinsertion we check that all three of the
+traversers behave properly.
+
+103. <Test BST traversal during modifications 103> =
+for (i = 0; i < n; i++)
+  {
+    struct bst_traverser x, y, z;
+    int *deleted;
+
+    if (insert[i] == delete[i])
+      continue;
+
+    if (verbosity >= 2)
+      printf ("   Checking traversal from item %d...\n", insert[i]);
+
+    if (bst_t_find (&x, tree, &insert[i]) == NULL)
+      {
+        printf ("    Can't find item %d in tree!\n", insert[i]);
+        continue;
+      }
+
+    okay &= check_traverser (&x, insert[i], n, "Predeletion");
+
+    if (verbosity >= 3)
+      printf ("    Deleting item %d.\n", delete[i]);
+
+    deleted = bst_delete (tree, &delete[i]);
+    if (deleted == NULL || *deleted != delete[i])
+      {
+        okay = 0;
+        if (deleted == NULL)
+          printf ("    Deletion failed.\n");
+        else
+          printf ("    Wrong node %d returned.\n", *deleted);
+      }
+
+    bst_t_copy (&y, &x);
+
+    if (verbosity >= 3)
+      printf ("    Re-inserting item %d.\n", delete[i]);
+    if (bst_t_insert (&z, tree, &delete[i]) == NULL)
+      {
+        if (verbosity >= 0)
+          printf ("    Out of memory re-inserting item.\n");
+        bst_destroy (tree, NULL);
+        return 1;
+      }
+
+    okay &= check_traverser (&x, insert[i], n, "Postdeletion");
+    okay &= check_traverser (&y, insert[i], n, "Copied");
+    okay &= check_traverser (&z, delete[i], n, "Insertion");
+
+    if (!verify_tree (tree, insert, n))
+      return 0;
+  }
+
+This code is included in *Note 100: BST test function and *Note 295:
+TBST test function.
+
+   The check_traverser() function used above checks that a traverser
+behaves properly, by checking that the traverser is at the correct item
+and that the previous and next items are correct as well.
+
+104. <BST traverser check function 104> =
+/* Checks that the current item at trav is i
+   and that its previous and next items are as they should be.
+   label is a name for the traverser used in reporting messages.
+   There should be n items in the tree numbered 0...n - 1.
+   Returns nonzero only if there is an error. */
+static int
+check_traverser (struct bst_traverser *trav, int i, int n, const char *label)
+{
+  int okay = 1;
+  int *cur, *prev, *next;
+
+  prev = bst_t_prev (trav);
+  if ((i == 0 && prev != NULL)
+      || (i > 0 && (prev == NULL || *prev != i - 1)))
+    {
+      printf ("   %s traverser ahead of %d, but should be ahead of %d.\n",
+              label, prev != NULL ? *prev : -1, i == 0 ? -1 : i - 1);
+      okay = 0;
+    }
+  bst_t_next (trav);
+
+  cur = bst_t_cur (trav);
+  if (cur == NULL || *cur != i)
+    {
+      printf ("   %s traverser at %d, but should be at %d.\n",
+              label, cur != NULL ? *cur : -1, i);
+      okay = 0;
+    }
+
+  next = bst_t_next (trav);
+  if ((i == n - 1 && next != NULL)
+      || (i != n - 1 && (next == NULL || *next != i + 1)))
+    {
+      printf ("   %s traverser behind %d, but should be behind %d.\n",
+              label, next != NULL ? *next : -1, i == n - 1 ? -1 : i + 1);
+      okay = 0;
+    }
+  bst_t_prev (trav);
+
+  return okay;
+}
+
+This code is included in *Note 98: bst-testc, *Note 186: avl-testc,
+*Note 238: rb-testc, *Note 290: tbst-testc, *Note 330: tavl-testc,
+*Note 368: trb-testc, *Note 411: rtbst-testc, *Note 449: rtavl-testc,
+*Note 482: rtrb-testc, *Note 515: pbst-testc, *Note 548: pavl-testc,
+and *Note 583: prb-testc.
+
+   We also need to test deleting nodes from the tree and making copies
+of a tree.  Here's the code to do that:
+
+105. <Test deleting nodes from the BST and making copies of it 105> =
+for (i = 0; i < n; i++)
+  {
+    int *deleted;
+
+    if (verbosity >= 2)
+      printf ("  Deleting %d...\n", delete[i]);
+
+    deleted = bst_delete (tree, &delete[i]);
+    if (deleted == NULL || *deleted != delete[i])
+      {
+        okay = 0;
+        if (deleted == NULL)
+          printf ("    Deletion failed.\n");
+        else
+          printf ("    Wrong node %d returned.\n", *deleted);
+      }
+
+    if (verbosity >= 3)
+      print_whole_tree (tree, "    Afterward");
+
+    if (!verify_tree (tree, delete + i + 1, n - i - 1))
+      return 0;
+
+    if (verbosity >= 2)
+      printf ("  Copying tree and comparing...\n");
+
+    /* Copy the tree and make sure it's identical. */
+    {
+      struct bst_table *copy = bst_copy (tree, NULL, NULL, NULL);
+      if (copy == NULL)
+        {
+          if (verbosity >= 0)
+            printf ("  Out of memory in copy\n");
+          bst_destroy (tree, NULL);
+          return 1;
+        }
+
+      okay &= compare_trees (tree->bst_root, copy->bst_root);
+      bst_destroy (copy, NULL);
+    }
+  }
+
+This code is included in *Note 100: BST test function and *Note 295:
+TBST test function.
+
+   The actual comparison of trees is done recursively for simplicity:
+
+106. <Compare two BSTs for structure and content 106> =
+/* Compares binary trees rooted at a and b,
+   making sure that they are identical. */
+static int
+compare_trees (struct bst_node *a, struct bst_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      assert (a == NULL && b == NULL);
+      return 1;
+    }
+
+  if (*(int *) a->bst_data != *(int *) b->bst_data
+      || ((a->bst_link[0] != NULL) != (b->bst_link[0] != NULL))
+      || ((a->bst_link[1] != NULL) != (b->bst_link[1] != NULL)))
+    {
+      printf (" Copied nodes differ: a=%d b=%d a:",
+              *(int *) a->bst_data, *(int *) b->bst_data);
+
+      if (a->bst_link[0] != NULL)
+        printf ("l");
+      if (a->bst_link[1] != NULL)
+        printf ("r");
+
+      printf (" b:");
+      if (b->bst_link[0] != NULL)
+        printf ("l");
+      if (b->bst_link[1] != NULL)
+        printf ("r");
+
+      printf ("\n");
+      return 0;
+    }
+
+  okay = 1;
+  if (a->bst_link[0] != NULL)
+    okay &= compare_trees (a->bst_link[0], b->bst_link[0]);
+  if (a->bst_link[1] != NULL)
+    okay &= compare_trees (a->bst_link[1], b->bst_link[1]);
+  return okay;
+}
+
+This code is included in *Note 98: bst-testc.
+
+   As a simple extra check, we make sure that attempting to delete from
+an empty tree fails in the expected way:
+
+107. <Test deleting from an empty tree 107> =
+if (bst_delete (tree, &insert[0]) != NULL)
+  {
+    printf (" Deletion from empty tree succeeded.\n");
+    okay = 0;
+  }
+
+This code is included in *Note 100: BST test function.
+
+   Finally, we're done with the tree and can get rid of it.
+
+108. <Test destroying the tree 108> =
+/* Test destroying the tree. */
+bst_destroy (tree, NULL);
+
+This code is included in *Note 100: BST test function and *Note 295:
+TBST test function.
+
+Exercises:
+
+1. Which functions in <*Note bstc:: 25> are not exercised by test()?
+
+2. Some errors within test() just set the okay flag to zero, whereas
+others cause an immediate unsuccessful return to the caller without
+performing any cleanup.  A third class of errors causes cleanup followed
+by a successful return.  Why and how are these distinguished?
+
+* Menu:
+
+* BST Verification::
+* Displaying BST structures::
+
+
+File: libavl.info,  Node: BST Verification,  Next: Displaying BST structures,  Prev: Testing BSTs,  Up: Testing BSTs
+
+4.14.1.1 BST Verification
+.........................
+
+   After each change to the tree in the testing program, we call
+verify_tree() to check that the tree's structure and content are what
+we think they should be.  This function runs through a full gamut of
+checks, with the following outline:
+
+109. <BST verify function 109> =
+/* Checks that tree is well-formed
+   and verifies that the values in array[] are actually in tree.  
+   There must be n elements in array[] and tree.
+   Returns nonzero only if no errors detected. */
+static int
+verify_tree (struct bst_table *tree, int array[], size_t n)
+{
+  int okay = 1;
+
+  <*Note Check |tree->bst_count| is correct:: 110>
+
+  if (okay)
+    {
+      <*Note Check BST structure:: 111>
+    }
+
+  if (okay)
+    {
+      <*Note Check that the tree contains all the elements it should:: 115>
+    }
+
+  if (okay)
+    {
+      <*Note Check that forward traversal works:: 116>
+    }
+
+  if (okay)
+    {
+      <*Note Check that backward traversal works:: 117>
+    }
+
+  if (okay)
+    {
+      <*Note Check that traversal from the null element works:: 118>
+    }
+
+  return okay;
+}
+
+This code is included in *Note 98: bst-testc, *Note 411: rtbst-testc,
+and *Note 515: pbst-testc.
+
+   The first step just checks that the number of items passed in as n is
+the same as tree->bst_count.
+
+110. <Check tree->bst_count is correct 110> =
+/* Check tree's bst_count against that supplied. */
+if (bst_count (tree) != n)
+  {
+    printf (" Tree count is %lu, but should be %lu.\n",
+            (unsigned long) bst_count (tree), (unsigned long) n);
+    okay = 0;
+  }
+
+This code is included in *Note 109: BST verify function, *Note 190: AVL
+tree verify function, *Note 244: RB tree verify function, and *Note
+294: TBST verify function.
+
+   Next, we verify that the BST has proper structure and that it has the
+proper number of items.  We'll do this recursively because that's
+easiest and most obviously correct way.  Function recurse_verify_tree()
+for this returns the number of nodes in the BST.  After it returns, we
+verify that this is the expected number.
+
+111. <Check BST structure 111> =
+/* Recursively verify tree structure. */
+size_t count;
+
+recurse_verify_tree (tree->bst_root, &okay, &count, 0, INT_MAX);
+<*Note Check counted nodes:: 112>
+
+This code is included in *Note 109: BST verify function and *Note 294:
+TBST verify function.
+
+112. <Check counted nodes 112> =
+if (count != n)
+  {
+    printf (" Tree has %lu nodes, but should have %lu.\n", 
+            (unsigned long) count, (unsigned long) n);
+    okay = 0;
+  }
+
+This code is included in *Note 111: Check BST structure, *Note 191:
+Check AVL tree structure, and *Note 246: Check RB tree structure.
+
+   The function recurse_verify_tree() does the recursive verification.
+It checks that nodes' values increase down to the right and decrease
+down to the left.  We also use it to count the number of nodes actually
+in the tree:
+
+113. <Recursively verify BST structure 113> =
+/* Examines the binary tree rooted at node.  
+   Zeroes *okay if an error occurs.
+   Otherwise, does not modify *okay.
+   Sets *count to the number of nodes in that tree,
+   including node itself if node != NULL.
+   All the nodes in the tree are verified to be at least min
+   but no greater than max. */
+static void
+recurse_verify_tree (struct bst_node *node, int *okay, size_t *count, 
+                     int min, int max)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+
+  if (node == NULL)
+    {
+      *count = 0;
+      return;
+    }
+  d = *(int *) node->bst_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  recurse_verify_tree (node->bst_link[0], okay, &subcount[0], min, d - 1);
+  recurse_verify_tree (node->bst_link[1], okay, &subcount[1], d + 1, max);
+  *count = 1 + subcount[0] + subcount[1];
+}
+
+This code is included in *Note 98: bst-testc.
+
+114. <Verify binary search tree ordering 114> =
+if (min > max)
+  {
+    printf (" Parents of node %d constrain it to empty range %d...%d.\n",
+            d, min, max);
+    *okay = 0;
+  }
+else if (d < min || d > max)
+  {
+    printf (" Node %d is not in range %d...%d implied by its parents.\n",
+            d, min, max);
+    *okay = 0;
+  }
+
+This code is included in *Note 113: Recursively verify BST structure,
+*Note 188: Recursively verify AVL tree structure, *Note 240:
+Recursively verify RB tree structure, *Note 293: Recursively verify
+TBST structure, *Note 332: Recursively verify TAVL tree structure,
+*Note 370: Recursively verify TRB tree structure, *Note 414:
+Recursively verify RTBST structure, *Note 451: Recursively verify RTAVL
+tree structure, *Note 484: Recursively verify RTRB tree structure,
+*Note 517: Recursively verify PBST structure, *Note 550: Recursively
+verify PAVL tree structure, and *Note 585: Recursively verify PRB tree
+structure.
+
+   The third step is to check that the BST indeed contains all of the
+items that it should:
+
+115. <Check that the tree contains all the elements it should 115> =
+/* Check that all the values in array[] are in tree. */
+size_t i;
+
+for (i = 0; i < n; i++)
+  if (bst_find (tree, &array[i]) == NULL)
+    {
+      printf (" Tree does not contain expected value %d.\n", array[i]);
+      okay = 0;
+    }
+
+This code is included in *Note 109: BST verify function, *Note 190: AVL
+tree verify function, *Note 244: RB tree verify function, and *Note
+294: TBST verify function.
+
+   The final steps all check traversal of the BST, first by traversing
+in forward order from the beginning to the end, then in reverse order,
+then by checking that the null item behaves correctly.  The forward
+traversal checks that the proper number of items are in the BST.  It
+could appear to have too few items if the tree's pointers are screwed
+up in one way, or it could appear to have too many items if they are
+screwed up in another way.  We try to figure out how many items
+actually appear in the tree during traversal, but give up if the count
+gets to be more than twice that expected, assuming that this indicates
+a "loop" that will cause traversal to never terminate.
+
+116. <Check that forward traversal works 116> =
+/* Check that bst_t_first() and bst_t_next() work properly. */
+struct bst_traverser trav;
+size_t i;
+int prev = -1;
+int *item;
+
+for (i = 0, item = bst_t_first (&trav, tree); i < 2 * n && item != NULL;
+     i++, item = bst_t_next (&trav))
+  {
+    if (*item <= prev)
+      {
+        printf (" Tree out of order: %d follows %d in traversal\n",
+                *item, prev);
+        okay = 0;
+      }
+
+    prev = *item;
+  }
+
+if (i != n)
+  {
+    printf (" Tree should have %lu items, but has %lu in traversal\n",
+            (unsigned long) n, (unsigned long) i);
+    okay = 0;
+  }
+
+This code is included in *Note 109: BST verify function, *Note 190: AVL
+tree verify function, *Note 244: RB tree verify function, and *Note
+294: TBST verify function.
+
+   We do a similar traversal in the reverse order:
+
+117. <Check that backward traversal works 117> =
+/* Check that bst_t_last() and bst_t_prev() work properly. */
+struct bst_traverser trav;
+size_t i;
+int next = INT_MAX;
+int *item;
+
+for (i = 0, item = bst_t_last (&trav, tree); i < 2 * n && item != NULL;
+     i++, item = bst_t_prev (&trav))
+  {
+    if (*item >= next)
+      {
+        printf (" Tree out of order: %d precedes %d in traversal\n",
+                *item, next);
+        okay = 0;
+      }
+
+    next = *item;
+  }
+
+if (i != n)
+  {
+    printf (" Tree should have %lu items, but has %lu in reverse\n",
+            (unsigned long) n, (unsigned long) i);
+    okay = 0;
+  }
+
+This code is included in *Note 109: BST verify function, *Note 190: AVL
+tree verify function, *Note 244: RB tree verify function, and *Note
+294: TBST verify function.
+
+   The final check to perform on the traverser is to make sure that the
+traverser null item works properly.  We start out a traverser at the
+null item with bst_t_init(), then make sure that the next item after
+that, as reported by bst_t_next(), is the same as the item returned by
+bst_t_init(), and similarly for the previous item:
+
+118. <Check that traversal from the null element works 118> =
+/* Check that bst_t_init() works properly. */
+struct bst_traverser init, first, last;
+int *cur, *prev, *next;
+
+bst_t_init (&init, tree);
+bst_t_first (&first, tree);
+bst_t_last (&last, tree);
+
+cur = bst_t_cur (&init);
+if (cur != NULL)
+  {
+    printf (" Inited traverser should be null, but is actually %d.\n",
+            *cur);
+    okay = 0;
+  }
+
+next = bst_t_next (&init);
+if (next != bst_t_cur (&first))
+  {
+    printf (" Next after null should be %d, but is actually %d.\n",
+            *(int *) bst_t_cur (&first), *next);
+    okay = 0;
+  }
+bst_t_prev (&init);
+
+prev = bst_t_prev (&init);
+if (prev != bst_t_cur (&last))
+  {
+    printf (" Previous before null should be %d, but is actually %d.\n",
+            *(int *) bst_t_cur (&last), *prev);
+    okay = 0;
+  }
+bst_t_next (&init);
+
+This code is included in *Note 109: BST verify function, *Note 190: AVL
+tree verify function, *Note 244: RB tree verify function, and *Note
+294: TBST verify function.
+
+Exercises:
+
+1. Many of the segments of code in this section cast size_t arguments to
+printf() to unsigned long.  Why?
+
+2. Does test() work properly for testing trees with only one item in
+them?  Zero items?
+
+
+File: libavl.info,  Node: Displaying BST structures,  Prev: BST Verification,  Up: Testing BSTs
+
+4.14.1.2 Displaying BST Structures
+..................................
+
+   The print_tree_structure() function below can be useful for
+debugging, but it is not used very much by the testing code.  It prints
+out the structure of a tree, with the root first, then its children in
+parentheses separated by a comma, and their children in inner
+parentheses, and so on.  This format is easy to print but difficult to
+visualize, so it's a good idea to have a notebook on hand to sketch out
+the shape of the tree.  Alternatively, this output is in the right
+format to feed directly into the `texitree' program used to draw the
+tree diagrams in this book, which can produce output in plain text or
+PostScript form.
+
+119. <BST print function 119> =
+/* Prints the structure of node,
+   which is level levels from the top of the tree. */
+static void
+print_tree_structure (const struct bst_node *node, int level)
+{
+  /* You can set the maximum level as high as you like.
+     Most of the time, you'll want to debug code using small trees,
+     so that a large level indicates a ``loop'', which is a bug. */
+  if (level > 16)
+    {
+      printf ("[...]");
+      return;
+    }
+
+  if (node == NULL)
+    return;
+
+  printf ("%d", *(int *) node->bst_data);
+  if (node->bst_link[0] != NULL || node->bst_link[1] != NULL)
+    {
+      putchar ('(');
+
+      print_tree_structure (node->bst_link[0], level + 1);
+      if (node->bst_link[1] != NULL)
+        {
+          putchar (',');
+          print_tree_structure (node->bst_link[1], level + 1);
+        }
+
+      putchar (')');
+    }
+}
+
+See also *Note 120: BST print function-2.
+This code is included in *Note 98: bst-testc, *Note 186: avl-testc,
+*Note 238: rb-testc, *Note 515: pbst-testc, *Note 548: pavl-testc, and
+*Note 583: prb-testc.
+
+   A function print_whole_tree() is also provided as a convenient
+wrapper for printing an entire BST's structure.
+
+120. <BST print function 119> +=
+/* Prints the entire structure of tree with the given title. */
+void
+print_whole_tree (const struct bst_table *tree, const char *title)
+{
+  printf ("%s: ", title);
+  print_tree_structure (tree->bst_root, 0);
+  putchar ('\n');
+}
+
+
+File: libavl.info,  Node: Test Set Generation,  Next: Testing Overflow,  Prev: Testing BSTs,  Up: Testing our BST functions
+
+4.14.2 Test Set Generation
+--------------------------
+
+   We need code to generate a random permutation of numbers to order
+insertion and deletion of items.  We will support some other orders
+besides random permutation as well for completeness and to allow for
+overflow testing.  Here is the complete list:
+
+121. <Test declarations 121> =
+/* Insertion order. */
+enum insert_order
+  {
+    INS_RANDOM,			/* Random order. */
+    INS_ASCENDING,		/* Ascending order. */
+    INS_DESCENDING,		/* Descending order. */
+    INS_BALANCED,		/* Balanced tree order. */
+    INS_ZIGZAG,			/* Zig-zag order. */
+    INS_ASCENDING_SHIFTED,      /* Ascending from middle, then beginning. */
+    INS_CUSTOM,			/* Custom order. */
+
+    INS_CNT                     /* Number of insertion orders. */
+  };
+
+/* Deletion order. */
+enum delete_order
+  {
+    DEL_RANDOM,			/* Random order. */
+    DEL_REVERSE,		/* Reverse of insertion order. */
+    DEL_SAME,			/* Same as insertion order. */
+    DEL_CUSTOM,			/* Custom order. */
+
+    DEL_CNT                     /* Number of deletion orders. */
+  };
+
+See also *Note 125: Test declarations-2, *Note 133: Test
+declarations-3, *Note 138: Test declarations-4, *Note 139: Test
+declarations-5, and*Note 141: Test declarations-6.
+This code is included in *Note 97: testc.
+
+The code to actually generate these orderings is left to the exercises.
+
+Exercises:
+
+1. Write a function to generate a random permutation of the n ints
+between 0 and n - 1 into a provided array.
+
+*2. Write a function to generate an ordering of ints that, when inserted
+into a binary tree, produces a balanced tree of the integers from min to
+max inclusive.  (Hint: what kind of recursive traversal makes this
+easy?)
+
+3. Write one function to generate an insertion order of n integers into
+a provided array based on an enum insert_order and the functions written
+in the previous two exercises.  Write a second function to generate a
+deletion order using similar parameters plus the order of insertion.
+
+*4. By default, the C random number generator produces the same sequence
+every time the program is run.  In order to generate different
+sequences, it has to be "seeded" using srand() with a unique value.
+Write a function to select a random number seed based on the current
+time.
+
+
+File: libavl.info,  Node: Testing Overflow,  Next: Memory Manager,  Prev: Test Set Generation,  Up: Testing our BST functions
+
+4.14.3 Testing Overflow
+-----------------------
+
+   Testing for overflow requires an entirely different set of test
+functions.  The idea is to create a too-tall tree using one of the
+pathological insertion orders (ascending, descending, zig-zag, shifted
+ascending), then try out each of the functions that can overflow on it
+and make sure that they behave as they should.
+
+   There is a separate test function for each function that can
+overflow a stack but which is not tested by test().  These functions
+are called by driver function test_overflow(), which also takes care of
+creating, populating, and destroying the tree.
+
+122. <BST overflow test function 122> =
+<*Note Overflow testers:: 124>
+
+/* Tests the tree routines for proper handling of overflows.
+   Inserting the n elements of order[] should produce a tree
+   with height greater than BST_MAX_HEIGHT.
+   Uses allocator as the allocator for tree and node data.
+   Use verbosity to set the level of chatter on stdout. */
+int
+test_overflow (struct libavl_allocator *allocator,
+               int order[], int n, int verbosity)
+{
+  /* An overflow tester function. */
+  typedef int test_func (struct bst_table *, int n);
+
+  /* An overflow tester. */
+  struct test
+    {
+      test_func *func;                  /* Tester function. */
+      const char *name;                 /* Test name. */
+    };
+
+  /* All the overflow testers. */
+  static const struct test test[] =
+    {
+      {test_bst_t_first, "first item"},
+      {test_bst_t_last, "last item"},
+      {test_bst_t_find, "find item"},
+      {test_bst_t_insert, "insert item"},
+      {test_bst_t_next, "next item"},
+      {test_bst_t_prev, "previous item"},
+      {test_bst_copy, "copy tree"},
+    };
+
+  const struct test *i;                 /* Iterator. */
+
+  /* Run all the overflow testers. */
+  for (i = test; i < test + sizeof test / sizeof *test; i++)
+    {
+      struct bst_table *tree;
+      int j;
+
+      if (verbosity >= 2)
+        printf ("  Running %s test...\n", i->name);
+
+      tree = bst_create (compare_ints, NULL, allocator);
+      if (tree == NULL)
+        {
+          printf ("    Out of memory creating tree.\n");
+          return 1;
+        }
+
+      for (j = 0; j < n; j++)
+        {
+          void **p = bst_probe (tree, &order[j]);
+          if (p == NULL || *p != &order[j])
+            {
+              if (p == NULL && verbosity >= 0)
+                printf ("    Out of memory in insertion.\n");
+              else if (p != NULL)
+                printf ("    Duplicate item in tree!\n");              
+              bst_destroy (tree, NULL);
+              return p == NULL;
+            }
+        }
+
+      if (i->func (tree, n) == 0)
+        return 0;
+
+      if (verify_tree (tree, order, n) == 0)
+        return 0;
+      bst_destroy (tree, NULL);
+    }
+
+  return 1;
+}
+
+This code is included in *Note 98: bst-testc, *Note 186: avl-testc,
+*Note 238: rb-testc, *Note 290: tbst-testc, *Note 330: tavl-testc,
+*Note 368: trb-testc, *Note 411: rtbst-testc, *Note 449: rtavl-testc,
+*Note 482: rtrb-testc, *Note 515: pbst-testc, *Note 548: pavl-testc,
+and *Note 583: prb-testc.
+
+123. <Test prototypes 101> +=
+int test_overflow (struct libavl_allocator *, int order[], int n,
+                   int verbosity);
+
+   There is an overflow tester for almost every function that can
+overflow.  Here is one example:
+
+124. <Overflow testers 124> =
+static int
+test_bst_t_first (struct bst_table *tree, int n)
+{
+  struct bst_traverser trav;
+  int *first;
+
+  first = bst_t_first (&trav, tree);
+  if (first == NULL || *first != 0)
+    {
+      printf ("    First item test failed: expected 0, got %d\n",
+              first != NULL ? *first : -1);
+      return 0;
+    }
+
+  return 1;
+}
+
+See also *Note 644: Overflow testers-2.
+This code is included in *Note 122: BST overflow test function.
+
+Exercises:
+
+1. Write the rest of the overflow tester functions.  (The
+test_overflow() function lists all of them.)
+
+
+File: libavl.info,  Node: Memory Manager,  Next: User Interaction,  Prev: Testing Overflow,  Up: Testing our BST functions
+
+4.14.4 Memory Manager
+---------------------
+
+   We want to test our code to make sure that it always releases
+allocated memory and that it behaves robustly when memory allocations
+fail.  We can do the former by building our own memory manager that
+keeps tracks of blocks as they are allocated and freed.  The memory
+manager can also disallow allocations according to a policy set by the
+user, taking care of the latter.
+
+   The available policies are:
+
+125. <Test declarations 121> +=
+/* Memory tracking policy. */
+enum mt_policy
+  {
+    MT_TRACK,			/* Track allocation for leak detection. */
+    MT_NO_TRACK,		/* No leak detection. */
+    MT_FAIL_COUNT,      	/* Fail allocations after a while. */
+    MT_FAIL_PERCENT,		/* Fail allocations randomly. */
+    MT_SUBALLOC                 /* Suballocate from larger blocks. */
+  };
+
+MT_TRACK and MT_NO_TRACK should be self-explanatory.  MT_FAIL_COUNT
+takes an argument specifying after how many allocations further
+allocations should always fail.  MT_FAIL_PERCENT takes an argument
+specifying an integer percentage of allocations to randomly fail.
+
+   MT_SUBALLOC causes small blocks to be carved out of larger ones
+allocated with malloc().  This is a good idea for two reasons: malloc()
+can be slow and malloc() can waste a lot of space dealing with the
+small blocks that `libavl' uses for its node.  Suballocation cannot be
+implemented in an entirely portable way because of alignment issues,
+but the test program here requires the user to specify the alignment
+needed, and its use is optional anyhow.
+
+   The memory manager keeps track of allocated blocks using struct
+block:
+
+126. <Memory tracker 126> =
+/* Memory tracking allocator. */
+
+/* A memory block. */
+struct block
+  {
+    struct block *next;                 /* Next in linked list. */
+
+    int idx;                            /* Allocation order index number. */
+    size_t size;                        /* Size in bytes. */
+    size_t used;                        /* MT_SUBALLOC: amount used so far. */
+    void *content;                      /* Allocated region. */
+  };
+
+See also *Note 127: Memory tracker-2, *Note 128: Memory tracker-3,
+*Note 129: Memory tracker-4, *Note 130: Memory tracker-5, *Note 131:
+Memory tracker-6, and*Note 132: Memory tracker-7.
+This code is included in *Note 97: testc.
+
+The next member of struct block is used to keep a linked list of all
+the currently allocated blocks.  Searching this list is inefficient, but
+there are at least two reasons to do it this way, instead of using a
+more efficient data structure, such as a binary tree.  First, this code
+is for testing binary tree routines--using a binary tree data structure
+to do it is a strange idea!  Second, the ISO C standard says that, with
+few exceptions, using the relational operators (<, <=, >, >=) to
+compare pointers that do not point inside the same array produces
+undefined behavior, but allows use of the equality operators (==, !=)
+for a larger class of pointers.
+
+   We also need a data structure to keep track of settings and a list of
+blocks.  This memory manager uses the technique discussed in Exercise
+3.5-3 to provide this structure to the allocator.
+
+127. <Memory tracker 126> +=
+/* Indexes into arg[] within struct mt_allocator. */
+enum mt_arg_index
+  {
+    MT_COUNT = 0,      /* MT_FAIL_COUNT: Remaining successful allocations. */
+    MT_PERCENT = 0,    /* MT_FAIL_PERCENT: Failure percentage. */
+    MT_BLOCK_SIZE = 0, /* MT_SUBALLOC: Size of block to suballocate. */
+    MT_ALIGN = 1       /* MT_SUBALLOC: Alignment of suballocated blocks. */
+  };
+
+/* Memory tracking allocator. */
+struct mt_allocator
+  {
+    struct libavl_allocator allocator;  /* Allocator.  Must be first member. */
+
+    /* Settings. */
+    enum mt_policy policy;              /* Allocation policy. */
+    int arg[2];                         /* Policy arguments. */
+    int verbosity;                      /* Message verbosity level. */
+
+    /* Current state. */
+    struct block *head, *tail;          /* Head and tail of block list. */
+    int alloc_idx;                      /* Number of allocations so far. */
+    int block_cnt;                      /* Number of still-allocated blocks. */
+  };
+
+   Function mt_create() creates a new instance of the memory tracker.
+It takes an allocation policy and policy argument, as well as a number
+specifying how verbose it should be in reporting information.  It uses
+utility function xmalloc(), a simple wrapper for malloc() that aborts
+the program on failure.  Here it is:
+
+128. <Memory tracker 126> +=
+static void *mt_allocate (struct libavl_allocator *, size_t);
+static void mt_free (struct libavl_allocator *, void *);
+
+/* Initializes the memory manager for use 
+   with allocation policy policy and policy arguments arg[],
+   at verbosity level verbosity, where 0 is a ``normal'' value. */
+struct mt_allocator *
+mt_create (enum mt_policy policy, int arg[2], int verbosity)
+{
+  struct mt_allocator *mt = xmalloc (sizeof *mt);
+
+  mt->allocator.libavl_malloc = mt_allocate;
+  mt->allocator.libavl_free = mt_free;
+
+  mt->policy = policy;
+  mt->arg[0] = arg[0];
+  mt->arg[1] = arg[1];
+  mt->verbosity = verbosity;
+
+  mt->head = mt->tail = NULL;
+  mt->alloc_idx = 0;
+  mt->block_cnt = 0;
+
+  return mt;
+}
+
+   After allocations and deallocations are done, the memory manager
+must be freed with mt_destroy(), which also reports any memory leaks.
+Blocks are removed from the block list as they are freed, so any
+remaining blocks must be leaked memory:
+
+129. <Memory tracker 126> +=
+/* Frees and destroys memory tracker mt,
+   reporting any memory leaks. */
+void
+mt_destroy (struct mt_allocator *mt)
+{
+  assert (mt != NULL);
+
+  if (mt->block_cnt == 0)
+    {
+      if (mt->policy != MT_NO_TRACK && mt->verbosity >= 1)
+        printf ("  No memory leaks.\n");
+    }
+  else
+    {
+      struct block *iter, *next;
+
+      if (mt->policy != MT_SUBALLOC)
+        printf ("  Memory leaks detected:\n");
+      for (iter = mt->head; iter != NULL; iter = next)
+        {
+          if (mt->policy != MT_SUBALLOC) 
+            printf ("    block #%d: %lu bytes\n",
+                    iter->idx, (unsigned long) iter->size);
+
+          next = iter->next;
+          free (iter->content);
+          free (iter);
+        }
+    }
+
+  free (mt);
+}
+
+   For the sake of good encapsulation, mt_allocator() returns the
+struct libavl_allocator associated with a given memory tracker:
+
+130. <Memory tracker 126> +=
+/* Returns the struct libavl_allocator associated with mt. */
+void *
+mt_allocator (struct mt_allocator *mt)
+{
+  return &mt->allocator;
+}
+
+   The allocator function mt_allocate() is in charge of implementing the
+selected allocation policy.  It delegates most of the work to a pair of
+helper functions new_block() and reject_request() and makes use of
+utility function xmalloc(), a simple wrapper for malloc() that aborts
+the program on failure.  The implementation is straightforward:
+
+131. <Memory tracker 126> +=
+/* Creates a new struct block containing size bytes of content
+   and returns a pointer to content. */
+static void *
+new_block (struct mt_allocator *mt, size_t size)
+{
+  struct block *new;
+
+  /* Allocate and initialize new struct block. */
+  new = xmalloc (sizeof *new);
+  new->next = NULL;
+  new->idx = mt->alloc_idx++;
+  new->size = size;
+  new->used = 0;
+  new->content = xmalloc (size);
+
+  /* Add block to linked list. */
+  if (mt->head == NULL)
+    mt->head = new;
+  else
+    mt->tail->next = new;
+  mt->tail = new;
+
+  /* Alert user. */
+  if (mt->verbosity >= 3) 
+    printf ("    block #%d: allocated %lu bytes\n",
+            new->idx, (unsigned long) size);
+
+  /* Finish up and return. */
+  mt->block_cnt++;
+  return new->content;
+}
+
+/* Prints a message about a rejected allocation if appropriate. */
+static void
+reject_request (struct mt_allocator *mt, size_t size)
+{
+  if (mt->verbosity >= 2)
+    printf ("    block #%d: rejected request for %lu bytes\n",
+            mt->alloc_idx++, (unsigned long) size);
+}
+
+/* Allocates and returns a block of size bytes. */
+static void *
+mt_allocate (struct libavl_allocator *allocator, size_t size)
+{
+  struct mt_allocator *mt = (struct mt_allocator *) allocator;
+
+  /* Special case. */  
+  if (size == 0)
+    return NULL;
+
+  switch (mt->policy)
+    {
+    case MT_TRACK:
+      return new_block (mt, size);
+
+    case MT_NO_TRACK:
+      return xmalloc (size);
+
+    case MT_FAIL_COUNT:
+      if (mt->arg[MT_COUNT] == 0)
+        {
+          reject_request (mt, size);
+          return NULL;
+        }
+      mt->arg[MT_COUNT]--;
+      return new_block (mt, size);
+
+    case MT_FAIL_PERCENT:
+      if (rand () / (RAND_MAX / 100 + 1) < mt->arg[MT_PERCENT])
+        {
+          reject_request (mt, size);
+          return NULL;
+        }
+      else
+        return new_block (mt, size);
+
+    case MT_SUBALLOC:
+      if (mt->tail == NULL
+          || mt->tail->used + size > (size_t) mt->arg[MT_BLOCK_SIZE])
+        new_block (mt, mt->arg[MT_BLOCK_SIZE]);
+      if (mt->tail->used + size <= (size_t) mt->arg[MT_BLOCK_SIZE])
+        {
+          void *p = (char *) mt->tail->content + mt->tail->used;
+          size = ((size + mt->arg[MT_ALIGN] - 1)
+                  / mt->arg[MT_ALIGN] * mt->arg[MT_ALIGN]);
+          mt->tail->used += size;
+          if (mt->verbosity >= 3)
+            printf ("    block #%d: suballocated %lu bytes\n",
+                    mt->tail->idx, (unsigned long) size);
+          return p;
+        }
+      else
+        fail ("blocksize %lu too small for %lu-byte allocation",
+              (unsigned long) mt->tail->size, (unsigned long) size);
+
+    default:
+      assert (0);
+    }
+}
+
+   The corresponding function mt_free() searches the block list for the
+specified block, removes it, and frees the associated memory.  It
+reports an error if the block is not in the list:
+
+132. <Memory tracker 126> +=
+/* Releases block previously returned by mt_allocate(). */
+static void
+mt_free (struct libavl_allocator *allocator, void *block)
+{
+  struct mt_allocator *mt = (struct mt_allocator *) allocator;
+  struct block *iter, *prev;
+
+  /* Special cases. */
+  if (block == NULL || mt->policy == MT_NO_TRACK)
+    {
+      free (block);
+      return;
+    }
+  if (mt->policy == MT_SUBALLOC)
+    return;
+
+  /* Search for block within the list of allocated blocks. */
+  for (prev = NULL, iter = mt->head; iter; prev = iter, iter = iter->next)
+    {
+      if (iter->content == block)
+        {
+          /* Block found.  Remove it from the list. */
+          struct block *next = iter->next;
+
+          if (prev == NULL)
+            mt->head = next;
+          else
+            prev->next = next;
+          if (next == NULL)
+            mt->tail = prev;
+
+          /* Alert user. */
+          if (mt->verbosity >= 4)
+            printf ("    block #%d: freed %lu bytes\n",
+                    iter->idx, (unsigned long) iter->size);
+
+          /* Free block. */
+          free (iter->content);
+          free (iter);
+
+          /* Finish up and return. */	  
+          mt->block_cnt--;
+          return;
+        }
+    }
+
+  /* Block not in list. */
+  printf ("    attempt to free unknown block %p (already freed?)\n", block);
+}
+
+See also:  *Note ISO 1990::, sections 6.3.8 and 6.3.9.
+
+Exercises:
+
+1. As its first action, mt_allocate() checks for and special-cases a
+size of 0.  Why?
+

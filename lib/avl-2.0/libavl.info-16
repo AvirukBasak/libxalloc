@@ -1,0 +1,4435 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Answers to All the Exercises,  Next: Catalogue of Algorithms,  Prev: Glossary,  Up: Top
+
+Appendix D Answers to All the Exercises
+***************************************
+
+Chapter 3
+=========
+
+Section 3.1
+-----------
+
+1.  If the table is not a dictionary, then we can just include a count
+along with each item recording the number of copies of it that would
+otherwise be included in the table.  If the table is a dictionary, then
+each data item can include a single key and possibly multiple values.
+
+Section 3.2
+-----------
+
+1.  Only macro parameter names can safely appear prefixless.  Macro
+parameter names are significant only in a scope from their declaration
+to the end of the macro definition.  Macro parameters may even be named
+as otherwise reserved C keywords such as int and while, although this
+is a bad idea.
+
+   The main reason that the other kinds of identifiers must be prefixed
+is the possibility of a macro having the same name.  A surprise macro
+expansion in the midst of a function prototype can lead to puzzling
+compiler diagnostics.
+
+2.  The capitalized equivalent is ERR_, which is a reserved identifier.
+All identifiers that begin with an uppercase `E' followed by a digit or
+capital letter are reserved in many contexts.  It is best to avoid them
+entirely.  There are other identifiers to avoid, too.  The article
+cited below has a handy list.
+
+See also:  *Note Brown 2001::.
+
+Section 3.3
+-----------
+
+1.  C does not guarantee that an integer cast to a pointer and back
+retains its value.  In addition, there's a chance that an integer cast
+to a pointer becomes the null pointer value.  This latter is not
+limited to integers with value 0.  On the other hand, a nonconstant
+integer with value 0 is not guaranteed to become a null pointer when
+cast.
+
+   Such a technique is only acceptable when the machine that the code
+is to run on is known in advance.  At best it is inelegant.  At worst,
+it will cause erroneous behavior.
+
+See also:  *Note Summit 1999::, section 5; *Note ISO 1990::, sections
+6.2.2.3 and 6.3.4; *Note ISO 1999::, section 6.3.2.3.
+
+2.  This definition would only cause problems if the subtraction
+overflowed.  It would be acceptable if it was known that the values to
+be compared would always be in a small enough range that overflow would
+never occur.
+
+   Here are two more "clever" definitions for compare_ints() that work
+in all cases:
+
+/* Credit: GNU C library reference manual. */
+int
+compare_ints (const void *pa, const void *pb, void *param)
+{
+  const int *a = pa;
+  const int *b = pb;
+
+  return (*a > *b) - (*a < *b);
+}
+
+int
+compare_ints (const void *pa, const void *pb, void *param)
+{
+  const int *a = pa;
+  const int *b = pb;
+
+  return (*a < *b) ? -1 : (*a > *b);
+}
+
+3.  No.  Not only does strcmp() take parameters of different types
+(const char *s instead of const void *s), our comparison functions take
+an additional parameter.  Functions strcmp() and compare_strings() are
+not compatible.
+
+4.
+int
+compare_fixed_strings (const void *pa, const void *pb, void *param)
+{
+  return memcmp (pa, pb, *(size_t *) param);
+}
+
+5a.  Here's the blow-by-blow rundown:
+
+   * Irreflexivity: a == a is always true for integers.
+
+   * Antisymmetry: If a > b then b < a for integers.
+
+   * Transitivity: If a > b and b > c then a > c for integers.
+
+   * Transitivity of equivalence: If a == b and b == c, then a == c for
+     integers.
+
+5b.  Yes, strcmp() satisfies all of the points above.
+
+5c.  Consider the domain of pairs of integers (x0,x1) with x1 >= x0.
+Pair x, composed of (x0,x1), is less than pair y, composed of (y0,y1),
+if x1 < y0.  Alternatively, pair x is greater than pair y if x0 > y1.
+Otherwise, the pairs are equal.
+
+   This rule is irreflexive: for any given pair a, neither a1 < a0 nor
+a0 > a1, so a == a.  It is antisymmetic: a > b implies a0 > b1,
+therefore b1 < a0, and therefore b < a.  It is transitive: a > b
+implies a0 > b1, b > c implies b0 > c1, and we know that b1 > b0, so a0
+> b1 > b0 > c1 and a > c.  It does not have transitivity of
+equivalence: suppose that we have a == (1,2), b == (2,3), c == (3,4).
+Then, a == b and b == c, but not a == c.
+
+   A form of augmented binary search tree, called an "interval tree",
+_can_ be used to efficiently handle this data type.  The references
+have more details.
+
+See also:  *Note Cormen 1990::, section 15.3.
+
+6a.  !f(a, b) && !f(b, a) and !f(a, b) && f(b, a).
+
+6b.
+static int
+bin_cmp (const void *a, const void *b, void *param, bst_comparison_func tern)
+{
+  return tern (a, b, param) < 0;
+}
+
+6c.  This problem presents an interesting tradeoff.  We must choose
+between sometimes calling the comparison function twice per item to
+convert our >= knowledge into > or ==, or always traversing all the way
+to a leaf node, then making a final call to decide on equality.  The
+former choice doesn't provide any new insight, so we choose the latter
+here.
+
+   In the code below, p traverses the tree and q keeps track of the
+current candidate for a match to item.  If the item in p is less than
+item, then the matching item, if any, must be in the left subtree of p,
+and we leave q as it was.  Otherwise, the item in p is greater than or
+equal to p and then matching item, if any, is either p itself or in its
+right subtree, so we set q to the potential match.  When we run off the
+bottom of the tree, we check whether q is really a match by making one
+additional comparison.
+
+void *
+bst_find (const struct bst_table *tree, const void *item)
+{
+  const struct bst_node *p;
+  void *q;
+
+  assert (tree != NULL && item != NULL);
+
+  p = tree->bst_root;
+  q = NULL;
+  while (p != NULL)
+    if (!bin_cmp (p->bst_data, item, tree->bst_param, tree->bst_compare))
+      {
+        q = p->bst_data;
+        p = p->bst_link[0];
+      }
+    else
+      p = p->bst_link[1];
+
+  if (q != NULL && !bin_cmp (item, q, tree->bst_param, tree->bst_compare))
+    return q;
+  else
+    return NULL;
+}
+
+Section 3.5
+-----------
+
+1.  It's not necessary, for reasons of the C definition of type
+compatibility.  Within a C source file (more technically, a
+"translation unit"), two structures are compatible only if they are the
+same structure, regardless of how similar their members may be, so
+hypothetical structures struct bst_allocator and struct avl_allocator
+couldn't be mixed together without nasty-smelling casts.  On the other
+hand, prototyped function types are compatible if they have compatible
+return types and compatible parameter types, so bst_item_func and
+avl_item_func (say) are interchangeable.
+
+2.  This allocator uses the same function tbl_free() as
+tbl_allocator_default.
+
+590. <Aborting allocator 590> =
+/* Allocates size bytes of space using malloc().  
+   Aborts if out of memory. */
+void *
+tbl_malloc_abort (struct libavl_allocator *allocator, size_t size)
+{
+  void *block;
+
+  assert (allocator != NULL && size > 0);
+
+  block = malloc (size);
+  if (block != NULL)
+    return block;
+
+  fprintf (stderr, "out of memory\n");
+  exit (EXIT_FAILURE);
+}
+
+struct libavl_allocator tbl_allocator_abort =
+  {
+    tbl_malloc_abort,
+    tbl_free
+  };
+
+3.  Define a wrapper structure with struct libavl_allocator as its first
+member.  For instance, a hypothetical pool allocator might look like
+this:
+
+struct pool_allocator
+  {
+    struct libavl_allocator suballocator;
+    struct pool *pool;
+  };
+
+Because a pointer to the first member of a structure is a pointer to the
+structure itself, and vice versa, the allocate and free functions can
+use a cast to access the larger struct pool_allocator given a pointer
+to struct libavl_allocator.  If we assume the existence of functions
+pool_malloc() and pool_free() to allocate and free memory within a
+pool, then we can define the functions for struct pool_allocator's
+suballocator like this:
+
+void
+pool_allocator_malloc (struct libavl_allocator *allocator, size_t size)
+{
+  struct pool_allocator *pa = (struct pool_allocator *) allocator;
+  return pool_malloc (pa->pool, size);
+}
+
+void
+pool_allocator_free (struct libavl_allocator *allocator, void *ptr)
+{
+  struct pool_allocator *pa = (struct pool_allocator *) allocator;
+  pool_free (pa->pool, ptr);
+}
+
+   Finally, we want to actually allocate a table inside a pool.  The
+following function does this.  Notice the way that it uses the pool to
+store the struct pool_allocator as well; this trick comes in handy
+sometimes.
+
+struct tbl_table *
+pool_allocator_tbl_create (struct tbl_pool *pool)
+{
+  struct pool_allocator *pa = pool_malloc (pool, sizeof *pa);
+  if (pa == NULL)
+    return NULL;
+
+  pa->suballocator.tbl_malloc = pool_allocator_malloc;
+  pa->suballocator.tbl_free = pool_allocator_free;
+  pa->pool = pool;
+  return tbl_create (compare_ints, NULL, &pa->suballocator);
+}
+
+Section 3.7
+-----------
+
+1.  Notice the cast to size_t in the macro definition below.  This
+prevents the result of tbl_count() from being used as an lvalue (that
+is, on the left side of an assignment operator), because the result of a
+cast is never an lvalue.
+
+591. <Table count macro 591> =
+#define tbl_count(table) ((size_t) (table)->tbl_count)
+
+This code is included in *Note 15: Table function prototypes.
+
+   Another way to get the same effect is to use the unary + operator,
+like this:
+
+#define tbl_count(table) (+(table)->tbl_count)
+
+See also:  *Note ISO 1990::, section 6.3.4; *Note Kernighan 1988::,
+section A7.5.
+
+Section 3.8
+-----------
+
+1.  If a memory allocation function that never returns a null pointer is
+used, then it is reasonable to use these functions.  For instance,
+tbl_allocator_abort from Exercise 3.5-2 is such an allocator.
+
+2.  Among other reasons, tbl_find() returns a null pointer to indicate
+that no matching item was found in the table.  Null pointers in the
+table could therefore lead to confusing results.  It is better to
+entirely prevent them from being inserted.
+
+3.
+592. <Table insertion convenience functions 592> =
+void *
+tbl_insert (struct tbl_table *table, void *item)
+{
+  void **p = tbl_probe (table, item);
+  return p == NULL || *p == item ? NULL : *p;
+}
+
+void *
+tbl_replace (struct tbl_table *table, void *item)
+{
+  void **p = tbl_probe (table, item);
+  if (p == NULL || *p == item)
+    return NULL;
+  else
+    {
+      void *r = *p;
+      *p = item;
+      return r;
+    }
+}
+
+This code is included in *Note 29: BST operations, *Note 145: AVL
+functions, *Note 196: RB functions, *Note 251: TBST functions, *Note
+300: TAVL functions, *Note 336: TRB functions, *Note 375: RTBST
+functions, *Note 418: RTAVL functions, *Note 455: RTRB functions, *Note
+489: PBST functions, *Note 522: PAVL functions, and *Note 554: PRB
+functions.
+
+Section 3.9
+-----------
+
+1.  Keep in mind that these directives have to be processed every time
+the header file is included.  (Typical header file are designed to be
+"idempotent", i.e., processed by the compiler only on first inclusion
+and skipped on any later inclusions, because some C constructs cause
+errors if they are encountered twice during a compilation.)
+
+593. <Table assertion function control directives 593> =
+/* Table assertion functions. */
+#ifndef NDEBUG
+#undef tbl_assert_insert
+#undef tbl_assert_delete
+#else
+#define tbl_assert_insert(table, item) tbl_insert (table, item)
+#define tbl_assert_delete(table, item) tbl_delete (table, item)
+#endif
+
+This code is included in *Note 24: bsth.
+
+See also:  *Note Summit 1999::, section 10.7.
+
+2.  tbl_assert_insert() must be based on tbl_probe(), because
+tbl_insert() does not distinguish in its return value between
+successful insertion and memory allocation errors.
+
+   Assertions must be enabled for these functions because we want them
+to verify success if assertions were enabled at the point from which
+they were called, not if assertions were enabled when the table was
+compiled.
+
+   Notice the parentheses around the assertion function names before.
+The parentheses prevent the macros by the same name from being
+expanded.  A function-like macro is only expanded when its name is
+followed by a left parenthesis, and the extra set of parentheses
+prevents this from being the case.  Alternatively #undef directives
+could be used to achieve the same effect.
+
+594. <Table assertion functions 594> =
+#undef NDEBUG
+#include <assert.h>
+
+void
+(tbl_assert_insert) (struct tbl_table *table, void *item)
+{
+  void **p = tbl_probe (table, item);
+  assert (p != NULL && *p == item);
+}
+
+void *
+(tbl_assert_delete) (struct tbl_table *table, void *item)
+{
+  void *p = tbl_delete (table, item);
+  assert (p != NULL);
+  return p;
+}
+
+This code is included in *Note 29: BST operations, *Note 145: AVL
+functions, *Note 196: RB functions, *Note 251: TBST functions, *Note
+300: TAVL functions, *Note 336: TRB functions, *Note 375: RTBST
+functions, *Note 418: RTAVL functions, *Note 455: RTRB functions, *Note
+489: PBST functions, *Note 522: PAVL functions, and *Note 554: PRB
+functions.
+
+3.  The assert() macro is meant for testing for design errors and
+"impossible" conditions, not runtime errors like disk input/output
+errors or memory allocation failures.  If the memory allocator can fail,
+then the assert() call in tbl_assert_insert() effectively does this.
+
+See also:  *Note Summit 1999::, section 20.24b.
+
+Section 3.12
+------------
+
+1.  Both tables and sets store sorted arrangements of unique items.
+Both require a strict weak ordering on the items that they contain.
+`libavl' uses ternary comparison functions whereas the STL uses binary
+comparison functions (see Exercise 3.3-6).
+
+   The description of tables here doesn't list any particular speed
+requirements for operations, whereas STL sets are constrained in the
+complexity of their operations.  It's worth noting, however, that the
+`libavl' implementation of AVL and RB trees meet all of the STL
+complexity requirements, for their equivalent operations, except one.
+The exception is that set methods begin() and rbegin() must have
+constant-time complexity, whereas the equivalent `libavl' functions
+*_t_first() and *_t_last() on AVL and RB trees have logarithmic
+complexity.
+
+   `libavl' traversers and STL iterators have similar semantics.  Both
+remain valid if new items are inserted, and both remain valid if old
+items are deleted, unless it's the iterator's current item that's
+deleted.
+
+   The STL has a more complete selection of methods than `libavl' does
+of table functions, but many of the additional ones (e.g., distance()
+or erase() each with two iterators as arguments) can be implemented
+easily in terms of existing `libavl' functions.  These might benefit
+from optimization possible with specialized implementations, but may
+not be worth it.  The SGI/HP implementation of the STL does not contain
+any such optimization.
+
+See also:  *Note ISO 1998::, sections 23.1, 23.1.2, and 23.3.3.
+
+2.  The nonessential functions are:
+
+   * tbl_probe(), tbl_insert(), and tbl_replace(), which can be
+     implemented in terms of tbl_t_insert() and tbl_t_replace().
+
+   * tbl_find(), which can be implemented in terms of tbl_t_find().
+
+   * tbl_assert_insert() and tbl_assert_delete().
+
+   * tbl_t_first() and tbl_t_last(), which can be implemented with
+     tbl_t_init() and tbl_t_next().
+
+   If we allow it to know what allocator was used for the original
+table, which is, strictly speaking, cheating, then we can also implement
+tbl_copy() in terms of tbl_create(), tbl_t_insert(), and tbl_destroy().
+Under similar restrictions we can also implement tbl_t_prev() and
+tbl_t_copy() in terms of tbl_t_init() and tbl_t_next(), though in a
+very inefficient way.
+
+Chapter 4
+=========
+
+Section 4.1
+-----------
+
+1.  The following program can be improved in many ways.  However, we
+will implement a much better testing framework later, so this is fine
+for now.
+
+595. <seq-test.c 595> =
+<*Note License:: 1>
+#include <stdio.h>
+
+#define MAX_INPUT 1024
+
+<*Note Sequentially search an array of |int|s:: 16>
+
+int
+main (void)
+{
+  int array[MAX_INPUT];
+  int n, i;
+
+  for (n = 0; n < MAX_INPUT; n++)
+    if (scanf ("%d", &array[n]) != 1)
+      break;
+
+  for (i = 0; i < n; i++)
+    {
+      int result = seq_search (array, n, array[i]);
+      if (result != i)
+        printf ("seq_search() returned %d looking for %d - expected %d\n",
+                result, array[i], i);
+    }
+
+  return 0;
+}
+
+Section 4.4
+-----------
+
+1.  Some types don't have a largest possible value; e.g.,
+arbitrary-length strings.
+
+Section 4.5
+-----------
+
+1.  Knuth's name for this procedure is "uniform binary search."  The
+code below is an almost-literal implementation of his Algorithm U.  The
+fact that Knuth's arrays are 1-based, but C arrays are 0-based,
+accounts for most of the differences.
+
+   The code below uses for (;;) to assemble an "infinite" loop, a
+common C idiom.
+
+596. <Uniform binary search of ordered array 596> =
+/* Returns the offset within array[] of an element equal to key,
+   or -1 if key is not in array[].  
+   array[] must be an array of n ints sorted in ascending order,
+   with array[-1] modifiable. */
+int
+uniform_binary_search (int array[], int n, int key)
+{
+  int i = (n + 1) / 2 - 1;
+  int m = n / 2;
+
+  array[-1] = INT_MIN;
+  for (;;)
+    {
+      if (key < array[i])
+        {
+          if (m == 0)
+            return -1;
+          i -= (m + 1) / 2;
+          m /= 2;
+        }
+      else if (key > array[i])
+        {
+          if (m == 0)
+            return -1;
+          i += (m + 1) / 2;
+          m /= 2;
+        }
+      else
+        return i >= 0 ? i : -1;
+    }
+}
+
+This code is included in *Note 600: Search functions.
+
+See also:  *Note Knuth 1998b::, section 6.2.1, Algorithm U.
+
+2a.  This actually uses blp_bsearch(), implemented in part (b) below, in
+order to allow that function to be tested.  You can replace the
+reference to blp_bsearch() by bsearch() without problem.
+
+597. <Binary search using bsearch() 597> =
+<*Note blps implementation of |bsearch()|:: 598>
+
+/* Compares the ints pointed to by pa and pb and returns positive
+   if *pa > *pb, negative if *pa < *pb, or zero if *pa == *pb. */
+static int
+compare_ints (const void *pa, const void *pb)
+{
+  const int *a = pa;
+  const int *b = pb;
+
+  if (*a > *b)
+    return 1;
+  else if (*a < *b)
+    return -1;
+  else
+    return 0;
+}
+
+/* Returns the offset within array[] of an element equal to key,
+   or -1 if key is not in array[].  
+   array[] must be an array of n ints sorted in ascending order. */
+static int
+binary_search_bsearch (int array[], int n, int key)
+{
+  int *p = blp_bsearch (&key, array, n, sizeof *array, compare_ints);
+  return p != NULL ? p - array : -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+2b.  This function is named using the author of this book's initials.
+Note that the implementation below assumes that count, a size_t, won't
+exceed the range of an int.  Some systems provide a type called ssize_t
+for this purpose, but we won't assume that here.  (long is perhaps a
+better choice than int.)
+
+598. <blp's implementation of bsearch() 598> =
+/* Plug-compatible with standard C library bsearch(). */
+static void *
+blp_bsearch (const void *key, const void *array, size_t count,
+             size_t size, int (*compare) (const void *, const void *))
+{
+  int min = 0;
+  int max = count;
+
+  while (max >= min)
+    {
+      int i = (min + max) / 2;
+      void *item = ((char *) array) + size * i;
+      int cmp = compare (key, item);
+
+      if (cmp < 0)
+        max = i - 1;
+      else if (cmp > 0)
+        min = i + 1;
+      else
+        return item;
+    }
+
+  return NULL;
+}
+
+This code is included in *Note 597: Binary search using |bsearch()|.
+
+3.  Here's an outline of the entire program:
+
+599. <srch-test.c 599> =
+<*Note License:: 1>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+<*Note Search functions:: 600>
+<*Note Array of search functions:: 601>
+
+<*Note Timer functions:: 604>
+<*Note Search test functions:: 606>
+<*Note Search test main program:: 609>
+
+   We need to include all the search functions we're going to use:
+
+600. <Search functions 600> =
+<*Note Sequentially search an array of |int|s:: 16>
+<*Note Sequentially search an array of |int|s using a sentinel:: 17>
+<*Note Sequentially search a sorted array of |int|s:: 18>
+<*Note Sequentially search a sorted array of |int|s using a sentinel:: 19>
+<*Note Sequentially search a sorted array of |int|s using a sentinel (2):: 20>
+<*Note Binary search of ordered array:: 21>
+<*Note Uniform binary search of ordered array:: 596>
+<*Note Binary search using |bsearch()|:: 597>
+<*Note Cheating search:: 603>
+
+This code is included in *Note 599: srch-testc.
+
+   We need to make a list of the search functions.  We start by defining
+the array's element type:
+
+601. <Array of search functions 601> =
+/* Description of a search function. */
+struct search_func
+  {
+    const char *name;
+    int (*search) (int array[], int n, int key);
+  };
+
+See also *Note 602: Array of search functions-2.
+This code is included in *Note 599: srch-testc.
+
+   Then we define the list as an array:
+
+602. <Array of search functions 601> +=
+/* Array of all the search functions we know. */
+struct search_func search_func_tab[] =
+  {
+    {"seq_search()", seq_search},
+    {"seq_sentinel_search()", seq_sentinel_search},
+    {"seq_sorted_search()", seq_sorted_search},
+    {"seq_sorted_sentinel_search()", seq_sorted_sentinel_search},
+    {"seq_sorted_sentinel_search_2()", seq_sorted_sentinel_search_2},
+    {"binary_search()", binary_search},
+    {"uniform_binary_search()", uniform_binary_search},
+    {"binary_search_bsearch()", binary_search_bsearch},
+    {"cheat_search()", cheat_search},
+  };
+
+/* Number of search functions. */
+const size_t n_search_func = sizeof search_func_tab / sizeof *search_func_tab;
+
+   We've added previously unseen function cheat_search() to the array.
+This is a function that "cheats" on the search because it knows that we
+are only going to search in a array such that array[i] == i.  The
+purpose of cheat_search() is to allow us to find out how much of the
+search time is overhead imposed by the framework and the function calls
+and how much is actual search time.  Here's cheat_search():
+
+603. <Cheating search 603> =
+/* Cheating search function that knows that array[i] == i.
+   n must be the array size and key the item to search for.
+   array[] is not used.
+   Returns the index in array[] where key is found,
+   or -1 if key is not in array[]. */
+int
+cheat_search (int array[], int n, int key)
+{
+  return key >= 0 && key < n ? key : -1;
+}
+
+This code is included in *Note 600: Search functions.
+
+   We're going to need some functions for timing operations.  First, a
+function to "start" a timer:
+
+604. <Timer functions 604> =
+/* ``Starts'' a timer by recording the current time in *t. */
+static void
+start_timer (clock_t *t)
+{
+  clock_t now = clock ();
+  while (now == clock ())
+    /* Do nothing. */;
+  *t = clock ();
+}
+
+See also *Note 605: Timer functions-2.
+This code is included in *Note 599: srch-testc.
+
+   Function start_timer() waits for the value returned by clock() to
+change before it records the value.  On systems with a slow timer (such
+as PCs running MS-DOS, where the clock ticks only 18.2 times per
+second), this gives more stable timing results because it means that
+timing always starts near the beginning of a clock tick.
+
+   We also need a function to "stop" the timer and report the results:
+
+605. <Timer functions 604> +=
+/* Prints the elapsed time since start, set by start_timer(). */
+static void
+stop_timer (clock_t start)
+{
+  clock_t end = clock ();
+
+  printf ("%.2f seconds\n", ((double) (end - start)) / CLOCKS_PER_SEC);
+}
+
+   The value reported by clock() can "wrap around" to zero from a large
+value.  stop_timer() does not allow for this possibility.
+
+   We will write three tests for the search functions.  The first of
+these just checks that the search function works properly:
+
+606. <Search test functions 606> =
+/* Tests that f->search returns expect when called to search for
+   key within array[], 
+   which has n elements such that array[i] == i. */
+static void
+test_search_func_at (struct search_func *f, int array[], int n,
+                     int key, int expect)
+{
+  int result = f->search (array, n, key);
+  if (result != expect)
+    printf ("%s returned %d looking for %d - expected %d\n",
+            f->name, result, key, expect);
+}
+
+/* Tests searches for each element in array[] having n elements such that
+   array[i] == i,
+   and some unsuccessful searches too, all using function f->search. */
+static void
+test_search_func (struct search_func *f, int array[], int n)
+{
+  static const int shouldnt_find[] = {INT_MIN, -20, -1, INT_MAX};
+  int i;
+
+  printf ("Testing integrity of %s...  ", f->name);
+  fflush (stdout);
+
+  /* Verify that the function finds values that it should. */
+  for (i = 0; i < n; i++)
+    test_search_func_at (f, array, n, i, i);
+
+  /* Verify that the function doesn't find values it shouldn't. */
+  for (i = 0; i < (int) (sizeof shouldnt_find / sizeof *shouldnt_find); i++)
+    test_search_func_at (f, array, n, shouldnt_find[i], -1);
+
+  printf ("done\n");
+}
+
+See also *Note 607: Search test functions-2 and *Note 608: Search test
+functions-3.
+This code is included in *Note 599: srch-testc.
+
+   The second test function finds the time required for searching for
+elements in the array:
+
+607. <Search test functions 606> +=
+/* Times a search for each element in array[] having n elements such that
+   array[i] == i, repeated n_iter times, using function f->search. */
+static void
+time_successful_search (struct search_func *f, int array[], int n, int n_iter)
+{
+  clock_t timer;
+
+  printf ("Timing %d sets of successful searches...  ", n_iter);
+  fflush (stdout);
+
+  start_timer (&timer);
+  while (n_iter-- > 0)
+    {
+      int i;
+
+      for (i = 0; i < n; i++)
+        f->search (array, n, i);
+    }
+  stop_timer (timer);
+}
+
+   The last test function finds the time required for searching for
+values that don't appear in the array:
+
+608. <Search test functions 606> +=
+/* Times n search for elements not in array[] having n elements such that
+   array[i] == i, repeated n_iter times, using function f->search. */
+static void
+time_unsuccessful_search (struct search_func *f, int array[],
+                          int n, int n_iter)
+{
+  clock_t timer;
+
+  printf ("Timing %d sets of unsuccessful searches...  ", n_iter);
+  fflush (stdout);
+
+  start_timer (&timer);
+  while (n_iter-- > 0)
+    {
+      int i;
+
+      for (i = 0; i < n; i++)
+        f->search (array, n, -i);
+    }
+  stop_timer (timer);
+}
+
+   Here's the main program:
+
+609. <Search test main program 609> =
+<*Note Usage printer for search test program:: 615>
+
+<*Note String to integer function |stoi()|:: 611>
+
+int
+main (int argc, char *argv[])
+{
+  struct search_func *f;        /* Search function. */
+  int *array, n;                /* Array and its size. */
+  int n_iter;                   /* Number of iterations. */
+
+  <*Note Parse search test command line:: 610>
+  <*Note Initialize search test array:: 612>
+  <*Note Run search tests:: 613>
+  <*Note Clean up after search tests:: 614>
+
+  return 0;
+}
+
+This code is included in *Note 599: srch-testc.
+
+610. <Parse search test command line 610> =
+if (argc != 4)
+  usage ();
+
+{
+  long algorithm = stoi (argv[1]) - 1;
+  if (algorithm < 0 || algorithm > (long) n_search_func)
+    usage ();
+  f = &search_func_tab[algorithm];
+}
+
+n = stoi (argv[2]);
+n_iter = stoi (argv[3]);
+if (n < 1 || n_iter < 1)
+  usage ();
+
+This code is included in *Note 609: Search test main program.
+
+611. <String to integer function stoi() 611> =
+/* s should point to a decimal representation of an integer.
+   Returns the value of s, if successful, or 0 on failure. */
+static int
+stoi (const char *s)
+{
+  long x = strtol (s, NULL, 10);
+  return x >= INT_MIN && x <= INT_MAX ? x : 0;
+}
+
+This code is included in *Note 609: Search test main program and *Note
+617: bin-ary-testc.
+
+   When reading the code below, keep in mind that some of our algorithms
+use a sentinel at the end and some use a sentinel at the beginning, so
+we allocate two extra integers and take the middle part.
+
+612. <Initialize search test array 612> =
+array = malloc ((n + 2) * sizeof *array);
+if (array == NULL)
+  {
+    fprintf (stderr, "out of memory\n");
+    exit (EXIT_FAILURE);
+  }
+array++;
+
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    array[i] = i;
+}
+
+This code is included in *Note 609: Search test main program.
+
+613. <Run search tests 613> =
+test_search_func (f, array, n);
+time_successful_search (f, array, n, n_iter);
+time_unsuccessful_search (f, array, n, n_iter);
+
+This code is included in *Note 609: Search test main program.
+
+614. <Clean up after search tests 614> =
+free (array - 1);
+
+This code is included in *Note 609: Search test main program.
+
+615. <Usage printer for search test program 615> =
+/* Prints a message to the console explaining how to use this program. */
+static void
+usage (void)
+{
+  size_t i;
+
+  fputs ("usage: srch-test <algorithm> <array-size> <n-iterations>\n"
+         "where <algorithm> is one of the following:\n", stdout);
+
+  for (i = 0; i < n_search_func; i++) 
+    printf ("        %u for %s\n", (unsigned) i + 1, search_func_tab[i].name);
+
+  fputs ("      <array-size> is the size of the array to search, and\n"
+         "      <n-iterations> is the number of times to iterate.\n", stdout);
+
+  exit (EXIT_FAILURE);
+}
+
+This code is included in *Note 609: Search test main program.
+
+4.  Here are the results on the author's computer, a Pentium II at 233
+MHz, using GNU C 2.95.2, for 1024 iterations using arrays of size 1024
+with no optimization.  All values are given in seconds rounded to
+tenths.
+
+*Function*               *Successful searches*    *Unsuccessful searches*
+seq_search()             18.4                     36.3
+seq_sentinel_search()    16.5                     32.8
+seq_sorted_search()      18.6                     0.1
+seq_sorted_sentinel_search()16.4                     0.2
+seq_sorted_sentinel_search_2()16.6                     0.2
+binary_search()          1.3                      1.2
+uniform_binary_search()  1.1                      1.1
+binary_search_bsearch()  2.6                      2.4
+cheat_search()           0.1                      0.1
+
+   Results of similar tests using full optimization were as follows:
+
+*Function*               *Successful searches*    *Unsuccessful searches*
+seq_search()             6.3                      12.4
+seq_sentinel_search()    4.8                      9.4
+seq_sorted_search()      9.3                      0.1
+seq_sorted_sentinel_search()4.8                      0.2
+seq_sorted_sentinel_search_2()4.8                      0.2
+binary_search()          0.7                      0.5
+uniform_binary_search()  0.7                      0.6
+binary_search_bsearch()  1.5                      1.2
+cheat_search()           0.1                      0.1
+
+   Observations:
+
+   * In general, the times above are about what we might expect them to
+     be: they decrease as we go down the table.
+
+   * Within sequential searches, the sentinel-based searches have better
+     search times than non-sentinel searches, and other search
+     characteristics (whether the array was sorted, for instance) had
+     little impact on performance.
+
+   * Unsuccessful searches were very fast for sorted sequential
+     searches, but the particular test set used always allowed such
+     searches to terminate after a single comparison.  For other test
+     sets one might expect these numbers to be similar to those for
+     unordered sequential search.
+
+   * Either of the first two forms of binary search had the best overall
+     performance.  They also have the best performance for successful
+     searches and might be expected to have the best performance for
+     unsuccessful searches in other test sets, for the reason given
+     before.
+
+   * Binary search using the general interface bsearch() was
+     significantly slower than either of the other binary searches,
+     probably because of the cost of the extra function calls.  Items
+     that are more expensive to compare (for instance, long text
+     strings) might be expected to show less of a penalty.
+
+   Here are the results on the same machine for 1,048,576 iterations on
+arrays of size 8 with full optimization:
+
+*Function*               *Successful searches*    *Unsuccessful searches*
+seq_search()             1.7                      2.0
+seq_sentinel_search()    1.7                      2.0
+seq_sorted_search()      2.0                      1.1
+seq_sorted_sentinel_search()1.9                      1.1
+seq_sorted_sentinel_search_2()1.8                      1.2
+binary_search()          2.5                      1.9
+uniform_binary_search()  2.4                      2.3
+binary_search_bsearch()  4.5                      3.9
+cheat_search()           0.7                      0.7
+
+   For arrays this small, simple algorithms are the clear winners.  The
+additional complications of binary search make it slower.  Similar
+patterns can be expected on most architectures, although the "break
+even" array size where binary search and sequential search are equally
+fast can be expected to differ.
+
+Section 4.6
+-----------
+
+1.  Here is one easy way to do it:
+
+616. <Initialize smaller and larger within binary search tree 616> =
+/* Initializes larger and smaller within range min...max of
+   array[], 
+   which has n real elements plus a (n + 1)th sentinel element. */
+int
+init_binary_tree_array (struct binary_tree_entry array[], int n,
+                        int min, int max)
+{
+  if (min <= max)
+    {
+      /* The `+ 1' is necessary because the tree root must be at n / 2,
+         and on the first call we have min == 0 and max == n - 1. */
+      int i = (min + max + 1) / 2;
+      array[i].larger = init_binary_tree_array (array, n, i + 1, max);
+      array[i].smaller = init_binary_tree_array (array, n, min, i - 1);
+      return i;
+    }
+  else
+    return n;
+}
+
+This code is included in *Note 617: bin-ary-testc.
+
+2.
+617. <bin-ary-test.c 617> =
+<*Note License:: 1>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+<*Note Binary search tree entry:: 22>
+<*Note Search of binary search tree stored as array:: 23>
+<*Note Initialize |smaller| and |larger| within binary search tree:: 616>
+<*Note Show filebin-ary-test usage message:: 619>
+<*Note String to integer function |stoi()|:: 611>
+<*Note Main program to test |binary_search_tree_array()|:: 618>
+
+618. <Main program to test binary_search_tree_array() 618> =
+int
+main (int argc, char *argv[])
+{
+  struct binary_tree_entry *array;
+  int n, i;
+
+  /* Parse command line. */
+  if (argc != 2)
+    usage ();
+  n = stoi (argv[1]);
+  if (n < 1)
+    usage ();
+
+  /* Allocate memory. */
+  array = malloc ((n + 1) * sizeof *array);
+  if (array == NULL)
+    {
+      fprintf (stderr, "out of memory\n");
+      return EXIT_FAILURE;
+    }
+
+  /* Initialize array. */
+  for (i = 0; i < n; i++)
+    array[i].value = i;
+  init_binary_tree_array (array, n, 0, n - 1);
+
+  /* Test successful and unsuccessful searches. */
+  for (i = -1; i < n; i++)
+    {
+      int result = binary_search_tree_array (array, n, i);
+      if (result != i)
+        printf ("Searching for %d: expected %d, but received %d\n",
+                i, i, result);
+    }
+
+  /* Clean up. */
+  free (array);
+
+  return EXIT_SUCCESS;
+}
+
+This code is included in *Note 617: bin-ary-testc.
+
+619. <Show `bin-ary-test' usage message 619> =
+/* Print a helpful usage message and abort execution. */
+static void
+usage (void)
+{
+  fputs ("Usage: bin-ary-test <array-size>\n"
+         "where <array-size> is the size of the array to test.\n",
+         stdout);
+  exit (EXIT_FAILURE);
+}
+
+This code is included in *Note 617: bin-ary-testc.
+
+Chapter 5
+=========
+
+1.  This construct makes <*Note bsth:: 24> "idempotent" (*note
+idempotent::), that is, including it many times has the same effect as
+including it once.  This is important because some C constructs, such
+as type definitions with typedef, are erroneous if included in a
+program multiple times.
+
+   Of course, <*Note Table assertion function control directives::
+593> is included outside the #ifndef-protected part of <*Note bsth::
+24>.  This is intentional (see Exercise 3.9-1 for details).
+
+Section 5.2.2
+-------------
+
+1.  Under many circumstances we often want to know how many items are
+in a binary tree.  In these cases it's cheaper to keep track of item
+counts as we go instead of counting them each time, which requires a
+full binary tree traversal.
+
+   It would be better to omit it if we never needed to know how many
+items were in the tree, or if we only needed to know very seldom.
+
+Section 5.2.3
+-------------
+
+1.  The purpose for conditional definition of BST_MAX_HEIGHT is not to
+keep it from being redefined if the header file is included multiple
+times.  There's a higher-level "include guard" for that (see
+Exercise 5-1), and, besides, identical definitions of a macro are okay
+in C.  Instead, it is to allow the user to set the maximum height of
+binary trees by defining that macro before <*Note bsth:: 24> is
+#included.  The limit can be adjusted upward for larger computers or
+downward for smaller ones.
+
+   The main pitfall is that a user program will use different values of
+BST_MAX_HEIGHT in different source files.  This leads to undefined
+behavior.  Less of a problem are definitions to invalid values, which
+will be caught at compile time by the compiler.
+
+Section 5.3
+-----------
+
+1.
+
+                                          2
+                         2               / `_
+                        / \       2     1    4
+                       1   4      ^         / \
+                           ^     1 4       3   6
+                          3 5                  ^
+                                              5 7
+ 
+   2.  The functions need to adjust the pointer from the rotated
+subtree's parent, so they take a double-pointer struct bst_node **.  An
+alternative would be to accept two parameters: the rotated subtree's
+parent node and the bst_link[] index of the subtree.
+
+/* Rotates right at *yp. */
+static void
+rotate_right (struct bst_node **yp)
+{
+  struct bst_node *y = *yp;
+  struct bst_node *x = y->bst_link[0];
+  y->bst_link[0] = x->bst_link[1];
+  x->bst_link[1] = y;
+  *yp = x;
+}
+
+/* Rotates left at *xp. */
+static void
+rotate_left (struct bst_node **xp)
+{
+  struct bst_node *x = *xp;
+  struct bst_node *y = x->bst_link[1];
+  x->bst_link[1] = y->bst_link[0];
+  y->bst_link[0] = x;
+  *xp = y;
+}
+
+Section 5.7
+-----------
+
+1.  This is a dirty trick.  The bst_root member of struct bst_table is
+not a struct bst_node, but we are pretending that it is by casting its
+address to struct bst_node *.  We can get away with this only because
+the first member of struct bst_node * is bst_link, whose first element
+bst_link[0] is a struct bst_node *, the same type as bst_root.  ANSI C
+guarantees that a pointer to a structure is a pointer to the
+structure's first member, so this is fine as long as we never try to
+access any member of *p except bst_link[0].  Trying to access other
+members would result in undefined behavior.
+
+   The reason that we want to do this at all is that it means that the
+tree's root is not a special case.  Otherwise, we have to deal with the
+root separately from the rest of the nodes in the tree, because of its
+special status as the only node in the tree not pointed to by the
+bst_link[] member of a struct bst_node.
+
+   It is a good idea to get used to these kinds of pointer cast, because
+they are common in `libavl'.
+
+   As an alternative, we can declare an actual instance of struct
+bst_node, store the tree's bst_root into its bst_link[0], and copy its
+possibly updated value back into bst_root when done.  This isn't very
+elegant, but it works.  This technique is used much later in this book,
+in <*Note TBST main copy function:: 279>.  A different kind of
+alternative approach is used in Exercise 2.
+
+2.  Here, pointer-to-pointer q traverses the tree, starting with a
+pointer to the root, comparing each node found against item while
+looking for a null pointer.  If an item equal to item is found, it
+returns a pointer to the item's data.  Otherwise, q receives the
+address of the NULL pointer that becomes the new node, the new node is
+created, and a pointer to its data is returned.
+
+620. <BST item insertion function, alternate version 620> =
+void **
+bst_probe (struct bst_table *tree, void *item)
+{
+  struct bst_node **q;
+  int cmp;
+
+  assert (tree != NULL && item != NULL);
+
+  for (q = &tree->bst_root; *q != NULL; q = &(*q)->bst_link[cmp > 0])
+    {
+      cmp = tree->bst_compare (item, (*q)->bst_data, tree->bst_param);
+      if (cmp == 0)
+        return &(*q)->bst_data;
+    }
+
+  *q = tree->bst_alloc->libavl_malloc (tree->bst_alloc, sizeof **q);
+  if (*q == NULL)
+    return NULL;
+
+  (*q)->bst_link[0] = (*q)->bst_link[1] = NULL;
+  (*q)->bst_data = item;
+  tree->bst_count++;
+  return &(*q)->bst_data;
+}
+
+3.  The first item to be inserted have the value of the original tree's
+root.  After that, at each step, we can insert either an item with the
+value of either child x of any node in the original tree corresponding
+to a node y already in the copy tree, as long as x's value is not
+already in the copy tree.
+
+4.  The function below traverses tree in "level order".  That is, it
+visits the root, then the root's children, then the children of the
+root's children, and so on, so that all the nodes at a particular level
+in the tree are visited in sequence.
+
+See also:  *Note Sedgewick 1998::, Program 5.16.
+
+621. <Level-order traversal 621> =
+/* Calls visit for each of the nodes in tree in level order.
+   Returns nonzero if successful, zero if out of memory. */
+static int
+bst_traverse_level_order (struct bst_table *tree, bst_item_func *visit)
+{
+  struct bst_node **queue;
+  size_t head, tail;
+
+  if (tree->bst_count == 0)
+    return 1;
+
+  queue = tree->bst_alloc->libavl_malloc (tree->bst_alloc,
+                                          sizeof *queue * tree->bst_count);
+  if (queue == NULL)
+    return 0;
+
+  head = tail = 0;
+  queue[head++] = tree->bst_root;
+  while (head != tail)
+    {
+      struct bst_node *cur = queue[tail++];
+      visit (cur->bst_data, tree->bst_param);
+      if (cur->bst_link[0] != NULL)
+        queue[head++] = cur->bst_link[0];
+      if (cur->bst_link[1] != NULL)
+        queue[head++] = cur->bst_link[1];
+    }
+  tree->bst_alloc->libavl_free (tree->bst_alloc, queue);
+
+  return 1;
+}
+
+Section 5.7.1
+-------------
+
+1.
+
+622. <Root insertion of existing node in arbitrary subtree 622> =
+/* Performs root insertion of n at root within tree.
+   Subtree root must not contain a node matching n.
+   Returns nonzero only if successful. */
+static int
+root_insert (struct bst_table *tree, struct bst_node **root, 
+             struct bst_node *n)
+{
+  struct bst_node *pa[BST_MAX_HEIGHT]; /* Nodes on stack. */
+  unsigned char da[BST_MAX_HEIGHT];    /* Directions moved from stack nodes. */
+  int k;                               /* Stack height. */
+
+  struct bst_node *p; /* Traverses tree looking for insertion point. */
+
+  assert (tree != NULL && n != NULL);
+
+  <*Note Step 1 Search for insertion point in arbitrary subtree:: 623>
+  <*Note Step 2 Insert |n| into arbitrary subtree:: 624>
+  <*Note Step 3 Move BST node to root:: 36>
+
+  return 1;
+}
+
+623. <Step 1: Search for insertion point in arbitrary subtree 623> =
+pa[0] = (struct bst_node *) root;
+da[0] = 0;
+k = 1;
+for (p = *root; p != NULL; p = p->bst_link[da[k - 1]])
+  {
+    int cmp = tree->bst_compare (n->bst_data, p->bst_data, tree->bst_param);
+    assert (cmp != 0);
+
+    if (k >= BST_MAX_HEIGHT)
+      return 0;
+
+    pa[k] = p;
+    da[k++] = cmp > 0;
+  }
+
+This code is included in *Note 622: Root insertion of existing node in
+arbitrary subtree.
+
+624. <Step 2: Insert n into arbitrary subtree 624> =
+pa[k - 1]->bst_link[da[k - 1]] = n;
+
+This code is included in *Note 622: Root insertion of existing node in
+arbitrary subtree and *Note 625: Robust root insertion of existing node
+in arbitrary subtree.
+
+2.  The idea is to optimize for the common case but allow for fallback
+to a slower algorithm that doesn't require a stack when necessary.
+
+625. <Robust root insertion of existing node in arbitrary subtree 625> =
+/* Performs root insertion of n at root within tree.
+   Subtree root must not contain a node matching n.
+   Never fails and will not rebalance tree. */
+static void
+root_insert (struct bst_table *tree, struct bst_node **root, 
+             struct bst_node *n)
+{
+  struct bst_node *pa[BST_MAX_HEIGHT]; /* Nodes on stack. */
+  unsigned char da[BST_MAX_HEIGHT];    /* Directions moved from stack nodes. */
+  int k;                               /* Stack height. */
+  int overflow = 0;                    /* Set nonzero if stack overflowed. */
+
+  struct bst_node *p; /* Traverses tree looking for insertion point. */
+
+  assert (tree != NULL && n != NULL);
+
+  <*Note Step 1 Robustly search for insertion point in arbitrary subtree:: 626>
+  <*Note Step 2 Insert |n| into arbitrary subtree:: 624>
+  <*Note Step 3 Robustly move BST node to root:: 627>
+}
+
+   If the stack overflows while we're searching for the insertion point,
+we stop keeping track of any nodes but the last one and set overflow so
+that later we know that overflow occurred:
+
+626. <Step 1: Robustly search for insertion point in arbitrary subtree 626> =
+pa[0] = (struct bst_node *) root;
+da[0] = 0;
+k = 1;
+for (p = *root; p != NULL; p = p->bst_link[da[k - 1]])
+  {
+    int cmp = tree->bst_compare (n->bst_data, p->bst_data, tree->bst_param);
+    assert (cmp != 0);
+
+    if (k >= BST_MAX_HEIGHT)
+      {
+        overflow = 1;
+        k--;
+      }     
+
+    pa[k] = p;
+    da[k++] = cmp > 0;
+  }
+
+This code is included in *Note 625: Robust root insertion of existing
+node in arbitrary subtree.
+
+   Once we've inserted the node, we deal with the rotation in the same
+way as before if there was no overflow.  If overflow occurred, we
+instead do the rotations one by one, with a full traversal from *root
+every time:
+
+627. <Step 3: Robustly move BST node to root 627> =
+if (!overflow)
+  {
+    <*Note Step 3 Move BST node to root:: 36>
+  }
+else
+  {
+    while (*root != n)
+      {
+        struct bst_node **r; /* Link to node to rotate. */
+        struct bst_node *q;  /* Node to rotate. */
+        int dir;
+
+        for (r = root; ; r = &q->bst_link[dir])
+          {
+            q = *r;
+            dir = 0 < tree->bst_compare (n->bst_data, q->bst_data,
+                                         tree->bst_param);
+
+            if (q->bst_link[dir] == n)
+              break;
+          }
+
+        if (dir == 0)
+          {
+            q->bst_link[0] = n->bst_link[1];
+            n->bst_link[1] = q;
+          }
+        else
+          {
+            q->bst_link[1] = n->bst_link[0];
+            n->bst_link[0] = q;
+          }
+        *r = n;
+      }
+  }
+
+This code is included in *Note 625: Robust root insertion of existing
+node in arbitrary subtree.
+
+3.  One insertion order that does _not_ require much stack is ascending
+order.  If we insert 1...4 at the root in ascending order, for
+instance, we get a BST that looks like this:
+
+                                       4
+                                      /
+                                     3
+                                    /
+                                   2
+                                  /
+                                 1
+
+If we then insert node 5, it will immediately be inserted as the right
+child of 4, and then a left rotation will make it the root, and we're
+back where we started without ever using more than one stack entry.
+Other obvious pathological orders such as descending order and
+"zig-zag" order behave similarly.
+
+   One insertion order that does require an arbitrary amount of stack
+space is to first insert 1...n in ascending order, then the single item
+0.  Each of the first group of insertions requires only one stack entry
+(except the first, which does not use any), but the final insertion
+uses n - 1.
+
+   If we're interested in high average consumption of stack space, the
+pattern consisting of a series of ascending insertions (n / 2 + 1)...n
+followed by a second ascending series 1...(n / 2), for even n, is most
+effective.  For instance, each insertion for insertion order 6, 7, 8,
+9, 10, 1, 2, 3, 4, 5 requires 0, 1, 1, 1, 1, 5, 6, 6, 6, 6 stack
+entries, respectively, for a total of 33.
+
+   These are, incidentally, the best possible results in each category,
+as determined by exhaustive search over the 10! == 3,628,800 possible
+root insertion orders for trees of 10 nodes.  (Thanks to Richard
+Heathfield for suggesting exhaustive search.)
+
+Section 5.8
+-----------
+
+1.  Add this before the top-level else clause in <*Note Step 2 Delete
+BST node:: 39>:
+
+628. <Case 1.5 in BST deletion 628> =
+else if (p->bst_link[0] == NULL)
+  q->bst_link[dir] = p->bst_link[1];
+
+2.  Be sure to look at Exercise 3 before actually making this change.
+
+629. <Case 3 in BST deletion, alternate version 629> =
+struct bst_node *s = r->bst_link[0];
+while (s->bst_link[0] != NULL)
+  {
+    r = s;
+    s = r->bst_link[0];
+  }
+p->bst_data = s->bst_data;
+r->bst_link[0] = s->bst_link[1];
+p = s;
+
+   We could, indeed, make similar changes to the other cases, but for
+these cases the code would become more complicated, not simpler.
+
+3.  The semantics for `libavl' traversers only invalidate traversers
+with the deleted item selected, but the revised code would actually
+free the node of the successor to that item.  Because struct
+bst_traverser keeps a pointer to the struct bst_node of the current
+item, attempts to use a traverser that had selected the successor of
+the deleted item would result in undefined behavior.
+
+   Some other binary tree libraries have looser semantics on their
+traversers, so they can afford to use this technique.
+
+Section 5.9.1
+-------------
+
+1.  It would probably be faster to check before each call rather than
+after, because this way many calls would be avoided.  However, it might
+be more difficult to maintain the code, because we would have to
+remember to check for a null pointer before every call.  For instance,
+the call to traverse_recursive() within walk() might easily be
+overlooked.  Which is "better" is therefore a toss-up, dependent on a
+program's goals and the programmer's esthetic sense.
+
+2.
+
+630. <Recursive traversal of BST, using nested function 630> =
+void
+walk (struct bst_table *tree, bst_item_func *action, void *param)
+{
+  void
+  traverse_recursive (struct bst_node *node)
+  {
+    if (node != NULL)
+      {
+        traverse_recursive (node->bst_link[0]);
+        action (node->bst_data, param);
+        traverse_recursive (node->bst_link[1]);
+      }
+  }
+
+  assert (tree != NULL && action != NULL);
+  traverse_recursive (tree->bst_root);
+}
+
+Section 5.9.2
+-------------
+
+1a.  First of all, a minimal-height binary tree of n nodes has a
+"height" (*note height::) of about log2(n), that is, starting from the
+root and moving only downward, you can visit at most n nodes (including
+the root) without running out of nodes.  Examination of the code should
+reveal to you that only moving down to the left pushes nodes on the
+stack and only moving upward pops nodes off.  What's more, the first
+thing the code does is move as far down to the left as it can.  So, the
+maximum height of the stack in a minimum-height binary tree of n nodes
+is the binary tree's height, or, again, about log2(n).
+
+1b.  If a binary tree has only left children, as does the BST on the
+left below, the stack will grow as tall as the tree, to a height of n.
+Conversely, if a binary tree has only right children, as does the BST on
+the right below, no nodes will be pushed onto the stack at all.
+
+                                 4    1
+                                /      \
+                               3        2
+                              /          \
+                             2            3
+                            /              \
+                           1                4
+
+1c.  It's only acceptable if it's known that the stack will not exceed
+the fixed maximum height (or if the program aborting with an error is
+itself acceptable).  Otherwise, you should use a recursive method (but
+see part (e) below), or a dynamically extended stack, or a balanced
+binary tree library.
+
+1d.  Keep in mind this is not the only way or necessarily the best way
+to handle stack overflow.  Our final code for tree traversal will
+rebalance the tree when it grows too tall.
+
+631. <Iterative traversal of BST, with dynamically allocated stack 631> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+  struct bst_node **stack = NULL;
+  size_t height = 0;
+  size_t max_height = 0;
+
+  for (;;)
+    {
+      while (node != NULL)
+        {
+          if (height >= max_height)
+            {
+              max_height = max_height * 2 + 8;
+              stack = realloc (stack, sizeof *stack * max_height);
+              if (stack == NULL)
+                {
+                  fprintf (stderr, "out of memory\n");
+                  exit (EXIT_FAILURE);
+                }
+            }
+
+          stack[height++] = node;
+          node = node->bst_link[0];
+        }
+
+      if (height == 0)
+        break;
+
+      node = stack[--height];
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+    }
+
+  free (stack);
+}
+
+1e.  Yes, traverse_recursive() can run out of memory, because its
+arguments must be stored somewhere by the compiler.  Given typical
+compilers, it will consume more memory per call than
+traverse_iterative() will per item on the stack, because each call
+includes two arguments not pushed on traverse_iterative()'s stack, plus
+any needed compiler-specific bookkeeping information.
+
+Section 5.9.2.1
+---------------
+
+1.  After calling bst_balance(), the structure of the binary tree may
+have changed completely, so we need to "find our place" again by
+setting up the traverser structure as if the traversal had been done on
+the rebalanced tree all along.  Specifically, members node, stack[],
+and height of struct traverser need to be updated.
+
+   It is easy to set up struct traverser in this way, given the
+previous node in inorder traversal, which we'll call prev.  Simply
+search the tree from the new root to find this node.  Along the way,
+because the stack is used to record nodes whose left subtree we are
+examining, push nodes onto the stack as we move left down the tree.
+Member node receives prev->bst_link[1], just as it would have if no
+overflow had occurred.
+
+   A small problem with this approach is that it requires knowing the
+previous node in inorder, which is neither explicitly noted in struct
+traverser nor easy to find out.  But it _is_ easy to find out the next
+node: it is the smallest-valued node in the binary tree rooted at the
+node we were considering when the stack overflowed.  (If you need
+convincing, refer to the code for next_item() above: the while loop
+descends to the left, pushing nodes as it goes, until it hits a NULL
+pointer, then the node pushed last is popped and returned.)  So we can
+return this as the next node in inorder while setting up the traverser
+to return the nodes after it.
+
+   Here's the code:
+
+632. <Handle stack overflow during BST traversal 632> =
+struct bst_node *prev, *iter;
+
+prev = node;
+while (prev->bst_link[0] != NULL)
+  prev = prev->bst_link[0];
+
+bst_balance (trav->table);
+
+trav->height = 0;
+for (iter = trav->table->bst_root; iter != prev; )
+  if (trav->table->bst_compare (prev->bst_data, iter->bst_data,
+                                trav->table->bst_param) < 0)
+    {
+      trav->stack[trav->height++] = iter;
+      iter = iter->bst_link[0];
+    }
+  else
+    iter = iter->bst_link[1];
+
+trav->node = iter->bst_link[1];
+return prev->bst_data;
+
+   Without this code, it is not necessary to have member table in
+struct traverser.
+
+2.  It is possible to write prev_item() given our current next_item(),
+but the result is not very efficient, for two reasons, both related to
+the way that struct traverser is used.  First, the structure doesn't
+contain a pointer to the current item.  Second, its stack doesn't
+contain pointers to trees that must be descended to the left to find a
+predecessor node, only those that must be descended to the right to find
+a successor node.
+
+   The next section will develop an alternate, more general method for
+traversal that avoids these problems.
+
+Section 5.9.3
+-------------
+
+1.  The bst_probe() function can't disturb any traversals.  A change in
+the tree is only problematic for a traverser if it deletes the currently
+selected node (which is explicitly undefined: *note Traversers::) or if
+it shuffles around any of the nodes that are on the traverser's stack.
+An insertion into a tree only creates new leaves, so it can't cause
+either of those problems, and there's no need to increment the
+generation number.
+
+   The same logic applies to bst_t_insert(), presented later.
+
+   On the other hand, an insertion into the AVL and red-black trees
+discussed in the next two chapters can cause restructuring of the tree
+and thus potentially disturb ongoing traversals.  For this reason, the
+insertion functions for AVL and red-black trees _will_ increment the
+tree's generation number.
+
+2.  First, trav_refresh() is only called from bst_t_next() and
+bst_t_prev(), and these functions are mirrors of each other, so we need
+only show it for one of them.
+
+   Second, all of the traverser functions check the stack height, so
+these will not cause an item to be initialized at too high a height,
+nor will bst_t_next() or bst_t_prev() increase the stack height above
+its limit.
+
+   Since the traverser functions won't force a too-tall stack directly,
+this leaves the other functions.  Only functions that modify the tree
+could cause problems, by pushing an item farther down in the tree.
+
+   There are only four functions that modify a tree.  The insertion
+functions bst_probe() and bst_t_insert() can't cause problems, because
+they add leaves but never move around nodes.  The deletion function
+bst_delete() does move around nodes in case 3, but it always moves them
+higher in the tree, never lower.  Finally, bst_balance() always ensures
+that all nodes in the resultant tree are within the tree's height limit.
+
+3.  This won't work because the stack may contain pointers to nodes that
+have been deleted and whose memory have been freed.  In ANSI C89 and
+C99, any use of a pointer to an object after the end of its lifetime
+results in undefined behavior, even seemingly innocuous uses such as
+pointer comparisons.  What's worse, the memory for the node may already
+have been recycled for use for another, different node elsewhere in the
+tree.
+
+   This approach does work if there are never any deletions in the tree,
+or if we use some kind of generation number for each node that we store
+along with each stack entry.  The latter would be overkill unless
+comparisons are very expensive and the traversals in changing trees are
+common.  Another possibility would be to somehow only select this
+behavior if there have been no deletions in the binary tree since the
+traverser was last used.  This could be done, for instance, with a
+second generation number in the binary tree incremented only on
+deletions, with a corresponding number kept in the traverser.
+
+   The following reimplements trav_refresh() to include this
+optimization.  As noted, it will not work if there are any deletions in
+the tree.  It does work for traversers that must be refreshed due to,
+e.g., rebalancing.
+
+633. <BST traverser refresher, with caching 633> =
+/* Refreshes the stack of parent pointers in trav
+   and updates its generation number.
+   Will *not* work if any deletions have occurred in the tree. */
+static void
+trav_refresh (struct bst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  trav->bst_generation = trav->bst_table->bst_generation;
+
+  if (trav->bst_node != NULL)
+    {
+      bst_comparison_func *cmp = trav->bst_table->bst_compare;
+      void *param = trav->bst_table->bst_param;
+      struct bst_node *node = trav->bst_node;
+      struct bst_node *i = trav->bst_table->bst_root;
+      size_t height = 0;
+
+      if (trav->bst_height > 0 && i == trav->bst_stack[0])
+        for (; height < trav->bst_height; height++)
+          {
+            struct bst_node *next = trav->bst_stack[height + 1];
+            if (i->bst_link[0] != next && i->bst_link[1] != next)
+              break;
+            i = next;
+          }
+
+      while (i != node)
+        {
+          assert (height < BST_MAX_HEIGHT);
+          assert (i != NULL);
+
+          trav->bst_stack[height++] = i;
+          i = i->bst_link[cmp (node->bst_data, i->bst_data, param) > 0];
+        }
+
+      trav->bst_height = height;
+    }
+}
+
+Section 5.9.3.2
+---------------
+
+1.  It only calls itself if it runs out of stack space.  Its call to
+bst_balance() right before the recursive call ensures that the tree is
+short enough to fit within the stack, so the recursive call cannot
+overflow.
+
+Section 5.9.3.6
+---------------
+
+1.  The assignment statements are harmless, but memcpy() of overlapping
+regions produces undefined behavior.
+
+Section 5.10.1
+--------------
+
+1a.  Notice the use of & instead of && below.  This ensures that both
+link fields get initialized, so that deallocation can be done in a
+simple way.  If && were used instead then we wouldn't have any way to
+tell whether (*y)->bst_link[1] had been initialized.
+
+634. <Robust recursive copy of BST, take 1 634> =
+/* Stores in *y a new copy of tree rooted at x. 
+   Returns nonzero if successful, or zero if memory was exhausted.*/
+static int
+bst_robust_copy_recursive_1 (struct bst_node *x, struct bst_node **y)
+{
+  if (x != NULL)
+    {
+      *y = malloc (sizeof **y);
+      if (*y == NULL)
+        return 0;
+
+      (*y)->bst_data = x->bst_data;
+      if (!(bst_robust_copy_recursive_1 (x->bst_link[0], &(*y)->bst_link[0])
+            & bst_robust_copy_recursive_1 (x->bst_link[1],
+                                           &(*y)->bst_link[1])))
+        {
+          bst_deallocate_recursive (*y);
+          *y = NULL;
+          return 0;
+        }
+    }
+  else
+    *y = NULL;
+
+  return 1;
+}
+
+   Here's a needed auxiliary function:
+
+635. <Recursive deallocation function 635> =
+static void
+bst_deallocate_recursive (struct bst_node *node)
+{
+  if (node == NULL)
+    return;
+
+  bst_deallocate_recursive (node->bst_link[0]);
+  bst_deallocate_recursive (node->bst_link[1]);
+  free (node);
+}
+
+1b.
+
+636. <Robust recursive copy of BST, take 2 636> =
+static struct bst_node error_node;
+
+/* Makes and returns a new copy of tree rooted at x.
+   If an allocation error occurs, returns &error_node. */
+static struct bst_node *
+bst_robust_copy_recursive_2 (struct bst_node *x)
+{
+  struct bst_node *y;
+
+  if (x == NULL)
+    return NULL;
+
+  y = malloc (sizeof *y);
+  if (y == NULL)
+    return &error_node;
+
+  y->bst_data = x->bst_data;
+  y->bst_link[0] = bst_robust_copy_recursive_2 (x->bst_link[0]);
+  y->bst_link[1] = bst_robust_copy_recursive_2 (x->bst_link[1]);
+  if (y->bst_link[0] == &error_node || y->bst_link[1] == &error_node)
+    {
+      bst_deallocate_recursive (y);
+      return &error_node;
+    }
+
+  return y;
+}
+
+2.  Here's one way to do it, which is simple but perhaps not the fastest
+possible.
+
+637. <Robust recursive copy of BST, take 3 637> =
+/* Copies tree rooted at x to y, which latter is allocated but not
+   yet initialized. 
+   Returns one if successful, zero if memory was exhausted. 
+   In the latter case y is not freed but any partially allocated
+   subtrees are. */
+static int
+bst_robust_copy_recursive_3 (struct bst_node *x, struct bst_node *y)
+{
+  y->bst_data = x->bst_data;
+
+  if (x->bst_link[0] != NULL)
+    {
+      y->bst_link[0] = malloc (sizeof *y->bst_link[0]);
+      if (y->bst_link[0] == NULL)
+        return 0;
+      if (!bst_robust_copy_recursive_3 (x->bst_link[0], y->bst_link[0]))
+        {
+          free (y->bst_link[0]);
+          return 0;
+        }
+    }
+  else
+    y->bst_link[0] = NULL;
+
+  if (x->bst_link[1] != NULL)
+    {
+      y->bst_link[1] = malloc (sizeof *y->bst_link[1]);
+      if (y->bst_link[1] == NULL)
+        return 0;
+      if (!bst_robust_copy_recursive_3 (x->bst_link[1], y->bst_link[1]))
+        {
+          bst_deallocate_recursive (y->bst_link[0]);
+          free (y->bst_link[1]);
+          return 0;
+        }
+    }
+  else
+    y->bst_link[1] = NULL;
+
+  return 1;      
+}
+
+Section 5.10.2
+--------------
+
+1.  Here is one possibility.
+
+638. <Intermediate step between bst_copy_recursive_2() and bst_copy_iterative() 638> =
+/* Copies org to a newly created tree, which is returned. */
+struct bst_table *
+bst_copy_iterative (const struct bst_table *org)
+{
+  struct bst_node *stack[2 * (BST_MAX_HEIGHT + 1)];
+  int height = 0;
+
+  struct bst_table *new;
+  const struct bst_node *x;
+  struct bst_node *y;
+
+  new = bst_create (org->bst_compare, org->bst_param, org->bst_alloc);
+  new->bst_count = org->bst_count;
+  if (new->bst_count == 0)
+    return new;
+
+  x = (const struct bst_node *) &org->bst_root;
+  y = (struct bst_node *) &new->bst_root;
+  for (;;)
+    {
+      while (x->bst_link[0] != NULL)
+        {
+          y->bst_link[0] =
+            org->bst_alloc->libavl_malloc (org->bst_alloc,
+                                           sizeof *y->bst_link[0]);
+          stack[height++] = (struct bst_node *) x;
+          stack[height++] = y;
+          x = x->bst_link[0];
+          y = y->bst_link[0];
+        }
+      y->bst_link[0] = NULL;
+
+      for (;;)
+        {
+          y->bst_data = x->bst_data;
+
+          if (x->bst_link[1] != NULL)
+            {
+              y->bst_link[1] =
+                org->bst_alloc->libavl_malloc (org->bst_alloc,
+                                               sizeof *y->bst_link[1]);
+              x = x->bst_link[1];
+              y = y->bst_link[1];
+              break;
+            }
+          else
+            y->bst_link[1] = NULL;
+
+          if (height <= 2)
+            return new;
+
+          y = stack[--height];
+          x = stack[--height];
+        }
+    }
+}
+
+Section 5.11.1
+--------------
+
+1.  bst_copy() can set bst_data to NULL when memory allocation fails.
+
+Section 5.13
+------------
+
+1.  Factoring out recursion is troublesome in this case.  Writing the
+loop with an explicit stack exposes more explicitly the issue of stack
+overflow.  Failure on stack overflow is not acceptable, because it
+would leave both trees in disarray, so we handle it by dropping back to
+a slower algorithm that does not require a stack.
+
+   This code also makes use of root_insert() from <*Note Robust root
+insertion of existing node in arbitrary subtree:: 625>.
+
+639. <BST join function, iterative version 639> =
+/* Adds to tree all the nodes in the tree rooted at p. */
+static void
+fallback_join (struct bst_table *tree, struct bst_node *p)
+{
+  struct bst_node *q;
+
+  for (; p != NULL; p = q)
+    if (p->bst_link[0] == NULL)
+      {
+        q = p->bst_link[1];
+        p->bst_link[0] = p->bst_link[1] = NULL;
+        root_insert (tree, &tree->bst_root, p);
+      }
+    else
+      {
+        q = p->bst_link[0];
+        p->bst_link[0] = q->bst_link[1];
+        q->bst_link[1] = p;
+      }
+}
+
+/* Joins a and b, which must be disjoint and have compatible
+   comparison functions.
+   b is destroyed in the process. */
+void
+bst_join (struct bst_table *ta, struct bst_table *tb)
+{
+  size_t count = ta->bst_count + tb->bst_count;
+
+  if (ta->bst_root == NULL)
+    ta->bst_root = tb->bst_root;
+  else if (tb->bst_root != NULL)
+    {
+      struct bst_node **pa[BST_MAX_HEIGHT];
+      struct bst_node *qa[BST_MAX_HEIGHT];
+      int k = 0;
+
+      pa[k] = &ta->bst_root;
+      qa[k++] = tb->bst_root;
+      while (k > 0)
+        {
+          struct bst_node **a = pa[--k];
+          struct bst_node *b = qa[k];
+
+          for (;;)
+            {
+              struct bst_node *b0 = b->bst_link[0];
+              struct bst_node *b1 = b->bst_link[1];
+              b->bst_link[0] = b->bst_link[1] = NULL;
+              root_insert (ta, a, b);
+
+              if (b1 != NULL)
+                {
+                  if (k < BST_MAX_HEIGHT)
+                    {
+                      pa[k] = &(*a)->bst_link[1];
+                      qa[k] = b1;
+                      if (*pa[k] != NULL)
+                        k++;
+                      else
+                        *pa[k] = qa[k];
+                    }
+                  else
+                    {
+                      int j;
+
+                      fallback_join (ta, b0);
+                      fallback_join (ta, b1);
+                      for (j = 0; j < k; j++)
+                        fallback_join (ta, qa[j]);
+
+                      ta->bst_count = count;
+                      free (tb);
+                      bst_balance (ta);
+                      return;
+                    }
+                }
+
+              a = &(*a)->bst_link[0];
+              b = b0;
+              if (*a == NULL)
+                {
+                  *a = b;
+                  break;
+                }
+              else if (b == NULL)
+                break;
+            }
+        }
+    }
+
+  ta->bst_count = count;
+  free (tb);
+}
+
+Section 5.14.1
+--------------
+
+1.  Functions not used at all are bst_insert(), bst_replace(),
+bst_t_replace(), bst_malloc(), and bst_free().
+
+   Functions used explicitly within test() or functions that it calls
+are bst_create(), bst_find(), bst_probe(), bst_delete(), bst_t_init(),
+bst_t_first(), bst_t_last(), bst_t_insert(), bst_t_find(),
+bst_t_copy(), bst_t_next(), bst_t_prev(), bst_t_cur(), bst_copy(), and
+bst_destroy().
+
+   The trav_refresh() function is called indirectly by modifying the
+tree during traversal.
+
+   The copy_error_recovery() function is called if a memory allocation
+error occurs during bst_copy().  The bst_balance() function, and
+therefore also tree_to_vine(), vine_to_tree(), and compress(), are
+called if a stack overflow occurs. It is possible to force both these
+behaviors with command-line options to the test program.
+
+2.  Some kinds of errors mean that we can keep going and test other
+parts of the code.  Other kinds of errors mean that something is deeply
+wrong, and returning without cleanup is the safest action short of
+terminating the program entirely.  The third category is memory
+allocation errors.  In our test program these are always caused
+intentionally in order to test out the BST functions' error recovery
+abilities, so a memory allocation error is not really an error at all,
+and we clean up and return successfully.  (A real memory allocation
+error will cause the program to abort in the memory allocator.  See the
+definition of mt_allocate() within <*Note Memory tracker:: 126>.)
+
+Section 5.14.1.1
+----------------
+
+1.  The definition of size_t differs from one compiler to the next.  All
+we know about it for sure is that it's an unsigned type appropriate for
+representing the size of an object.  So we must convert it to some known
+type in order to pass it to printf(), because printf(), having a
+variable number of arguments, does not know what type to convert it
+into.
+
+   Incidentally, C99 solves this problem by providing a `z' modifier
+for printf() conversions, so that we could use "%zu" to print out
+size_t values without the need for a cast.
+
+See also:  *Note ISO 1999::, section 7.19.6.1.
+
+2.  Yes.
+
+Section 5.14.2
+--------------
+
+1.
+640. <Generate random permutation of integers 640> =
+/* Fills the n elements of array[] with a random permutation of the
+   integers between 0 and n - 1. */
+static void
+permuted_integers (int array[], size_t n)
+{
+  size_t i;
+
+  for (i = 0; i < n; i++)
+    array[i] = i;
+
+  for (i = 0; i < n; i++)
+    {
+      size_t j = i + (unsigned) rand () / (RAND_MAX / (n - i) + 1);
+      int t = array[j];
+      array[j] = array[i];
+      array[i] = t;
+    }
+}
+
+This code is included in *Note 642: Insertion and deletion order
+generation.
+
+2.  All it takes is a preorder traversal.  If the code below is
+confusing, try looking back at <*Note Initialize |smaller| and |larger|
+within binary search tree:: 616>.
+
+641. <Generate permutation for balanced tree 641> =
+/* Generates a list of integers that produce a balanced tree when
+   inserted in order into a binary tree in the usual way.
+   min and max inclusively bound the values to be inserted.
+   Output is deposited starting at *array. */
+static void
+gen_balanced_tree (int min, int max, int **array)
+{
+  int i;
+
+  if (min > max)
+    return;
+
+  i = (min + max + 1) / 2;
+  *(*array)++ = i;
+  gen_balanced_tree (min, i - 1, array);
+  gen_balanced_tree (i + 1, max, array);
+}
+
+This code is included in *Note 642: Insertion and deletion order
+generation.
+
+3.
+642. <Insertion and deletion order generation 642> =
+<*Note Generate random permutation of integers:: 640>
+<*Note Generate permutation for balanced tree:: 641>
+
+/* Generates a permutation of the integers 0 to n - 1 into
+   insert[] according to insert_order. */
+static void
+gen_insertions (size_t n, enum insert_order insert_order, int insert[])
+{
+  size_t i;
+
+  switch (insert_order)
+    {
+    case INS_RANDOM:
+      permuted_integers (insert, n);
+      break;
+
+    case INS_ASCENDING:
+      for (i = 0; i < n; i++)
+        insert[i] = i;
+      break;
+
+    case INS_DESCENDING:
+      for (i = 0; i < n; i++)
+        insert[i] = n - i - 1;
+      break;
+
+    case INS_BALANCED:
+      gen_balanced_tree (0, n - 1, &insert);
+      break;
+
+    case INS_ZIGZAG:
+      for (i = 0; i < n; i++)
+        if (i % 2 == 0)
+          insert[i] = i / 2;
+        else
+          insert[i] = n - i / 2 - 1;
+      break;
+
+    case INS_ASCENDING_SHIFTED:
+      for (i = 0; i < n; i++)
+        {
+           insert[i] = i + n / 2;
+           if ((size_t) insert[i] >= n)
+             insert[i] -= n;
+        }
+      break;
+
+    case INS_CUSTOM:
+      for (i = 0; i < n; i++)
+        if (scanf ("%d", &insert[i]) == 0)
+          fail ("error reading insertion order from stdin");
+      break;
+
+    default:
+      assert (0);
+    }
+}
+
+/* Generates a permutation of the integers 0 to n - 1 into
+   delete[] according to delete_order and insert[]. */
+static void
+gen_deletions (size_t n, enum delete_order delete_order,
+               const int *insert, int *delete)
+{
+  size_t i;
+
+  switch (delete_order)
+    {
+    case DEL_RANDOM:
+      permuted_integers (delete, n);
+      break;
+
+    case DEL_REVERSE:
+      for (i = 0; i < n; i++)
+        delete[i] = insert[n - i - 1];
+      break;
+
+    case DEL_SAME:
+      for (i = 0; i < n; i++)
+        delete[i] = insert[i];
+      break;
+
+    case DEL_CUSTOM:
+      for (i = 0; i < n; i++)
+        if (scanf ("%d", &delete[i]) == 0)
+          fail ("error reading deletion order from stdin");
+      break;
+
+    default:
+      assert (0);
+    }
+}
+
+This code is included in *Note 97: testc.
+
+4.  The function below is carefully designed.  It uses time() to obtain
+the current time.  The alternative clock() is a poor choice because it
+measures CPU time used, which is often more or less constant among
+runs.  The actual value of a time_t is not portable, so it computes a
+"hash" of the bytes in it using a multiply-and-add technique.  The
+factor used for multiplication normally comes out as 257, a prime and
+therefore a good candidate.
+
+See also:  *Note Knuth 1998a::, section 3.2.1; *Note Aho 1986::,
+section 7.6.
+
+643. <Random number seeding 643> =
+/* Choose and return an initial random seed based on the current time.
+   Based on code by Lawrence Kirby <fred@genesis.demon.co.uk>. */
+unsigned
+time_seed (void)
+{
+  time_t timeval;	/* Current time. */
+  unsigned char *ptr;	/* Type punned pointed into timeval. */
+  unsigned seed;	/* Generated seed. */
+  size_t i;
+
+  timeval = time (NULL);
+  ptr = (unsigned char *) &timeval;
+
+  seed = 0;
+  for (i = 0; i < sizeof timeval; i++)
+    seed = seed * (UCHAR_MAX + 2u) + ptr[i];
+
+  return seed;
+}
+
+This code is included in *Note 97: testc.
+
+Section 5.14.3
+--------------
+
+1.
+644. <Overflow testers 124> +=
+static int
+test_bst_t_last (struct bst_table *tree, int n)
+{
+  struct bst_traverser trav;
+  int *last;
+
+  last = bst_t_last (&trav, tree);
+  if (last == NULL || *last != n - 1)
+    {
+      printf ("    Last item test failed: expected %d, got %d\n",
+              n - 1, last != NULL ? *last : -1);
+      return 0;
+    }
+
+  return 1;
+}
+
+static int
+test_bst_t_find (struct bst_table *tree, int n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    {
+      struct bst_traverser trav;
+      int *iter;
+
+      iter = bst_t_find (&trav, tree, &i);
+      if (iter == NULL || *iter != i)
+        {
+          printf ("    Find item test failed: looked for %d, got %d\n",
+                  i, iter != NULL ? *iter : -1);
+          return 0;
+        }
+    }
+
+  return 1;
+}
+
+static int
+test_bst_t_insert (struct bst_table *tree, int n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    {
+      struct bst_traverser trav;
+      int *iter;
+
+      iter = bst_t_insert (&trav, tree, &i);
+      if (iter == NULL || iter == &i || *iter != i)
+        {
+          printf ("    Insert item test failed: inserted dup %d, got %d\n",
+                  i, iter != NULL ? *iter : -1);
+          return 0;
+        }
+    }
+
+  return 1;
+}
+
+static int
+test_bst_t_next (struct bst_table *tree, int n)
+{
+  struct bst_traverser trav;
+  int i;
+
+  bst_t_init (&trav, tree);
+  for (i = 0; i < n; i++)
+    {
+      int *iter = bst_t_next (&trav);
+      if (iter == NULL || *iter != i)
+        {
+          printf ("    Next item test failed: expected %d, got %d\n",
+                  i, iter != NULL ? *iter : -1);
+          return 0;
+        }
+    }
+
+  return 1;
+}
+
+static int
+test_bst_t_prev (struct bst_table *tree, int n)
+{
+  struct bst_traverser trav;
+  int i;
+
+  bst_t_init (&trav, tree);
+  for (i = n - 1; i >= 0; i--)
+    {
+      int *iter = bst_t_prev (&trav);
+      if (iter == NULL || *iter != i)
+        {
+          printf ("    Previous item test failed: expected %d, got %d\n",
+                  i, iter != NULL ? *iter : -1);
+          return 0;
+        }
+    }
+
+  return 1;
+}
+
+static int
+test_bst_copy (struct bst_table *tree, int n)
+{
+  struct bst_table *copy = bst_copy (tree, NULL, NULL, NULL);
+  int okay = compare_trees (tree->bst_root, copy->bst_root);
+
+  bst_destroy (copy, NULL);
+
+  return okay;
+}
+
+Section 5.14.4
+--------------
+
+1.  Attempting to apply an allocation policy to allocations of zero-byte
+blocks is silly.  How could a failure be indicated, given that one of
+the successful results for an allocation of 0 bytes is NULL?  At any
+rate, `libavl' never calls bst_allocate() with a size argument of 0.
+
+See also:  *Note ISO 1990::, section 7.10.3.
+
+Section 5.15
+------------
+
+1.  We'll use bsts_, short for "binary search tree with sentinel", as
+the prefix for these functions.  First, we need node and tree
+structures:
+
+645. <BSTS structures 645> =
+/* Node for binary search tree with sentinel. */
+struct bsts_node
+  {
+    struct bsts_node *link[2];
+    int data;
+  };
+
+/* Binary search tree with sentinel. */
+struct bsts_tree
+  {
+    struct bsts_node *root;
+    struct bsts_node sentinel;
+    struct libavl_allocator *alloc;
+  };
+
+This code is included in *Note 649: bstsc.
+
+   Searching is simple:
+
+646. <BSTS functions 646> =
+/* Returns nonzero only if item is in tree. */
+int
+bsts_find (struct bsts_tree *tree, int item)
+{
+  const struct bsts_node *node;
+
+  tree->sentinel.data = item;
+  node = tree->root;
+  while (item != node->data)
+    if (item < node->data)
+      node = node->link[0];
+    else
+      node = node->link[1];
+  return node != &tree->sentinel;
+}
+
+See also *Note 647: BSTS functions-2.
+This code is included in *Note 649: bstsc.
+
+   Insertion is just a little more complex, because we have to keep
+track of the link that we just came from (alternately, we could divide
+the function into multiple cases):
+
+647. <BSTS functions 646> +=
+/* Inserts item into tree, if it is not already present. */
+void
+bsts_insert (struct bsts_tree *tree, int item)
+{
+  struct bsts_node **q = &tree->root;
+  struct bsts_node *p = tree->root;
+
+  tree->sentinel.data = item;
+  while (item != p->data)
+    {
+      int dir = item > p->data;
+      q = &p->link[dir];
+      p = p->link[dir];
+    }
+
+  if (p == &tree->sentinel)
+    {
+      *q = tree->alloc->libavl_malloc (tree->alloc, sizeof **q);
+      if (*q == NULL)
+        {
+          fprintf (stderr, "out of memory\n");
+          exit (EXIT_FAILURE);
+        }
+      (*q)->link[0] = (*q)->link[1] = &tree->sentinel;
+      (*q)->data = item;
+    }
+}
+
+   Our test function will just insert a collection of integers, then
+make sure that all of them are in the resulting tree.  This is not as
+thorough as it could be, and it doesn't bother to free what it
+allocates, but it is good enough for now:
+
+648. <BSTS test 648> =
+/* Tests BSTS functions.  
+   insert and delete must contain some permutation of values
+   0...n - 1. */
+int
+test_correctness (struct libavl_allocator *alloc, int *insert, 
+                  int *delete, int n, int verbosity)
+{
+  struct bsts_tree tree;
+  int okay = 1;
+  int i;
+
+  tree.root = &tree.sentinel;
+  tree.alloc = alloc;
+
+  for (i = 0; i < n; i++)
+    bsts_insert (&tree, insert[i]);
+
+  for (i = 0; i < n; i++)
+    if (!bsts_find (&tree, i))
+      {
+        printf ("%d should be in tree, but isn't\n", i);
+        okay = 0;
+      }
+
+  return okay;
+}
+
+/* Not supported. */
+int
+test_overflow (struct libavl_allocator *alloc, int order[], int n,
+               int verbosity)
+{
+  return 0;
+}
+
+This code is included in *Note 649: bstsc.
+
+   Function test() doesn't free allocated nodes, resulting in a memory
+leak.  You should fix this if you are concerned about it.
+
+   Here's the whole program:
+
+649. <bsts.c 649> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "test.h"
+
+<*Note BSTS structures:: 645>
+<*Note Memory allocator:: 5>
+<*Note Default memory allocator header:: 7>
+<*Note Default memory allocation functions:: 6>
+<*Note BSTS functions:: 646>
+<*Note BSTS test:: 648>
+
+See also:  *Note Bentley 2000::, exercise 7 in chapter 13.
+
+Chapter 6
+=========
+
+Section 6.4
+-----------
+
+1.  In a BST, the time for an insertion or deletion is the time required
+to visit each node from the root down to the node of interest, plus
+some time to perform the operation itself.  Functions bst_probe() and
+bst_delete() contain only a single loop each, which iterates once for
+each node examined.  As the tree grows, the time for the actual
+operation loses significance and the total time for the operation
+becomes essentially proportional to the height of the tree, which is
+approximately log2 (n) in the best case (*note Analysis of AVL
+Balancing Rule::).
+
+   We were given that the additional work for rebalancing an AVL or
+red-black tree is at most a constant amount multiplied by the height of
+the tree.  Furthermore, the maximum height of an AVL tree is 1.44 times
+the maximum height for the corresponding perfectly balanced binary
+tree, and a red-black tree has a similar bound on its height.
+Therefore, for trees with many nodes, the worst-case time required to
+insert or delete an item in a balanced tree is a constant multiple of
+the time required for the same operation on an unbalanced BST in the
+best case.  In the formal terms of computer science, insertion and
+deletion in a balanced tree are O(log n) operations, where n is the
+number of nodes in the tree.
+
+   In practice, operations on balanced trees of reasonable size are, at
+worst, not much slower than operations on unbalanced binary trees and,
+at best, much faster.
+
+Section 6.4.2
+-------------
+
+1.  Variable y is only modified within <*Note Step 1 Search AVL tree
+for insertion point:: 148>.  If y is set during the loop, it is set to
+p, which is always a non-null pointer within the loop.  So y can only be
+NULL if it is last set before the loop begins.  If that is true, it
+will be NULL only if tree->avl_root == NULL.  So, variable y can only
+be NULL if the AVL tree was empty before the insertion.
+
+   A NULL value for y is a special case because later code assumes that
+y points to a node.
+
+Section 6.4.3
+-------------
+
+1.  No.  Suppose that n is the new node, that p is its parent, and that
+p has a - balance factor before n's insertion (a similar argument
+applies if p's balance factor is +).  Then, for n's insertion to
+decrease p's balance factor to -2, n would have to be the left child of
+p.  But if p had a - balance factor before the insertion, it already
+had a left child, so n cannot be the new left of p.  This is a
+contradiction, so case 3 will never be applied to the parent of a newly
+inserted node.
+
+2.
+
+                  <0>                <0>                    <-->
+            __..-'   `._           _'   `._               _'
+           <0>          <->       <->      <0>           <->
+         _'   \       _'        _'       _'   \        _'
+        <0>    <0>   <0>       <0>      <0>    <0>    <0>
+
+   In the leftmost tree, case 2 applies to the root's left child and the
+root's balance factor does not change.  In the middle tree, case 1
+applies to the root's left child and case 2 applies to the root.  In
+the rightmost tree, case 1 applies to the root's left child and case 3
+applies to the root.  The tree on the right requires rebalancing, and
+the others do not.
+
+3.  Type char may be signed or unsigned, depending on the C compiler
+and/or how the C compiler is run.  Also, a common use for subscripting
+an array with a character type is to translate an arbitrary character
+to another character or a set of properties.  For example, this is a
+common way to implement the standard C functions from ctype.h.  This
+means that subscripting such an array with a char value can have
+different behavior when char changes between signed and unsigned with
+different compilers (or with the same compiler invoked with different
+options).
+
+See also:  *Note ISO 1990::, section 6.1.2.5; *Note Kernighan 1988::,
+section A4.2.
+
+4.  Here is one possibility:
+
+650. <Step 3: Update balance factors after AVL insertion, with bitmasks 650> =
+for (p = y; p != n; p = p->avl_link[cache & 1], cache >>= 1)
+  if ((cache & 1) == 0)
+    p->avl_balance--;
+  else
+    p->avl_balance++;
+
+Also, replace the declarations of da[] and k by these:
+
+unsigned long cache = 0; /* Cached comparison results. */
+int k = 0;              /* Number of cached comparison results. */
+
+and replace the second paragraph of code within the loop in step 1 by
+this:
+
+if (p->avl_balance != 0)
+  z = q, y = p, cache = 0, k = 0;
+
+dir = cmp > 0;
+if (dir)
+  cache |= 1ul << k;
+k++;
+
+   It is interesting to note that the speed difference between this
+version and the standard version was found to be negligible, when
+compiled with full optimization under GCC (both 2.95.4 and 3.0.3) on
+x86.
+
+Section 6.4.4
+-------------
+
+1.  Because then y's right subtree would have height 1, so there's no
+way that y could have a +2 balance factor.
+
+2.  The value of y is set during the search for item to point to the
+closest node above the insertion point that has a nonzero balance
+factor, so any node below y along this search path, including x, must
+have had a 0 balance factor originally.  All such nodes are updated to
+have a nonzero balance factor later, during step 3.  So x must have
+either a - or + balance factor at the time of rebalancing.
+
+3.1.
+
+                          |             |
+                          y             y         |
+                        <-->          <-->        w
+                  __..-'            _'           <0>
+                  x          =>     w      =>  _'   \
+                 <+>               <->         x      y
+                    \            _'           <0>    <0>
+                      w          x
+                     <0>        <0>
+
+3.2.
+
+                   |                        |
+                   y                        y               |
+                 <-->                     <-->              w
+      ____...---'    \             __..--'    \            <0>
+      x               d             w          d       _.-'   `._
+     <+>              h           <-->         h       x          y
+    /   `_              =>    _.-'    \          =>   <0>        <+>
+   a       w                  x         c            /   \     _'   \
+   h      <->                <0>       h-1          a     b    c     d
+         /   \              /   \                   h     h   h-1    h
+        b      c           a     b
+        h     h-1          h     h
+
+3.3.
+
+                  |                       |
+                  y                       y                 |
+                <-->                    <-->                w
+      ___...---'    \               _.-'    \              <0>
+      x              d              w        d       __..-'   `_
+     <+>             h             <->       h       x           y
+    /   `._            =>    __..-'   \        =>   <->         <0>
+   a        w                x         c           /   \       /   \
+   h       <+>              <->        h          a      b    c     d
+         _'   \            /   \                  h     h-1   h     h
+         b     c          a      b
+        h-1    h          h     h-1
+ 
+   4.  w should replace y as the left or right child of z.  y !=
+z->avl_link[0] has the value 1 if y is the right child of z, or 0 if y
+is the left child.  So the overall expression replaces y with w as a
+child of z.
+
+The suggested substitution is a poor choice because if z == (struct
+avl_node *) &tree->root, z->avl_link[1] is undefined.
+
+5.  Yes.
+
+Section 6.5.2
+-------------
+
+1.  This approach cannot be used in `libavl' (see Exercise 5.8-3).
+
+651. <Case 3 in AVL deletion, alternate version 651> =
+struct avl_node *s;
+
+da[k] = 1;
+pa[k++] = p;
+for (;;)
+  {
+    da[k] = 0;
+    pa[k++] = r;
+    s = r->avl_link[0];
+    if (s->avl_link[0] == NULL)
+      break;
+
+    r = s;
+  }
+p->avl_data = s->avl_data;
+r->avl_link[0] = s->avl_link[1];
+p = s;
+
+2.  We could, if we use the standard `libavl' code for deletion case 3.
+The alternate version in Exercise 1 modifies item data, which would
+cause the wrong value to be returned later.
+
+Section 6.5.4
+-------------
+
+1.  Tree y started out with a + balance factor, meaning that its right
+subtree is taller than its left.  So, even if y's left subtree had
+height 0, its right subtree has at least height 1, meaning that y must
+have at least one right child.
+
+2.  Rebalancing is required at each level if, at every level of the
+tree, the deletion causes a +2 or -2 balance factor at a node p while
+there is a +1 or -1 balance factor at p's child opposite the deletion.
+
+   For example, consider the AVL tree below:
+
+                                         20
+                         _____.....-----'  `----....._____
+                        12                                28
+               ___...--'  `--...___                  __.-'  `-._
+              7                    17               25          31
+           _.' `-._            _.-'  `_         _.-'  `_       /  \
+          4        10         15       19      23       27    30   32
+        _' `_     /  \       /  \     /       /  \     /     /
+       2     6   9    11    14   16  18      22   24  26    29
+      / \   /   /          /                /
+     1   3 5   8          13               21
+    /
+   0
+ 
+ Deletion of node 32 in this tree leads to a -2 balance factor on the
+left side of node 31, causing a right rotation at node 31.  This
+shortens the right subtree of node 28, causing it to have a -2 balance
+factor, leading to a right rotation there.  This shortens the right
+subtree of node 20, causing it to have a -2 balance factor, forcing a
+right rotation there, too.  Here is the final tree:
+
+                           12
+                  ___...--'  `----....._____
+                 7                          20
+              _.' `-._                 __.-'  `--...___
+             4        10              17               25
+           _' `_     /  \         _.-'  `_         _.-'  `-._
+          2     6   9    11      15       19      23         28
+         / \   /   /            /  \     /       /  \       /  `_
+        1   3 5   8            14   16  18      22   24    27    30
+       /                      /                /          /     /
+      0                      13               21         26    29
+ 
+ Incidentally, our original tree was an example of a "Fibonacci tree",
+a kind of binary tree whose form is defined recursively, as follows.  A
+Fibonacci tree of order 0 is an empty tree and a Fibonacci tree of
+order 1 is a single node.  A Fibonacci tree of order n >= 2 is a node
+whose left subtree is a Fibonacci tree of order n - 1 and whose right
+subtree is a Fibonacci tree of order n - 2.  Our example is a Fibonacci
+tree of order 7.  Any big-enough Fibonacci tree will exhibit this
+pathological behavior upon AVL deletion of its maximum node.
+
+Section 6.6
+-----------
+
+1.  At this point in the code, p points to the avl_data member of an
+struct avl_node.  We want a pointer to the struct avl_node itself.  To
+do this, we just subtract the offset of the avl_data member within the
+structure.  A cast to char * is necessary before the subtraction,
+because offsetof returns a count of bytes, and a cast to struct
+avl_node * afterward, to make the result the right type.
+
+Chapter 7
+=========
+
+Section 7.1
+-----------
+
+1.  It must be a "complete binary tree" (*note complete binary tree::)
+of exactly pow (2, n) - 1 nodes.
+
+   If a red-black tree contains only red nodes, on the other hand, it
+cannot have more than one node, because of rule 1.
+
+2.  If a red-black tree's root is red, then we can transform it into an
+equivalent red-black tree with a black root simply by recoloring the
+root.  This cannot violate rule 1, because it does not introduce a red
+node.  It cannot violate rule 2 because it only affects the number of
+black nodes along paths that pass through the root, and it affects all
+of those paths equally, by increasing the number of black nodes along
+them by one.
+
+   If, on the other hand, a red-black tree has a black root, we cannot
+in general recolor it to red, because this causes a violation of rule 1
+if the root has a red child.
+
+3.  Yes and yes:
+
+                           <b>           <b>
+                         _'   \        _'   \
+                        <b>    <b>    <r>    <r>
+
+                           <b>                  <b>
+                     __..-'   \           __..-'   \
+                    <b>        <b>       <r>        <b>
+                  _'   \               _'   \
+                 <r>    <r>           <b>    <b>
+
+Section 7.2
+-----------
+
+1.  C has a number of different namespaces.  One of these is the
+namespace that contains struct, union, and enum tags.  Names of
+structure members are in a namespace separate from this tag namespace,
+so it is okay to give an enum and a structure member the same name.  On
+the other hand, it would be an error to give, e.g., a struct and an enum
+the same name.
+
+Section 7.4.2
+-------------
+
+1.  Inserting a red node can sometimes be done without breaking any
+rules.  Inserting a black node will always break rule 2.
+
+Section 7.4.3
+-------------
+
+1.  We can't have k == 1, because then the new node would be the root,
+and the root doesn't have a parent that could be red.  We don't need to
+rebalance k == 2, because the new node is a direct child of the root,
+and the root is always black.
+
+2.  Yes, it would, but if d has a red node as its root, case 1 will be
+selected instead.
+
+Section 7.5.1
+-------------
+
+1.  If p has no left child, that is, it is a leaf, then obviously we
+cannot swap colors.  Now consider only the case where p does have a
+non-null left child x.  Clearly, x must be red, because otherwise rule
+2 would be violated at p.  This means that p must be black to avoid a
+rule 1 violation.  So the deletion will eliminate a black node, causing
+a rule 2 violation.  This is exactly the sort of problem that the
+rebalancing step is designed to deal with, so we can rebalance starting
+from node x.
+
+2.  There are two cases in this algorithm, which uses a new struct
+avl_node * variable named x.  Regardless of which one is chosen, x has
+the same meaning afterward: it is the node that replaced one of the
+children of the node at top of stack, and may be NULL if the node
+removed was a leaf.
+
+   Case 1: If one of p's child pointers is NULL, then p can be replaced
+by the other child, or by NULL if both children are NULL:
+
+652. <Step 2: Delete item from RB tree, alternate version 652> =
+if (p->rb_link[0] == NULL || p->rb_link[1] == NULL)
+  {
+    x = p->rb_link[0];
+    if (x == NULL)
+      x = p->rb_link[1];
+  }
+
+See also *Note 653: Step 2 Delete item from RB tree alternate version-2
+and *Note 654: Step 2 Delete item from RB tree alternate version-3.
+
+   Case 2: If both of p's child pointers are non-null, then we find p's
+successor and replace p's data by the successor's data, then delete the
+successor instead:
+
+653. <Step 2: Delete item from RB tree, alternate version 652> +=
+else
+  {
+    struct rb_node *y;
+
+    pa[k] = p;
+    da[k++] = 1;
+
+    y = p->rb_link[1];
+    while (y->rb_link[0] != NULL)
+      {
+        pa[k] = y;
+        da[k++] = 0;
+        y = y->rb_link[0];
+      }
+
+    x = y->rb_link[1];
+    p->rb_data = y->rb_data;
+    p = y;
+  }
+
+   In either case, we need to update the node above the deleted node to
+point to x.
+
+654. <Step 2: Delete item from RB tree, alternate version 652> +=
+pa[k - 1]->rb_link[da[k - 1]] = x;
+
+See also:  *Note Cormen 1990::, section 14.4.
+
+Chapter 8
+=========
+
+Section 8.2
+-----------
+
+1.  An enumerated type is compatible with some C integer type, but the
+particular type is up to the C compiler.  Many C compilers will always
+pick int as the type of an enumeration type.  But we want to conserve
+space in the structure (see {No value for `tbstnodesizebrief'}), so we
+specify unsigned char explicitly as the type.
+
+See also:  *Note ISO 1990::, section 6.5.2.2; *Note ISO 1999::, section
+6.7.2.2.
+
+Section 8.6
+-----------
+
+1.  When we add a node to a formerly empty tree, this statement will set
+tree->tbst_root, thereby breaking the if statement's test.
+
+Section 8.7
+-----------
+
+1.  *Note Finding the Parent of a TBST Node::.  Function find_parent()
+is implemented in <*Note Find parent of a TBST node:: 327>.
+
+655. <Find TBST node to delete, with parent node algorithm 655> =
+p = tree->tbst_root;
+if (p == NULL)
+  return NULL;
+
+for (;;)
+  {
+    int cmp = tree->tbst_compare (item, p->tbst_data, tree->tbst_param);
+    if (cmp == 0) 
+      break;
+
+    p = p->tbst_link[cmp > 0];
+  }
+
+q = find_parent (tree, p);
+dir = q->tbst_link[0] != p;
+
+See also:  *Note Knuth 1997::, exercise 2.3.1-19.
+
+2.  Yes.  We can bind a pointer and a tag into a single structure, then
+use that structure for our links and for the root in the table
+structure.
+
+/* A tagged link. */
+struct tbst_link
+  {
+    struct tbst_node *tbst_ptr;     /* Child pointer or thread. */
+    unsigned char tbst_tag;         /* Tag. */
+  };
+
+/* A threaded binary search tree node. */
+struct tbst_node
+  {
+    struct tbst_link tbst_link[2];  /* Links. */
+    void *tbst_data;                /* Pointer to data. */
+  };
+
+/* Tree data structure. */
+struct tbst_table
+  {
+    struct tbst_link tbst_root;         /* Tree's root; tag is unused. */
+    tbst_comparison_func *tbst_compare; /* Comparison function. */
+    void *tbst_param;                   /* Extra argument to tbst_compare. */
+    struct libavl_allocator *tbst_alloc; /* Memory allocator. */
+    size_t tbst_count;                  /* Number of items in tree. */
+  };
+
+   The main disadvantage of this approach is in storage space: many
+machines have alignment restrictions for pointers, so the nonadjacent
+unsigned chars cause space to be wasted.  Alternatively, we could keep
+the current arrangement of the node structure and change tbst_root in
+struct tbst_table from a pointer to an instance of struct tbst_node.
+
+3.  Much simpler than the implementation given before:
+
+656. <Case 4 in TBST deletion, alternate version 656> =
+struct tbst_node *s = r->tbst_link[0];
+while (s->tbst_tag[0] == TBST_CHILD)
+  {
+    r = s;
+    s = r->tbst_link[0];
+  }
+
+p->tbst_data = s->tbst_data;
+
+if (s->tbst_tag[1] == TBST_THREAD)
+  {
+    r->tbst_tag[0] = TBST_THREAD;
+    r->tbst_link[0] = p;
+  }
+else
+  {
+    q = r->tbst_link[0] = s->tbst_link[1];
+    while (q->tbst_tag[0] == TBST_CHILD)
+      q = q->tbst_link[0];
+    q->tbst_link[0] = p;
+  }
+
+p = s;
+
+This code is included in *Note 658: Case 4 in TAVL deletion alternate
+version.
+
+4.  If all the possible deletions from a given TBST are considered, then
+no link will be followed more than once to update a left thread, and
+similarly for right threads.  Averaged over all the possible deletions,
+this is a constant.  For example, take the following TBST:
+
+                                               6
+                                  ____....----' `._
+                                 3                 7
+                    ____....----' `--..___       _' \
+                   0                      5     [6]  []
+                  / `--..___          _.-' \
+                 []         2        4      [6]
+                        _.-' \     _' \
+                       1      [3] [3]  [5]
+                     _' \
+                    [0]  [2]
+
+Consider right threads that must be updated on deletion.  Nodes 2, 3, 5,
+and 6 have right threads pointing to them.  To update the right thread
+to node 2, we follow the link to node 1; to update node 3's, we move to
+0, then 2; for node 5, we move to node 4; and for node 6, we move to 3,
+then 5.  No link is followed more than once.  Here's a summary table:
+
+                   Node    Right Thread   Left Thread
+                           Follows        Follows
+                   0:      (none)         2, 1
+                   1:      (none)         (none)
+                   2:      1              (none)
+                   3:      0, 2           5, 4
+                   4:      (none)         (none)
+                   5:      4              (none)
+                   6:      3, 5           7
+                   7:      (none)         (none)
+
+   The important point here is that no number appears twice within a
+column.
+
+Section 8.9
+-----------
+
+1.  Suppose a node has a right thread.  If the node has no left subtree,
+then the thread will be followed immediately when the node is reached.
+If the node does have a left subtree, then the left subtree will be
+traversed, and when the traversal is finished the node's predecessor's
+right thread will be followed back to the node, then its right thread
+will be followed.  The node cannot be skipped, because all the nodes in
+its left subtree are less than it, so none of the right threads in its
+left subtree can skip beyond it.
+
+2.  The biggest potential for optimization probably comes from
+tbst_copy()'s habit of always keeping the TBST fully consistent as it
+builds it, which causes repeated assignments to link fields in order to
+keep threads correct at all times.  The unthreaded BST copy function
+bst_copy() waited to initialize fields until it was ready for them.  It
+may be possible, though difficult, to do this in tbst_copy() as well.
+
+   Inlining and specializing copy_node() is a cheaper potential speedup.
+
+Chapter 9
+=========
+
+Section 9.1
+-----------
+
+1.  No: the compiler may insert padding between or after structure
+members.  For example, today (2002) the most common desktop computers
+have 32-bit pointers and and 8-bit chars.  On these systems, most
+compilers will pad out structures to a multiple of 32 bits.  Under
+these circumstances, struct tavl_node is no larger than struct
+avl_node, because (32 + 32 + 8) and (32 + 32 + 8 + 8 + 8) both round up
+to the same multiple of 32 bits, or 96 bits.
+
+Section 9.2
+-----------
+
+1.  We just have to special-case the possibility that subtree b is a
+thread.
+
+/* Rotates right at *yp. */
+static void
+rotate_right (struct tavl_node **yp)
+{
+  struct tavl_node *y = *yp;
+  struct tavl_node *x = y->tavl_link[0];
+  if (x->tavl_tag[1] == TAVL_THREAD)
+    {
+      x->tavl_tag[1] = TAVL_CHILD;
+      y->tavl_tag[0] = TAVL_THREAD;
+      y->tavl_link[0] = x;
+    }
+  else
+    y->tavl_link[0] = x->tavl_link[1];
+  x->tavl_link[1] = y;
+  *yp = x;
+}
+
+/* Rotates left at *xp. */
+static void
+rotate_left (struct tavl_node **xp)
+{
+  struct tavl_node *x = *xp;
+  struct tavl_node *y = x->tavl_link[1];
+  if (y->tavl_tag[0] == TAVL_THREAD)
+    {
+      y->tavl_tag[0] = TAVL_CHILD;
+      x->tavl_tag[1] = TAVL_THREAD;
+      x->tavl_link[1] = y;
+    }
+  else
+    x->tavl_link[1] = y->tavl_link[0];
+  y->tavl_link[0] = x;
+  *xp = y;
+}
+
+Section 9.4.2
+-------------
+
+1.  Besides this change, the statement
+
+z->tavl_link[y != z->tavl_link[0]] = w;
+
+must be removed from <*Note Step 4 Rebalance after TAVL insertion::
+304>, and copies added to the end of <*Note Rebalance TAVL tree after
+insertion in right subtree:: 308> and <*Note Rebalance for |-| balance
+factor in TAVL insertion in left subtree:: 306>.
+
+657. <Rebalance + balance in TAVL insertion in left subtree, alternate version 657> =
+w = x->tavl_link[1];
+rotate_left (&y->tavl_link[0]);
+rotate_right (&z->tavl_link[y != z->tavl_link[0]]);
+if (w->tavl_balance == -1)
+  x->tavl_balance = 0, y->tavl_balance = +1;
+else if (w->tavl_balance == 0)
+  x->tavl_balance = y->tavl_balance = 0;
+else /* w->tavl_balance == +1 */
+  x->tavl_balance = -1, y->tavl_balance = 0;
+w->tavl_balance = 0;
+
+Section 9.5.2
+-------------
+
+1.  We can just reuse the alternate implementation of case 4 for TBST
+deletion, following it by setting up q and dir as the rebalancing step
+expects them to be.
+
+658. <Case 4 in TAVL deletion, alternate version 658> =
+<*Note Case 4 in TBST deletion alternate version:: 656>
+q = r;
+dir = 0;
+
+Section 9.5.6
+-------------
+
+1.  Our argument here is similar to that in Exercise 8.7-4.  Consider
+the links that are traversed to successfully find the parent of each
+node, besides the root, in the tree shown below.  Do not include links
+followed on the side that does not lead to the node's parent.  Because
+there are never more of these than on the successful side, they add
+only a constant time to the algorithm and can be ignored.
+
+                                               6
+                                  ____....----' `._
+                                 3                 7
+                    ____....----' `--..___       _' \
+                   0                      5     [6]  []
+                  / `--..___          _.-' \
+                 []         2        4      [6]
+                        _.-' \     _' \
+                       1      [3] [3]  [5]
+                     _' \
+                    [0]  [2]
+
+The table below lists the links followed.  The important point is that
+no link is listed twice.
+
+                       Node    Links Followed to
+                               Node's Parent
+                       0       0->2, 2->3
+                       1       1->2
+                       2       2->1, 1->0
+                       3       3->5, 5->6
+                       4       4->5
+                       5       5->4, 4->3
+                       6       (root)
+                       7       7->6
+
+   This generalizes to all TBSTs.  Because a TBST with n nodes contains
+only 2n links, this means we have an upper bound on finding the parent
+of every node in a TBST of at most 2n successful link traversals plus
+2n unsuccessful link traversals.  Averaging 4n over n nodes, we get an
+upper bound of 4n/n == 4 link traversals, on average, to find the
+parent of a given node.
+
+   This upper bound applies only to the average case, not to the case of
+any individual node.  In particular, it does not say that the usage of
+the algorithm in tavl_delete() will exhibit average behavior.  In
+practice, however, the performance of this algorithm in tavl_delete()
+seems quite acceptable.  See Exercise 3 for an alternative with more
+certain behavior.
+
+2.  Instead of storing a null pointer in the left thread of the least
+node and the right thread of the greatest node, store a pointer to a
+node "above the root".  To make this work properly, tavl_root will have
+to become an actual node, not just a node pointer, because otherwise
+trying to find its right child would invoke undefined behavior.  Also,
+both of tavl_root's children would have to be the root node.
+
+   This is probably not worth it.  On the surface it seems like a good
+idea but ugliness lurks beneath.
+
+3.  The necessary changes are pervasive, so the complete code for the
+modified function is presented below.  The search step is borrowed from
+TRB deletion, presented in the next chapter.
+
+659. <TAVL item deletion function, with stack 659> =
+void *
+tavl_delete (struct tavl_table *tree, const void *item)
+{
+  /* Stack of nodes. */
+  struct tavl_node *pa[TAVL_MAX_HEIGHT]; /* Nodes. */
+  unsigned char da[TAVL_MAX_HEIGHT];     /* tavl_link[] indexes. */
+  int k = 0;                             /* Stack pointer. */
+
+  struct tavl_node *p; /* Traverses tree to find node to delete. */
+  int cmp;             /* Result of comparison between item and p. */
+  int dir;             /* Child of p to visit next. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search TRB tree for item to delete:: 350>
+  <*Note Step 2 Delete item from TAVL tree with stack:: 660>
+  <*Note Steps 3 and 4 Update balance factors and rebalance after TAVL deletion with stack:: 665>
+
+  return (void *) item;
+}
+
+660. <Step 2: Delete item from TAVL tree, with stack 660> =
+if (p->tavl_tag[1] == TAVL_THREAD)
+  {
+    if (p->tavl_tag[0] == TAVL_CHILD)
+      {
+        <*Note Case 1 in TAVL deletion with stack:: 661>
+      }
+    else
+      {
+        <*Note Case 2 in TAVL deletion with stack:: 662>
+      }
+  }
+else
+  {
+    struct tavl_node *r = p->tavl_link[1];
+    if (r->tavl_tag[0] == TAVL_THREAD)
+      {
+        <*Note Case 3 in TAVL deletion with stack:: 663>
+      }
+    else
+      {
+        <*Note Case 4 in TAVL deletion with stack:: 664>
+      }
+  }
+
+tree->tavl_count--;
+tree->tavl_alloc->libavl_free (tree->tavl_alloc, p);
+
+This code is included in *Note 659: TAVL item deletion function with
+stack.
+
+661. <Case 1 in TAVL deletion, with stack 661> =
+struct tavl_node *r = p->tavl_link[0];
+while (r->tavl_tag[1] == TAVL_CHILD)
+  r = r->tavl_link[1];
+r->tavl_link[1] = p->tavl_link[1];
+pa[k - 1]->tavl_link[da[k - 1]] = p->tavl_link[0];
+
+This code is included in *Note 660: Step 2 Delete item from TAVL tree
+with stack.
+
+662. <Case 2 in TAVL deletion, with stack 662> =
+pa[k - 1]->tavl_link[da[k - 1]] = p->tavl_link[da[k - 1]];
+if (pa[k - 1] != (struct tavl_node *) &tree->tavl_root)
+  pa[k - 1]->tavl_tag[da[k - 1]] = TAVL_THREAD;
+
+This code is included in *Note 660: Step 2 Delete item from TAVL tree
+with stack.
+
+663. <Case 3 in TAVL deletion, with stack 663> =
+r->tavl_link[0] = p->tavl_link[0];
+r->tavl_tag[0] = p->tavl_tag[0];
+r->tavl_balance = p->tavl_balance;
+if (r->tavl_tag[0] == TAVL_CHILD)
+  {
+    struct tavl_node *x = r->tavl_link[0];
+    while (x->tavl_tag[1] == TAVL_CHILD)
+      x = x->tavl_link[1];
+    x->tavl_link[1] = r;
+  }
+pa[k - 1]->tavl_link[da[k - 1]] = r;
+da[k] = 1;
+pa[k++] = r;
+
+This code is included in *Note 660: Step 2 Delete item from TAVL tree
+with stack.
+
+664. <Case 4 in TAVL deletion, with stack 664> =
+struct tavl_node *s;
+int j = k++;
+
+for (;;)
+  {
+    da[k] = 0;
+    pa[k++] = r;
+    s = r->tavl_link[0];
+    if (s->tavl_tag[0] == TAVL_THREAD)
+      break;
+
+    r = s;
+  }
+
+da[j] = 1;
+pa[j] = pa[j - 1]->tavl_link[da[j - 1]] = s;
+
+if (s->tavl_tag[1] == TAVL_CHILD)
+  r->tavl_link[0] = s->tavl_link[1];
+else
+  {
+    r->tavl_link[0] = s;
+    r->tavl_tag[0] = TAVL_THREAD;
+  }
+
+s->tavl_balance = p->tavl_balance;
+
+s->tavl_link[0] = p->tavl_link[0];
+if (p->tavl_tag[0] == TAVL_CHILD)
+  {
+    struct tavl_node *x = p->tavl_link[0];
+    while (x->tavl_tag[1] == TAVL_CHILD)
+      x = x->tavl_link[1];
+    x->tavl_link[1] = s;
+
+    s->tavl_tag[0] = TAVL_CHILD;
+  }
+
+s->tavl_link[1] = p->tavl_link[1];
+s->tavl_tag[1] = TAVL_CHILD;
+
+This code is included in *Note 660: Step 2 Delete item from TAVL tree
+with stack.
+
+665. <Steps 3 and 4: Update balance factors and rebalance after TAVL deletion, with stack 665> =
+assert (k > 0);
+while (--k > 0)
+  {
+    struct tavl_node *y = pa[k];
+
+    if (da[k] == 0)
+      {
+        y->tavl_balance++;
+        if (y->tavl_balance == +1)
+          break;
+        else if (y->tavl_balance == +2)
+          {
+            <*Note Step 4 Rebalance after TAVL deletion with stack:: 666>
+          }
+      }
+    else
+      {
+        <*Note Steps 3 and 4 Symmetric case in TAVL deletion with stack:: 667>
+      }
+  }
+
+This code is included in *Note 659: TAVL item deletion function with
+stack.
+
+666. <Step 4: Rebalance after TAVL deletion, with stack 666> =
+struct tavl_node *x = y->tavl_link[1];
+assert (x != NULL);
+if (x->tavl_balance == -1)
+  {
+    struct tavl_node *w;
+
+    <*Note Rebalance for |-| balance factor in TAVL insertion in right subtree:: 310>
+    pa[k - 1]->tavl_link[da[k - 1]] = w;
+  }
+else if (x->tavl_balance == 0)
+  {
+    y->tavl_link[1] = x->tavl_link[0];
+    x->tavl_link[0] = y;
+    x->tavl_balance = -1;
+    y->tavl_balance = +1;
+    pa[k - 1]->tavl_link[da[k - 1]] = x;
+    break;
+  }
+else /* x->tavl_balance == +1 */
+  {
+    if (x->tavl_tag[0] == TAVL_CHILD)
+      y->tavl_link[1] = x->tavl_link[0];
+    else
+      {
+        y->tavl_tag[1] = TAVL_THREAD;
+        x->tavl_tag[0] = TAVL_CHILD;
+      }
+    x->tavl_link[0] = y;  
+    x->tavl_balance = y->tavl_balance = 0;
+    pa[k - 1]->tavl_link[da[k - 1]] = x;
+  }
+
+This code is included in *Note 665: Steps 3 and 4 Update balance
+factors and rebalance after TAVL deletion with stack.
+
+667. <Steps 3 and 4: Symmetric case in TAVL deletion, with stack 667> =
+y->tavl_balance--;
+if (y->tavl_balance == -1)
+  break;
+else if (y->tavl_balance == -2)
+  {
+    struct tavl_node *x = y->tavl_link[0];
+    assert (x != NULL);
+    if (x->tavl_balance == +1)
+      {
+        struct tavl_node *w;
+
+        <*Note Rebalance for |+| balance factor in TAVL insertion in left subtree:: 307>
+        pa[k - 1]->tavl_link[da[k - 1]] = w;
+      }
+    else if (x->tavl_balance == 0)
+      {
+        y->tavl_link[0] = x->tavl_link[1];
+        x->tavl_link[1] = y;
+        x->tavl_balance = +1;
+        y->tavl_balance = -1;
+        pa[k - 1]->tavl_link[da[k - 1]] = x;
+        break;
+      }
+    else /* x->tavl_balance == -1 */
+      {
+        if (x->tavl_tag[1] == TAVL_CHILD)
+          y->tavl_link[0] = x->tavl_link[1];
+        else
+          {
+            y->tavl_tag[0] = TAVL_THREAD;
+            x->tavl_tag[1] = TAVL_CHILD;
+          }
+        x->tavl_link[1] = y;
+        x->tavl_balance = y->tavl_balance = 0;
+        pa[k - 1]->tavl_link[da[k - 1]] = x;
+      }
+  }
+
+This code is included in *Note 665: Steps 3 and 4 Update balance
+factors and rebalance after TAVL deletion with stack.
+
+Chapter 10
+==========
+
+Section 10.3.3
+--------------
+
+1.  For a brief explanation of an algorithm similar to the one here, see
+*Note Inserting into a PRB tree::.
+
+668. <TRB item insertion function, without stack 668> =
+<*Note Find parent of a TBST node:: 327>
+
+void **
+trb_probe (struct trb_table *tree, void *item)
+{
+  struct trb_node *p; /* Traverses tree looking for insertion point. */
+  struct trb_node *n; /* Newly inserted node. */
+  int dir;            /* Side of p on which n is inserted. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search TBST for insertion point:: 255>
+  <*Note Step 2 Insert TRB node:: 339>
+  p = n;
+  for (;;)
+    {
+      struct trb_node *f, *g;
+
+      f = find_parent (tree, p);
+      if (f == (struct trb_node *) &tree->trb_root
+          || f->trb_color == TRB_BLACK)
+        break;
+
+      g = find_parent (tree, f);
+      if (g == (struct trb_node *) &tree->trb_root)
+        break;
+
+      if (g->trb_link[0] == f)
+        {
+          struct trb_node *y = g->trb_link[1];
+          if (g->trb_tag[1] == TRB_CHILD && y->trb_color == TRB_RED)
+            {
+              f->trb_color = y->trb_color = TRB_BLACK;
+              g->trb_color = TRB_RED;
+              p = g;
+            }
+          else
+            {
+              struct trb_node *c, *x;
+
+              if (f->trb_link[0] == p)
+                y = f;
+              else
+                {
+                  x = f;
+                  y = x->trb_link[1];
+                  x->trb_link[1] = y->trb_link[0];
+                  y->trb_link[0] = x;
+                  g->trb_link[0] = y;
+
+                  if (y->trb_tag[0] == TRB_THREAD)
+                    {
+                      y->trb_tag[0] = TRB_CHILD;
+                      x->trb_tag[1] = TRB_THREAD;
+                      x->trb_link[1] = y;
+                    }
+                }
+
+              c = find_parent (tree, g);
+              c->trb_link[c->trb_link[0] != g] = y;
+
+              x = g;
+              x->trb_color = TRB_RED;
+              y->trb_color = TRB_BLACK;
+
+              x->trb_link[0] = y->trb_link[1];
+              y->trb_link[1] = x;
+
+              if (y->trb_tag[1] == TRB_THREAD)
+                {
+                  y->trb_tag[1] = TRB_CHILD;
+                  x->trb_tag[0] = TRB_THREAD;
+                  x->trb_link[0] = y;
+                }
+              break;
+            }
+        }
+      else
+        {
+          struct trb_node *y = g->trb_link[0];
+          if (g->trb_tag[0] == TRB_CHILD && y->trb_color == TRB_RED)
+            {
+              f->trb_color = y->trb_color = TRB_BLACK;
+              g->trb_color = TRB_RED;
+              p = g;
+            }
+          else
+            {
+              struct trb_node *c, *x;
+
+              if (f->trb_link[1] == p)
+                y = f;
+              else
+                {
+                  x = f;
+                  y = x->trb_link[0];
+                  x->trb_link[0] = y->trb_link[1];
+                  y->trb_link[1] = x;
+                  g->trb_link[1] = y;
+
+                  if (y->trb_tag[1] == TRB_THREAD)
+                    {
+                      y->trb_tag[1] = TRB_CHILD;
+                      x->trb_tag[0] = TRB_THREAD;
+                      x->trb_link[0] = y;
+                    }
+                }
+
+              c = find_parent (tree, g);
+              c->trb_link[c->trb_link[0] != g] = y;
+
+              x = g;
+              x->trb_color = TRB_RED;
+              y->trb_color = TRB_BLACK;
+
+              x->trb_link[1] = y->trb_link[0];
+              y->trb_link[0] = x;
+
+              if (y->trb_tag[0] == TRB_THREAD)
+                {
+                  y->trb_tag[0] = TRB_CHILD;
+                  x->trb_tag[1] = TRB_THREAD;
+                  x->trb_link[1] = y;
+                }
+              break;
+            }
+        }
+    }
+  tree->trb_root->trb_color = TRB_BLACK;
+
+  return &n->trb_data;
+}
+
+Section 10.4.2
+--------------
+
+1.
+
+669. <Case 4 in TRB deletion, alternate version 669> =
+struct trb_node *s;
+
+da[k] = 1;
+pa[k++] = p;
+for (;;)
+  {
+    da[k] = 0;
+    pa[k++] = r;
+    s = r->trb_link[0];
+    if (s->trb_tag[0] == TRB_THREAD)
+      break;
+
+    r = s;
+  }
+
+p->trb_data = s->trb_data;
+
+if (s->trb_tag[1] == TRB_THREAD)
+  {
+    r->trb_tag[0] = TRB_THREAD;
+    r->trb_link[0] = p;
+  }
+else
+  {
+    struct trb_node *t = r->trb_link[0] = s->trb_link[1];
+    while (t->trb_tag[0] == TRB_CHILD)
+      t = t->trb_link[0];
+    t->trb_link[0] = p;
+  }
+
+p = s;
+
+Section 10.4.5
+--------------
+
+1.  The code used in the rebalancing loop is related to <*Note Step 3
+Rebalance tree after PRB deletion:: 571>.  Variable x is initialized by
+step 2 here, though, because otherwise the pseudo-root node would be
+required to have a trb_tag[] member.
+
+670. <TRB item deletion function, without stack 670> =
+<*Note Find parent of a TBST node:: 327>
+
+void *
+trb_delete (struct trb_table *tree, const void *item)
+{
+  struct trb_node *p; /* Node to delete. */
+  struct trb_node *q; /* Parent of p. */
+
+  struct trb_node *x; /* Node we might want to recolor red (maybe NULL). */
+  struct trb_node *f; /* Parent of x. */
+  struct trb_node *g; /* Parent of f. */
+
+  int dir, cmp;
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search TAVL tree for item to delete:: 312>
+  if (p->trb_tag[1] == TRB_THREAD)
+    {
+      if (p->trb_tag[0] == TRB_CHILD)
+        {
+          struct trb_node *t = p->trb_link[0];
+          while (t->trb_tag[1] == TRB_CHILD)
+            t = t->trb_link[1];
+          t->trb_link[1] = p->trb_link[1];
+          x = q->trb_link[dir] = p->trb_link[0];
+        }
+      else
+        {
+          q->trb_link[dir] = p->trb_link[dir];
+          if (q != (struct trb_node *) &tree->trb_root)
+            q->trb_tag[dir] = TRB_THREAD;
+          x = NULL;
+        }
+      f = q;
+    }
+  else
+    {
+      enum trb_color t;
+      struct trb_node *r = p->trb_link[1];
+
+      if (r->trb_tag[0] == TRB_THREAD)
+        {
+          r->trb_link[0] = p->trb_link[0];
+          r->trb_tag[0] = p->trb_tag[0];
+          if (r->trb_tag[0] == TRB_CHILD)
+            {
+              struct trb_node *t = r->trb_link[0];
+              while (t->trb_tag[1] == TRB_CHILD)
+                t = t->trb_link[1];
+              t->trb_link[1] = r;
+            }
+          q->trb_link[dir] = r;
+          x = r->trb_tag[1] == TRB_CHILD ? r->trb_link[1] : NULL;
+          t = r->trb_color;
+          r->trb_color = p->trb_color;
+          p->trb_color = t;
+          f = r;
+          dir = 1;
+        }
+      else
+        {
+          struct trb_node *s;
+
+          for (;;)
+            {
+              s = r->trb_link[0];
+              if (s->trb_tag[0] == TRB_THREAD)
+                break;
+
+              r = s;
+            }
+
+          if (s->trb_tag[1] == TRB_CHILD)
+            x = r->trb_link[0] = s->trb_link[1];
+          else
+            {
+              r->trb_link[0] = s;
+              r->trb_tag[0] = TRB_THREAD;
+              x = NULL;
+            }
+
+          s->trb_link[0] = p->trb_link[0];
+          if (p->trb_tag[0] == TRB_CHILD)
+            {
+              struct trb_node *t = p->trb_link[0];
+              while (t->trb_tag[1] == TRB_CHILD)
+                t = t->trb_link[1];
+              t->trb_link[1] = s;
+
+              s->trb_tag[0] = TRB_CHILD;
+            }
+
+          s->trb_link[1] = p->trb_link[1];
+          s->trb_tag[1] = TRB_CHILD;
+
+          t = s->trb_color;
+          s->trb_color = p->trb_color;
+          p->trb_color = t;
+
+          q->trb_link[dir] = s;
+          f = r;
+          dir = 0;
+        }
+    }
+
+  if (p->trb_color == TRB_BLACK)
+    {
+      for (;;)
+        {
+          if (x != NULL && x->trb_color == TRB_RED)
+            {
+              x->trb_color = TRB_BLACK;
+              break;
+            }
+          if (f == (struct trb_node *) &tree->trb_root)
+            break;
+
+          g = find_parent (tree, f);
+
+          if (dir == 0)
+            {
+              struct trb_node *w = f->trb_link[1];
+
+              if (w->trb_color == TRB_RED)
+                {
+                  w->trb_color = TRB_BLACK;
+                  f->trb_color = TRB_RED;
+
+                  f->trb_link[1] = w->trb_link[0];
+                  w->trb_link[0] = f;
+                  g->trb_link[g->trb_link[0] != f] = w;
+
+                  g = w;
+                  w = f->trb_link[1];
+                }
+
+              if ((w->trb_tag[0] == TRB_THREAD
+                   || w->trb_link[0]->trb_color == TRB_BLACK)
+                  && (w->trb_tag[1] == TRB_THREAD
+                      || w->trb_link[1]->trb_color == TRB_BLACK))
+                w->trb_color = TRB_RED;
+              else
+                {
+                  if (w->trb_tag[1] == TRB_THREAD
+                      || w->trb_link[1]->trb_color == TRB_BLACK)
+                    {
+                      struct trb_node *y = w->trb_link[0];
+                      y->trb_color = TRB_BLACK;
+                      w->trb_color = TRB_RED;
+                      w->trb_link[0] = y->trb_link[1];
+                      y->trb_link[1] = w;
+                      w = f->trb_link[1] = y;
+
+                      if (w->trb_tag[1] == TRB_THREAD)
+                        {
+                          w->trb_tag[1] = TRB_CHILD;
+                          w->trb_link[1]->trb_tag[0] = TRB_THREAD;
+                          w->trb_link[1]->trb_link[0] = w;
+                        }
+                    }
+
+                  w->trb_color = f->trb_color;
+                  f->trb_color = TRB_BLACK;
+                  w->trb_link[1]->trb_color = TRB_BLACK;
+
+                  f->trb_link[1] = w->trb_link[0];
+                  w->trb_link[0] = f;
+                  g->trb_link[g->trb_link[0] != f] = w;
+
+                  if (w->trb_tag[0] == TRB_THREAD)
+                    {
+                      w->trb_tag[0] = TRB_CHILD;
+                      f->trb_tag[1] = TRB_THREAD;
+                      f->trb_link[1] = w;
+                    }
+                  break;
+                }
+            }
+          else
+            {
+              struct trb_node *w = f->trb_link[0];
+
+              if (w->trb_color == TRB_RED)
+                {
+                  w->trb_color = TRB_BLACK;
+                  f->trb_color = TRB_RED;
+
+                  f->trb_link[0] = w->trb_link[1];
+                  w->trb_link[1] = f;
+                  g->trb_link[g->trb_link[0] != f] = w;
+
+                  g = w;
+                  w = f->trb_link[0];
+                }
+
+              if ((w->trb_tag[0] == TRB_THREAD
+                   || w->trb_link[0]->trb_color == TRB_BLACK)
+                  && (w->trb_tag[1] == TRB_THREAD
+                      || w->trb_link[1]->trb_color == TRB_BLACK))
+                w->trb_color = TRB_RED;
+              else
+                {
+                  if (w->trb_tag[0] == TRB_THREAD
+                      || w->trb_link[0]->trb_color == TRB_BLACK)
+                    {
+                      struct trb_node *y = w->trb_link[1];
+                      y->trb_color = TRB_BLACK;
+                      w->trb_color = TRB_RED;
+                      w->trb_link[1] = y->trb_link[0];
+                      y->trb_link[0] = w;
+                      w = f->trb_link[0] = y;
+
+                      if (w->trb_tag[0] == TRB_THREAD)
+                        {
+                          w->trb_tag[0] = TRB_CHILD;
+                          w->trb_link[0]->trb_tag[1] = TRB_THREAD;
+                          w->trb_link[0]->trb_link[1] = w;
+                        }
+                    }
+
+                  w->trb_color = f->trb_color;
+                  f->trb_color = TRB_BLACK;
+                  w->trb_link[0]->trb_color = TRB_BLACK;
+
+                  f->trb_link[0] = w->trb_link[1];
+                  w->trb_link[1] = f;
+                  g->trb_link[g->trb_link[0] != f] = w;
+
+                  if (w->trb_tag[1] == TRB_THREAD)
+                    {
+                      w->trb_tag[1] = TRB_CHILD;
+                      f->trb_tag[0] = TRB_THREAD;
+                      f->trb_link[0] = w;
+                    }
+                  break;
+                }
+            }
+
+          x = f;
+          f = find_parent (tree, x);
+          if (f == (struct trb_node *) &tree->trb_root)
+            break;
+
+          dir = f->trb_link[0] != x;
+        }
+    }
+
+  tree->trb_alloc->libavl_free (tree->trb_alloc, p);
+  tree->trb_count--;
+  return (void *) item;
+}
+
+Chapter 11
+==========
+
+1.  If we already have right-threaded trees, then we can get the
+benefits of a left-threaded tree just by reversing the sense of the
+comparison function, so there is no additional benefit to left-threaded
+trees.
+
+Section 11.5.1
+--------------
+
+1.
+
+671. <Case 4 in right-looking RTBST deletion, alternate version 671> =
+struct rtbst_node *s = r->rtbst_link[0];
+while (s->rtbst_link[0] != NULL)
+  {
+    r = s;
+    s = r->rtbst_link[0];
+  }
+
+p->rtbst_data = s->rtbst_data;
+
+if (s->rtbst_rtag == RTBST_THREAD)
+  r->rtbst_link[0] = NULL;
+else
+  r->rtbst_link[0] = s->rtbst_link[1];
+
+p = s;
+
+Section 11.5.2
+--------------
+
+1.  This alternate version is not really an improvement: it runs up
+against the same problem as right-looking deletion, so it sometimes
+needs to search for a predecessor.
+
+672. <Case 4 in left-looking RTBST deletion, alternate version 672> =
+struct rtbst_node *s = r->rtbst_link[1];
+while (s->rtbst_rtag == RTBST_CHILD)
+  {
+    r = s;
+    s = r->rtbst_link[1];
+  }
+
+p->rtbst_data = s->rtbst_data;
+
+if (s->rtbst_link[0] != NULL)
+  {
+    struct rtbst_node *t = s->rtbst_link[0];
+    while (t->rtbst_rtag == RTBST_CHILD)
+      t = t->rtbst_link[1];
+    t->rtbst_link[1] = p;
+    r->rtbst_link[1] = s->rtbst_link[0];
+  }
+else
+  {
+    r->rtbst_link[1] = p;
+    r->rtbst_rtag = RTBST_THREAD;
+  }
+
+p = s;
+
+Chapter 12
+==========
+
+Section 12.3
+------------
+
+1.
+
+/* Rotates right at *yp. */
+static void
+rotate_right (struct rtbst_node **yp)
+{
+  struct rtbst_node *y = *yp;
+  struct rtbst_node *x = y->rtbst_link[0];
+  if (x->rtbst_rtag[1] == RTBST_THREAD)
+    {
+      x->rtbst_rtag = RTBST_CHILD;
+      y->rtbst_link[0] = NULL;
+    }
+  else
+    y->rtbst_link[0] = x->rtbst_link[1];
+  x->rtbst_link[1] = y;
+  *yp = x;
+}
+
+/* Rotates left at *xp. */
+static void
+rotate_left (struct rtbst_node **xp)
+{
+  struct rtbst_node *x = *xp;
+  struct rtbst_node *y = x->rtbst_link[1];
+  if (y->rtbst_link[0] == NULL)
+    {
+      x->rtbst_rtag = RTBST_THREAD;
+      x->rtbst_link[1] = y;
+    }
+  else
+    x->rtbst_link[1] = y->rtbst_link[0];
+  y->rtbst_link[0] = x;
+  *xp = y;
+}
+
+Section 12.5.4
+--------------
+
+1.  There is no general efficient algorithm to find the parent of a
+node in an RTAVL tree.  The lack of left threads means that half the
+time we must do a full search from the top of the tree.  This would
+increase the execution time for deletion unacceptably.
+
+2.
+
+673. <Step 2: Delete RTAVL node, right-looking 673> =
+if (p->rtavl_rtag == RTAVL_THREAD)
+  {
+    if (p->rtavl_link[0] != NULL)
+      {
+        <*Note Case 1 in RTAVL deletion right-looking:: 674>
+      }
+    else
+      {
+        <*Note Case 2 in RTAVL deletion right-looking:: 675>
+      }
+  }
+else
+  {
+    struct rtavl_node *r = p->rtavl_link[1];
+    if (r->rtavl_link[0] == NULL)
+      {
+        <*Note Case 3 in RTAVL deletion right-looking:: 676>
+      }
+    else
+      {
+        <*Note Case 4 in RTAVL deletion right-looking:: 677>
+      }
+  }
+
+tree->rtavl_alloc->libavl_free (tree->rtavl_alloc, p);
+
+674. <Case 1 in RTAVL deletion, right-looking 674> =
+struct rtavl_node *t = p->rtavl_link[0];
+while (t->rtavl_rtag == RTAVL_CHILD)
+  t = t->rtavl_link[1];
+t->rtavl_link[1] = p->rtavl_link[1];
+pa[k - 1]->rtavl_link[da[k - 1]] = p->rtavl_link[0];
+
+This code is included in *Note 673: Step 2 Delete RTAVL node
+right-looking.
+
+675. <Case 2 in RTAVL deletion, right-looking 675> =
+pa[k - 1]->rtavl_link[da[k - 1]] = p->rtavl_link[da[k - 1]];
+if (da[k - 1] == 1)
+  pa[k - 1]->rtavl_rtag = RTAVL_THREAD;
+
+This code is included in *Note 673: Step 2 Delete RTAVL node
+right-looking.
+
+676. <Case 3 in RTAVL deletion, right-looking 676> =
+r->rtavl_link[0] = p->rtavl_link[0];
+if (r->rtavl_link[0] != NULL)
+  {
+    struct rtavl_node *t = r->rtavl_link[0];
+    while (t->rtavl_rtag == RTAVL_CHILD)
+      t = t->rtavl_link[1];
+    t->rtavl_link[1] = r;
+  }
+pa[k - 1]->rtavl_link[da[k - 1]] = r;
+r->rtavl_balance = p->rtavl_balance;
+da[k] = 1;
+pa[k++] = r;
+
+This code is included in *Note 673: Step 2 Delete RTAVL node
+right-looking.
+
+677. <Case 4 in RTAVL deletion, right-looking 677> =
+struct rtavl_node *s;
+int j = k++;
+
+for (;;)
+  {
+    da[k] = 0;
+    pa[k++] = r;
+    s = r->rtavl_link[0];
+    if (s->rtavl_link[0] == NULL)
+      break;
+
+    r = s;
+  }
+
+da[j] = 1;
+pa[j] = pa[j - 1]->rtavl_link[da[j - 1]] = s;
+
+if (s->rtavl_rtag == RTAVL_CHILD)
+  r->rtavl_link[0] = s->rtavl_link[1];
+else
+  r->rtavl_link[0] = NULL;
+
+if (p->rtavl_link[0] != NULL)
+  {
+    struct rtavl_node *t = p->rtavl_link[0];
+    while (t->rtavl_rtag == RTAVL_CHILD)
+      t = t->rtavl_link[1];
+    t->rtavl_link[1] = s;
+  }
+
+s->rtavl_link[0] = p->rtavl_link[0];
+s->rtavl_link[1] = p->rtavl_link[1];
+s->rtavl_rtag = RTAVL_CHILD;
+s->rtavl_balance = p->rtavl_balance;
+
+This code is included in *Note 673: Step 2 Delete RTAVL node
+right-looking.
+
+3.
+
+678. <Case 4 in RTAVL deletion, alternate version 678> =
+struct rtavl_node *s;
+
+da[k] = 0;
+pa[k++] = p;
+for (;;)
+  {
+    da[k] = 1;
+    pa[k++] = r;
+    s = r->rtavl_link[1];
+    if (s->rtavl_rtag == RTAVL_THREAD)
+      break;
+    r = s;
+  }
+
+if (s->rtavl_link[0] != NULL)
+  {
+    struct rtavl_node *t = s->rtavl_link[0];
+    while (t->rtavl_rtag == RTAVL_CHILD)
+      t = t->rtavl_link[1];
+    t->rtavl_link[1] = p;
+  }
+
+p->rtavl_data = s->rtavl_data;
+if (s->rtavl_link[0] != NULL)
+  r->rtavl_link[1] = s->rtavl_link[0];
+else
+  {
+    r->rtavl_rtag = RTAVL_THREAD;
+    r->rtavl_link[1] = p;
+  }
+
+p = s;
+
+Chapter 14
+==========
+
+Section 14.4
+------------
+
+1.  No.  It would work, except for the important special case where q is
+the pseudo-root but p->pbst_parent is NULL.
+
+Section 14.7
+------------
+
+1.
+
+679. <PBST balance function, with integrated parent updates 679> =
+<*Note BST to vine function:: 89>
+<*Note Vine to balanced PBST function with parent updates:: 680>
+
+void
+pbst_balance (struct pbst_table *tree)
+{
+  assert (tree != NULL);
+
+  tree_to_vine (tree);
+  vine_to_tree (tree);
+}
+
+680. <Vine to balanced PBST function, with parent updates 680> =
+<*Note PBST compression function:: 682>
+
+static void
+vine_to_tree (struct pbst_table *tree)
+{
+  unsigned long vine;      /* Number of nodes in main vine. */
+  unsigned long leaves;    /* Nodes in incomplete bottom level, if any. */
+  int height;              /* Height of produced balanced tree. */
+  struct pbst_node *p, *q; /* Current visited node and its parent. */
+
+  <*Note Calculate |leaves|:: 91>
+  <*Note Reduce vine general case to special case:: 92>
+  <*Note Make special case vine into balanced tree and count height:: 93>
+  <*Note Set parents of main vine:: 681>
+}
+
+This code is included in *Note 679: PBST balance function with
+integrated parent updates.
+
+681. <Set parents of main vine 681> =
+for (q = NULL, p = tree->pbst_root; p != NULL; q = p, p = p->pbst_link[0])
+  p->pbst_parent = q;
+
+This code is included in *Note 680: Vine to balanced PBST function with
+parent updates.
+
+682. <PBST compression function 682> =
+static void
+compress (struct pbst_node *root, unsigned long count)
+{
+  assert (root != NULL);
+
+  while (count--)
+    {
+      struct pbst_node *red = root->pbst_link[0];
+      struct pbst_node *black = red->pbst_link[0];
+
+      root->pbst_link[0] = black;
+      red->pbst_link[0] = black->pbst_link[1];
+      black->pbst_link[1] = red;
+      red->pbst_parent = black;
+      if (red->pbst_link[0] != NULL)
+        red->pbst_link[0]->pbst_parent = red;
+      root = black;
+    }
+}
+
+This code is included in *Note 680: Vine to balanced PBST function with
+parent updates.
+
+Chapter 15
+==========
+
+Section 15.2
+------------
+
+1.
+
+/* Rotates right at *yp. */
+static void
+rotate_right (struct pbst_node **yp)
+{
+  struct pbst_node *y = *yp;
+  struct pbst_node *x = y->pbst_link[0];
+  y->pbst_link[0] = x->pbst_link[1];
+  x->pbst_link[1] = y;
+  *yp = x;
+  x->pbst_parent = y->pbst_parent;
+  y->pbst_parent = x;
+  if (y->pbst_link[0] != NULL)
+    y->pbst_link[0]->pbst_parent = y;
+}
+
+/* Rotates left at *xp. */
+static void
+rotate_left (struct pbst_node **xp)
+{
+  struct pbst_node *x = *xp;
+  struct pbst_node *y = x->pbst_link[1];
+  x->pbst_link[1] = y->pbst_link[0];
+  y->pbst_link[0] = x;
+  *xp = y;
+  y->pbst_parent = x->pbst_parent;
+  x->pbst_parent = y;
+  if (x->pbst_link[1] != NULL)
+    x->pbst_link[1]->pbst_parent = x;
+}
+
+Section 15.4.2
+--------------
+
+1.  Yes.  Both code segments update the nodes along the direct path from
+y down to n, including node y but not node n.  The plain AVL code
+excluded node n by updating nodes as it moved down to them and making
+arrival at node n the loop's termination condition.  The PAVL code
+excludes node n by starting at it but updating the parent of each
+visited node instead of the node itself.
+
+   There still could be a problem at the edge case where no nodes'
+balance factors were to be updated, but there is no such case.  There
+is always at least one balance factor to update, because every inserted
+node has a parent whose balance factor is affected by its insertion.
+The one exception would be the first node inserted into an empty tree,
+but that was already handled as a special case.
+
+2.  Sure.  There is no parallel to Exercise 6.4.4-4 because q is never
+the pseudo-root.
+

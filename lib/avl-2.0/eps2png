@@ -1,0 +1,23 @@
+#! /usr/bin/perl
+
+$res = 100;
+
+open (EPS, $ARGV[0]);
+while (<EPS>) {
+    (($llx, $lly, $urx, $ury) = /^%%BoundingBox:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/) && last;
+}
+close EPS;
+
+defined ($llx) || die "couldn't find bounding box\n";
+
+$w = int (($urx - $llx) / 72 * $res);
+$h = int (($ury - $lly) / 72 * $res);
+open (EPS, $ARGV[0]);
+open (GS, "|gs -q -r$res -g${w}x${h} -sDEVICE=pngmono -sOutputFile=$ARGV[1] -dNOPAUSE -");
+print GS "-$llx -$lly translate\n";
+while (<EPS>) {
+    print GS $_;
+}
+print GS "quit\n";
+close GS;
+close EPS;

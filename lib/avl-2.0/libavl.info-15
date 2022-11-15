@@ -1,0 +1,1760 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: PRB Operations,  Next: Inserting into a PRB tree,  Prev: PRB Data Types,  Up: Red-Black Trees with Parent Pointers
+
+15.2 Operations
+===============
+
+   Most of the PRB operations use the same implementations as did PAVL
+trees in the last chapter.  The PAVL copy function is modified to copy
+colors instead of balance factors.  The item insertion and deletion
+functions must be newly written, of course.
+
+554. <PRB functions 554> =
+<*Note TBST creation function:: 252>
+<*Note BST search function:: 31>
+<*Note PRB item insertion function:: 555>
+<*Note Table insertion convenience functions:: 592>
+<*Note PRB item deletion function:: 566>
+<*Note PAVL traversal functions:: 546>
+<*Note PAVL copy function:: 547>
+<*Note BST destruction function:: 84>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 552: prbc.
+
+
+File: libavl.info,  Node: Inserting into a PRB tree,  Next: Deleting from a PRB Tree,  Prev: PRB Operations,  Up: Red-Black Trees with Parent Pointers
+
+15.3 Insertion
+==============
+
+   Inserting into a red-black tree is a problem whose form of solution
+should by now be familiar to the reader.  We must now update parent
+pointers, of course, but the major difference here is that it is fast
+and easy to find the parent of any given node, eliminating any need for
+a stack.
+
+   Here's the function outline.  The code for finding the insertion
+point is taken directly from the PBST code:
+
+555. <PRB item insertion function 555> =
+void **
+prb_probe (struct prb_table *tree, void *item)
+{
+  struct prb_node *p; /* Traverses tree looking for insertion point. */
+  struct prb_node *q; /* Parent of p; node at which we are rebalancing. */
+  struct prb_node *n; /* Newly inserted node. */
+  int dir;            /* Side of q on which n is inserted. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search PBST tree for insertion point:: 491>
+  <*Note Step 2 Insert PRB node:: 556>
+  <*Note Step 3 Rebalance after PRB insertion:: 557>
+
+  return &n->prb_data;
+}
+
+This code is included in *Note 554: PRB functions.
+
+See also:  *Note Cormen 1990::, section 14.3.
+
+* Menu:
+
+* Step 2 in PRB Insertion::
+* Step 3 in PRB Insertion::
+* PRB insertion symmetric case::
+
+
+File: libavl.info,  Node: Step 2 in PRB Insertion,  Next: Step 3 in PRB Insertion,  Prev: Inserting into a PRB tree,  Up: Inserting into a PRB tree
+
+15.3.1 Step 2: Insert
+---------------------
+
+   The code to do the insertion is based on that for PBSTs.  We need
+only add initialization of the new node's color.
+
+556. <Step 2: Insert PRB node 556> =
+<*Note Step 2 Insert PBST node:: 492>
+n->prb_color = PRB_RED;
+
+This code is included in *Note 555: PRB item insertion function.
+
+
+File: libavl.info,  Node: Step 3 in PRB Insertion,  Next: PRB insertion symmetric case,  Prev: Step 2 in PRB Insertion,  Up: Inserting into a PRB tree
+
+15.3.2 Step 3: Rebalance
+------------------------
+
+   When we rebalanced ordinary RB trees, we used the expressions pa[k -
+1] and pa[k - 2] to refer to the parent and grandparent, respectively,
+of the node at which we were rebalancing, and we called that node q,
+though that wasn't a variable name (*note Inserting an RB node step 3 -
+Rebalance::).  Now that we have parent pointers, we use a real variable
+q to refer to the node where we're rebalancing.
+
+   This means that we could refer to its parent and grandparent as
+q->prb_parent and q->prb_parent->prb_parent, respectively, but there's
+a small problem with that.  During rebalancing, we will need to move
+nodes around and modify parent pointers.  That means that q->prb_parent
+and q->prb_parent->prb_parent will be changing under us as we work.
+This makes writing correct code hard, and reading it even harder.  It
+is much easier to use a pair of new variables to hold q's parent and
+grandparent.
+
+   That's exactly the role that f and g, respectively, play in the code
+below.  If you compare this code to <*Note Step 3 Rebalance after RB
+insertion:: 201>, you'll also notice the way that checking that f and g
+are non-null corresponds to checking that the stack height is at least
+3 (see Exercise 7.4.3-1 for an explanation of the reason this is a valid
+test).
+
+557. <Step 3: Rebalance after PRB insertion 557> =
+q = n;
+for (;;)
+  {
+    struct prb_node *f; /* Parent of q. */
+    struct prb_node *g; /* Grandparent of q. */
+
+    f = q->prb_parent;
+    if (f == NULL || f->prb_color == PRB_BLACK)
+      break;
+
+    g = f->prb_parent;
+    if (g == NULL)
+      break;
+
+    if (g->prb_link[0] == f)
+      {
+        <*Note Left-side rebalancing after PRB insertion:: 558>
+      }
+    else
+      {
+        <*Note Right-side rebalancing after PRB insertion:: 562>
+      }
+  }
+tree->prb_root->prb_color = PRB_BLACK;
+
+This code is included in *Note 555: PRB item insertion function.
+
+   After replacing pa[k - 1] by f and pa[k - 2] by g, the cases for PRB
+rebalancing are distinguished on the same basis as those for RB
+rebalancing (see <*Note Left-side rebalancing after RB insertion::
+202>).  One addition: cases 2 and 3 need to work with q's
+great-grandparent, so they stash it into a new variable h.
+
+558. <Left-side rebalancing after PRB insertion 558> =
+struct prb_node *y = g->prb_link[1];
+if (y != NULL && y->prb_color == PRB_RED) 
+  {
+    <*Note Case 1 in left-side PRB insertion rebalancing:: 559>
+  }
+else
+  {
+    struct prb_node *h; /* Great-grandparent of q. */
+
+    h = g->prb_parent;
+    if (h == NULL)
+      h = (struct prb_node *) &tree->prb_root;
+
+    if (f->prb_link[1] == q)
+      {
+        <*Note Case 3 in left-side PRB insertion rebalancing:: 561>
+      }
+
+    <*Note Case 2 in left-side PRB insertion rebalancing:: 560>
+    break;
+  }
+
+This code is included in *Note 557: Step 3 Rebalance after PRB
+insertion.
+
+Case 1: q's uncle is red
+........................
+
+   In this case, as before, we need only rearrange colors (*note
+rbinscase1::).  Instead of popping the top two items off the stack, we
+directly set up q, the next node at which to rebalance, to be the
+(former) grandparent of the original q.
+
+                         |                         |
+                         g                         g
+                        <b>                       <r>
+                    _.-'   `_                 _.-'   `_
+                    f         y               f         y
+                   <r>       <r>   =>        <b>       <b>
+               _.-'   \     /   \        _.-'   \     /   \
+               q       c   d     e       q       c   d     e
+              <r>                       <r>
+             /   \                     /   \
+            a     b                   a     b
+559. <Case 1 in left-side PRB insertion rebalancing 559> =
+f->prb_color = y->prb_color = PRB_BLACK;
+g->prb_color = PRB_RED;
+q = g;
+
+This code is included in *Note 558: Left-side rebalancing after PRB
+insertion.
+
+Case 2: q is the left child of its parent
+.........................................
+
+   If q is the left child of its parent, we rotate right at g:
+
+                              |
+                              g               |
+                             <b>              f
+                         _.-'   \            <b>
+                         f       d       _.-'   `_
+                        <r>        =>    q         g
+                    _.-'   \            <r>       <r>
+                    q       c          /   \     /   \
+                   <r>                a     b   c     d
+                  /   \
+                 a     b
+
+The result satisfies both RB balancing rules.  Refer back to the
+discussion of the same case in ordinary RB trees for more details
+(*note rbinscase2::).
+
+560. <Case 2 in left-side PRB insertion rebalancing 560> =
+g->prb_color = PRB_RED;
+f->prb_color = PRB_BLACK;
+
+g->prb_link[0] = f->prb_link[1];
+f->prb_link[1] = g;
+h->prb_link[h->prb_link[0] != g] = f;
+
+f->prb_parent = g->prb_parent;
+g->prb_parent = f;
+if (g->prb_link[0] != NULL)
+  g->prb_link[0]->prb_parent = g;
+
+This code is included in *Note 558: Left-side rebalancing after PRB
+insertion.
+
+Case 3: q is the right child of its parent
+..........................................
+
+   If q is a right child, then we transform it into case 2 by rotating
+left at f:
+
+                              |                    |
+                              g                    g
+                             <b>                  <b>
+                    ___...--'   \             _.-'   \
+                    f            d            q       d
+                   <r>             =>        <r>
+                  /   `_                 _.-'   \
+                 a       q               f       c
+                        <r>             <r>
+                       /   \           /   \
+                      b     c         a     b
+
+Afterward we relabel q as f and treat the result as case 2.  There is
+no need to properly set q itself because case 2 never uses variable q.
+For more details, refer back to case 3 in ordinary RB trees (*note
+rbinscase3::).
+
+561. <Case 3 in left-side PRB insertion rebalancing 561> =
+f->prb_link[1] = q->prb_link[0];
+q->prb_link[0] = f;
+g->prb_link[0] = q;
+f->prb_parent = q;
+if (f->prb_link[1] != NULL)
+  f->prb_link[1]->prb_parent = f;
+
+f = q;
+
+This code is included in *Note 558: Left-side rebalancing after PRB
+insertion.
+
+
+File: libavl.info,  Node: PRB insertion symmetric case,  Prev: Step 3 in PRB Insertion,  Up: Inserting into a PRB tree
+
+15.3.3 Symmetric Case
+---------------------
+
+562. <Right-side rebalancing after PRB insertion 562> =
+struct prb_node *y = g->prb_link[0];
+if (y != NULL && y->prb_color == PRB_RED)
+  {
+    <*Note Case 1 in right-side PRB insertion rebalancing:: 563>
+  }
+else
+  {
+    struct prb_node *h; /* Great-grandparent of q. */
+
+    h = g->prb_parent;
+    if (h == NULL)
+      h = (struct prb_node *) &tree->prb_root;
+
+    if (f->prb_link[0] == q)
+      {
+        <*Note Case 3 in right-side PRB insertion rebalancing:: 565>
+      }
+
+    <*Note Case 2 in right-side PRB insertion rebalancing:: 564>
+    break;
+  }
+
+This code is included in *Note 557: Step 3 Rebalance after PRB
+insertion.
+
+563. <Case 1 in right-side PRB insertion rebalancing 563> =
+f->prb_color = y->prb_color = PRB_BLACK;
+g->prb_color = PRB_RED;
+q = g;
+
+This code is included in *Note 562: Right-side rebalancing after PRB
+insertion.
+
+564. <Case 2 in right-side PRB insertion rebalancing 564> =
+g->prb_color = PRB_RED;
+f->prb_color = PRB_BLACK;
+
+g->prb_link[1] = f->prb_link[0];
+f->prb_link[0] = g;
+h->prb_link[h->prb_link[0] != g] = f;
+
+f->prb_parent = g->prb_parent;
+g->prb_parent = f;
+if (g->prb_link[1] != NULL)
+  g->prb_link[1]->prb_parent = g;
+
+This code is included in *Note 562: Right-side rebalancing after PRB
+insertion.
+
+565. <Case 3 in right-side PRB insertion rebalancing 565> =
+f->prb_link[0] = q->prb_link[1];
+q->prb_link[1] = f;
+g->prb_link[1] = q;
+f->prb_parent = q;
+if (f->prb_link[0] != NULL)
+  f->prb_link[0]->prb_parent = f;
+
+f = q;
+
+This code is included in *Note 562: Right-side rebalancing after PRB
+insertion.
+
+
+File: libavl.info,  Node: Deleting from a PRB Tree,  Next: Testing PRB Trees,  Prev: Inserting into a PRB tree,  Up: Red-Black Trees with Parent Pointers
+
+15.4 Deletion
+=============
+
+   The RB item deletion algorithm needs the same kind of changes to
+handle parent pointers that the RB item insertion algorithm did.  We
+can reuse the code from PBST trees for finding the node to delete.  The
+rest of the code will be presented in the following sections.
+
+566. <PRB item deletion function 566> =
+void *
+prb_delete (struct prb_table *tree, const void *item)
+{
+  struct prb_node *p; /* Node to delete. */
+  struct prb_node *q; /* Parent of p. */
+  struct prb_node *f; /* Node at which we are rebalancing. */
+  int dir;            /* Side of q on which p is a child;
+                         side of f from which node was deleted. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Find PBST node to delete:: 494>
+  <*Note Step 2 Delete item from PRB tree:: 567>
+  <*Note Step 3 Rebalance tree after PRB deletion:: 571>
+  <*Note Step 4 Finish up after PRB deletion:: 577>
+}
+
+This code is included in *Note 554: PRB functions.
+
+See also:  *Note Cormen 1990::, section 14.4.
+
+* Menu:
+
+* Deleting a PRB node step 2 - Delete::
+* Deleting a PRB node step 3 - Rebalance::
+* Deleting a PRB node step 4 - Finish up::
+* PRB deletion symmetric case::
+
+
+File: libavl.info,  Node: Deleting a PRB node step 2 - Delete,  Next: Deleting a PRB node step 3 - Rebalance,  Prev: Deleting from a PRB Tree,  Up: Deleting from a PRB Tree
+
+15.4.1 Step 2: Delete
+---------------------
+
+   The goal of this step is to remove p from the tree and set up f as
+the node where rebalancing should start.  Secondarily, we set dir as
+the side of f from which the node was deleted.  Together, f and dir
+fill the role that the top-of-stack entries in pa[] and da[] took in
+ordinary RB deletion.
+
+567. <Step 2: Delete item from PRB tree 567> =
+if (p->prb_link[1] == NULL)
+  {
+    <*Note Case 1 in PRB deletion:: 568>
+  }
+else
+  {
+    enum prb_color t;
+    struct prb_node *r = p->prb_link[1];
+
+    if (r->prb_link[0] == NULL)
+      {
+        <*Note Case 2 in PRB deletion:: 569>
+      }
+    else
+      {
+        <*Note Case 3 in PRB deletion:: 570>
+      }
+  }
+
+This code is included in *Note 566: PRB item deletion function.
+
+Case 1: p has no right child
+............................
+
+   If p has no right child, then rebalancing should start at its
+parent, q, and dir is already the side that p is on.  The rest is the
+same as PBST deletion (*note pbstdel1::).
+
+568. <Case 1 in PRB deletion 568> =
+<*Note Case 1 in PBST deletion:: 497>
+
+f = q;
+
+This code is included in *Note 567: Step 2 Delete item from PRB tree.
+
+Case 2: p's right child has no left child
+.........................................
+
+   In case 2, we swap the colors of p and r as for ordinary RB deletion
+(*note rbcolorswap::).  We set up f and dir in the same way that <*Note
+Case 2 in RB deletion:: 223> set up the top of stack.  The rest is the
+same as PBST deletion (*note pbstdel2::).
+
+569. <Case 2 in PRB deletion 569> =
+<*Note Case 2 in PBST deletion:: 498>
+
+t = p->prb_color;
+p->prb_color = r->prb_color;
+r->prb_color = t;
+
+f = r;
+dir = 1;
+
+This code is included in *Note 567: Step 2 Delete item from PRB tree.
+
+Case 3: p's right child has a left child
+........................................
+
+   Case 2 swaps the colors of p and s the same way as in ordinary RB
+deletion (*note rbcolorswap::), and sets up f and dir in the same way
+that <*Note Case 3 in RB deletion:: 224> set up the stack.  The rest is
+borrowed from PBST deletion (*note pbstdel3::).
+
+570. <Case 3 in PRB deletion 570> =
+<*Note Case 3 in PBST deletion:: 499>
+
+t = p->prb_color;
+p->prb_color = s->prb_color;
+s->prb_color = t;
+
+f = r;
+dir = 0;
+
+This code is included in *Note 567: Step 2 Delete item from PRB tree.
+
+
+File: libavl.info,  Node: Deleting a PRB node step 3 - Rebalance,  Next: Deleting a PRB node step 4 - Finish up,  Prev: Deleting a PRB node step 2 - Delete,  Up: Deleting from a PRB Tree
+
+15.4.2 Step 3: Rebalance
+------------------------
+
+   The rebalancing code is easily related to the analogous code for
+ordinary RB trees in <*Note Rebalance after RB deletion:: 226>.  As we
+carefully set up in step 2, we use f as the top of stack node and dir
+as the side of f from which a node was deleted.  These variables f and
+dir were formerly represented by pa[k - 1] and da[k - 1], respectively.
+Additionally, variable g is used to represent the parent of f.
+Formerly the same node was referred to as pa[k - 2].
+
+   The code at the end of the loop simply moves f and dir up one level
+in the tree.  It has the same effect as did popping the stack with k-.
+
+571. <Step 3: Rebalance tree after PRB deletion 571> =
+if (p->prb_color == PRB_BLACK)
+  {
+    for (;;)
+      {
+        struct prb_node *x; /* Node we want to recolor black if possible. */
+        struct prb_node *g; /* Parent of f. */
+        struct prb_node *t; /* Temporary for use in finding parent. */
+
+        x = f->prb_link[dir];
+        if (x != NULL && x->prb_color == PRB_RED)
+          {
+            x->prb_color = PRB_BLACK;
+            break;
+          }
+
+        if (f == (struct prb_node *) &tree->prb_root)
+          break;
+
+        g = f->prb_parent;
+        if (g == NULL)
+          g = (struct prb_node *) &tree->prb_root;
+
+        if (dir == 0)
+          {
+            <*Note Left-side rebalancing after PRB deletion:: 572>
+          }
+        else
+          {
+            <*Note Right-side rebalancing after PRB deletion:: 578>
+          }
+
+        t = f;
+        f = f->prb_parent;
+        if (f == NULL)
+          f = (struct prb_node *) &tree->prb_root;
+        dir = f->prb_link[0] != t;
+      }
+  }
+
+This code is included in *Note 566: PRB item deletion function.
+
+   The code to distinguish rebalancing cases in PRB trees is almost
+identical to <*Note Left-side rebalancing after RB deletion:: 227>.
+
+572. <Left-side rebalancing after PRB deletion 572> =
+struct prb_node *w = f->prb_link[1];
+
+if (w->prb_color == PRB_RED) 
+  {
+    <*Note Ensure |w| is black in left-side PRB deletion rebalancing:: 573>
+  }
+
+if ((w->prb_link[0] == NULL
+     || w->prb_link[0]->prb_color == PRB_BLACK)
+    && (w->prb_link[1] == NULL
+        || w->prb_link[1]->prb_color == PRB_BLACK))
+  {
+    <*Note Case 1 in left-side PRB deletion rebalancing:: 574>
+  }
+else
+  {
+    if (w->prb_link[1] == NULL
+        || w->prb_link[1]->prb_color == PRB_BLACK)
+      {
+        <*Note Transform left-side PRB deletion rebalancing case 3 into case 2:: 576>
+      }
+
+    <*Note Case 2 in left-side PRB deletion rebalancing:: 575>
+    break;
+  }
+
+This code is included in *Note 571: Step 3 Rebalance tree after PRB
+deletion.
+
+Case Reduction: Ensure w is black
+.................................
+
+   The case reduction code is much like that for plain RB trees (*note
+rbdcr::), with pa[k - 1] replaced by f and pa[k - 2] replaced by g.
+Instead of updating the stack, we change g.  Node f need not change
+because it's already what we want it to be.  We also need to update
+parent pointers for the rotation.
+
+               |                                   |
+              A,f                                 C,g
+              <b>                                 <b>
+             /   `--..__                 ___...--'   `_
+            x           C,w             A,f             D
+                        <r>        =>   <r>            <b>
+                    _.-'   `_          /   `_         /   \
+                    B         D       x      B,w     c     d
+                   <b>       <b>             <b>
+                  /   \     /   \           /   \
+                 a     b   c     d         a     b
+573. <Ensure w is black in left-side PRB deletion rebalancing 573> =
+w->prb_color = PRB_BLACK;
+f->prb_color = PRB_RED;
+
+f->prb_link[1] = w->prb_link[0];
+w->prb_link[0] = f;
+g->prb_link[g->prb_link[0] != f] = w;
+
+w->prb_parent = f->prb_parent;
+f->prb_parent = w;
+
+g = w;
+w = f->prb_link[1];
+
+w->prb_parent = f;
+
+This code is included in *Note 572: Left-side rebalancing after PRB
+deletion.
+
+Case 1: w has no red children
+.............................
+
+   Case 1 is trivial.  No changes from ordinary RB trees are necessary
+(*note rbdelcase1::).
+
+574. <Case 1 in left-side PRB deletion rebalancing 574> =
+<*Note Case 1 in left-side RB deletion rebalancing:: 229>
+
+This code is included in *Note 572: Left-side rebalancing after PRB
+deletion.
+
+Case 2: w's right child is red
+..............................
+
+   The changes from ordinary RB trees (*note rbdelcase2::) for case 2
+follow the same pattern.
+
+575. <Case 2 in left-side PRB deletion rebalancing 575> =
+w->prb_color = f->prb_color;
+f->prb_color = PRB_BLACK;
+w->prb_link[1]->prb_color = PRB_BLACK;
+
+f->prb_link[1] = w->prb_link[0];
+w->prb_link[0] = f;
+g->prb_link[g->prb_link[0] != f] = w;
+
+w->prb_parent = f->prb_parent;
+f->prb_parent = w;
+if (f->prb_link[1] != NULL)
+  f->prb_link[1]->prb_parent = f;
+
+This code is included in *Note 572: Left-side rebalancing after PRB
+deletion.
+
+Case 3: w's left child is red
+.............................
+
+   The code for case 3 in ordinary RB trees (*note rbdelcase3::) needs
+slightly more intricate changes than case 1 or case 2, so the diagram
+below may help to clarify:
+
+                    |                         |
+                   B,f                       B,f
+                   <g>                       <g>
+               _.-'   `--..__            _.-'   `_
+              A,x            D,w        A,x       C,w
+              <b>            <b>   =>   <b>       <b>
+             /   \       _.-'   \      /   \     /   `_
+            a     b      C       e    a     b   c       D
+                        <r>                            <r>
+                       /   \                          /   \
+                      c     d                        d     e
+576. <Transform left-side PRB deletion rebalancing case 3 into case 2 576> =
+struct prb_node *y = w->prb_link[0];
+y->prb_color = PRB_BLACK;
+w->prb_color = PRB_RED;
+w->prb_link[0] = y->prb_link[1];
+y->prb_link[1] = w;
+if (w->prb_link[0] != NULL)
+  w->prb_link[0]->prb_parent = w;
+w = f->prb_link[1] = y;
+w->prb_link[1]->prb_parent = w;
+
+This code is included in *Note 572: Left-side rebalancing after PRB
+deletion.
+
+
+File: libavl.info,  Node: Deleting a PRB node step 4 - Finish up,  Next: PRB deletion symmetric case,  Prev: Deleting a PRB node step 3 - Rebalance,  Up: Deleting from a PRB Tree
+
+15.4.3 Step 4: Finish Up
+------------------------
+
+577. <Step 4: Finish up after PRB deletion 577> =
+tree->prb_alloc->libavl_free (tree->prb_alloc, p);
+tree->prb_count--;
+return (void *) item;
+
+This code is included in *Note 566: PRB item deletion function.
+
+
+File: libavl.info,  Node: PRB deletion symmetric case,  Prev: Deleting a PRB node step 4 - Finish up,  Up: Deleting from a PRB Tree
+
+15.4.4 Symmetric Case
+---------------------
+
+578. <Right-side rebalancing after PRB deletion 578> =
+struct prb_node *w = f->prb_link[0];
+
+if (w->prb_color == PRB_RED)
+  {
+    <*Note Ensure |w| is black in right-side PRB deletion rebalancing:: 579>
+  }
+
+if ((w->prb_link[0] == NULL
+     || w->prb_link[0]->prb_color == PRB_BLACK)
+    && (w->prb_link[1] == NULL
+        || w->prb_link[1]->prb_color == PRB_BLACK)) 
+  {
+    <*Note Case 1 in right-side PRB deletion rebalancing:: 580>
+  }
+else
+  {
+    if (w->prb_link[0] == NULL
+        || w->prb_link[0]->prb_color == PRB_BLACK)
+      {
+        <*Note Transform right-side PRB deletion rebalancing case 3 into case 2:: 582>
+      }
+
+    <*Note Case 2 in right-side PRB deletion rebalancing:: 581>
+    break;
+  }
+
+This code is included in *Note 571: Step 3 Rebalance tree after PRB
+deletion.
+
+579. <Ensure w is black in right-side PRB deletion rebalancing 579> =
+w->prb_color = PRB_BLACK;
+f->prb_color = PRB_RED;
+
+f->prb_link[0] = w->prb_link[1];
+w->prb_link[1] = f;
+g->prb_link[g->prb_link[0] != f] = w;
+
+w->prb_parent = f->prb_parent;
+f->prb_parent = w;
+
+g = w;
+w = f->prb_link[0];
+
+w->prb_parent = f;
+
+This code is included in *Note 578: Right-side rebalancing after PRB
+deletion.
+
+580. <Case 1 in right-side PRB deletion rebalancing 580> =
+w->prb_color = PRB_RED;
+
+This code is included in *Note 578: Right-side rebalancing after PRB
+deletion.
+
+581. <Case 2 in right-side PRB deletion rebalancing 581> =
+w->prb_color = f->prb_color;
+f->prb_color = PRB_BLACK;
+w->prb_link[0]->prb_color = PRB_BLACK;
+
+f->prb_link[0] = w->prb_link[1];
+w->prb_link[1] = f;
+g->prb_link[g->prb_link[0] != f] = w;
+
+w->prb_parent = f->prb_parent;
+f->prb_parent = w;
+if (f->prb_link[0] != NULL)
+  f->prb_link[0]->prb_parent = f;
+
+This code is included in *Note 578: Right-side rebalancing after PRB
+deletion.
+
+582. <Transform right-side PRB deletion rebalancing case 3 into case 2 582> =
+struct prb_node *y = w->prb_link[1];
+y->prb_color = PRB_BLACK;
+w->prb_color = PRB_RED;
+w->prb_link[1] = y->prb_link[0];
+y->prb_link[0] = w;
+if (w->prb_link[1] != NULL)
+  w->prb_link[1]->prb_parent = w;
+w = f->prb_link[0] = y;
+w->prb_link[0]->prb_parent = w;
+
+This code is included in *Note 578: Right-side rebalancing after PRB
+deletion.
+
+
+File: libavl.info,  Node: Testing PRB Trees,  Prev: Deleting from a PRB Tree,  Up: Red-Black Trees with Parent Pointers
+
+15.5 Testing
+============
+
+   No comment is necessary.
+
+583. <prb-test.c 583> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "prb.h"
+#include "test.h"
+
+<*Note BST print function:: 119>
+<*Note BST traverser check function:: 104>
+<*Note Compare two PRB trees for structure and content:: 584>
+<*Note Recursively verify PRB tree structure:: 585>
+<*Note RB tree verify function:: 244>
+<*Note BST test function:: 100>
+<*Note BST overflow test function:: 122>
+
+584. <Compare two PRB trees for structure and content 584> =
+static int
+compare_trees (struct prb_node *a, struct prb_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      assert (a == NULL && b == NULL);
+      return 1;
+    }
+
+  if (*(int *) a->prb_data != *(int *) b->prb_data
+      || ((a->prb_link[0] != NULL) != (b->prb_link[0] != NULL))
+      || ((a->prb_link[1] != NULL) != (b->prb_link[1] != NULL))
+      || a->prb_color != b->prb_color)
+    {
+      printf (" Copied nodes differ: a=%d%c b=%d%c a:",
+              *(int *) a->prb_data, a->prb_color == PRB_RED ? 'r' : 'b',
+              *(int *) b->prb_data, b->prb_color == PRB_RED ? 'r' : 'b');
+
+      if (a->prb_link[0] != NULL)
+        printf ("l");
+      if (a->prb_link[1] != NULL)
+        printf ("r");
+
+      printf (" b:");
+      if (b->prb_link[0] != NULL)
+        printf ("l");
+      if (b->prb_link[1] != NULL)
+        printf ("r");
+
+      printf ("\n");
+      return 0;
+    }
+
+  okay = 1;
+  if (a->prb_link[0] != NULL)
+    okay &= compare_trees (a->prb_link[0], b->prb_link[0]);
+  if (a->prb_link[1] != NULL)
+    okay &= compare_trees (a->prb_link[1], b->prb_link[1]);
+  return okay;
+}
+
+This code is included in *Note 583: prb-testc.
+
+585. <Recursively verify PRB tree structure 585> =
+/* Examines the binary tree rooted at node.  
+   Zeroes *okay if an error occurs.
+   Otherwise, does not modify *okay.
+   Sets *count to the number of nodes in that tree,
+   including node itself if node != NULL.
+   Sets *bh to the tree's black-height.
+   All the nodes in the tree are verified to be at least min
+   but no greater than max. */
+static void
+recurse_verify_tree (struct prb_node *node, int *okay, size_t *count, 
+                     int min, int max, int *bh)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+  int subbh[2];         /* Black-heights of subtrees. */
+  int i;
+
+  if (node == NULL)
+    {
+      *count = 0;
+      *bh = 0;
+      return;
+    }
+  d = *(int *) node->prb_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  recurse_verify_tree (node->prb_link[0], okay, &subcount[0], 
+                       min, d - 1, &subbh[0]);
+  recurse_verify_tree (node->prb_link[1], okay, &subcount[1], 
+                       d + 1, max, &subbh[1]);
+  *count = 1 + subcount[0] + subcount[1];
+  *bh = (node->prb_color == PRB_BLACK) + subbh[0];
+
+  <*Note Verify RB node color:: 241>
+  <*Note Verify RB node rule 1 compliance:: 242>
+  <*Note Verify RB node rule 2 compliance:: 243>
+
+  <*Note Verify PBST node parent pointers:: 518>
+}
+
+This code is included in *Note 583: prb-testc.
+
+
+File: libavl.info,  Node: References,  Next: Supplementary Code,  Prev: Red-Black Trees with Parent Pointers,  Up: Top
+
+Appendix A References
+*********************
+
+[Aho 1986].   Aho, A. V., R. Sethi, and J. D. Ullman, _Compilers:
+Principles, Techniques, and Tools_.  Addison-Wesley, 1986.  ISBN
+0-201-10088-6.
+
+[Bentley 2000].   Bentley, J., _Programming Pearls_, 2nd ed.
+Addison-Wesley, 2000.  ISBN 0-201-65788-0.
+
+[Brown 2001].   Brown, S., "Identifiers NOT To Use in C Programs".  Oak
+Road Systems, Feb. 15, 2001.
+`http://www.oakroadsystems.com/tech/c-predef.htm'.
+
+[Cormen 1990].   Cormen, C. H., C. E. Leiserson, and R. L.  Rivest,
+_Introduction to Algorithms_.  McGraw-Hill, 1990.  ISBN 0-262-03141-8.
+
+[FSF 1999].   Free Software Foundation, _GNU C Library Reference
+Manual_, version 0.08, 1999.
+
+[FSF 2001].   Free Software Foundation, "GNU Coding Standards", ed. of
+March 23, 2001.
+
+[ISO 1990].   International Organization for Standardization, _ANSI/ISO
+9899-1990: American National Standard for Programming Languages--C_,
+1990.  Reprinted in _The Annotated ANSI C Standard_, ISBN 0-07-881952-0.
+
+[ISO 1998].   International Organization for Standardization, _ISO/IEC
+14882:1998(E): Programming languages--C++_, 1998.
+
+[ISO 1999].   International Orgnaization for Standardization, _ISO/IEC
+9899:1999: Programming Languages--C_, 2nd ed., 1999.
+
+[Kernighan 1976].   Kernighan, B. W., and P. J. Plauger, _Software
+Tools_.  Addison-Wesley, 1976.  ISBN 0-201-03669-X.
+
+[Kernighan 1988].   Kernighan, B. W., and D. M. Ritchie, _The C
+Programming Language_, 2nd ed.  Prentice-Hall, 1988.  ISBN
+0-13-110362-8.
+
+[Knuth 1997].   Knuth, D. E., _The Art of Computer Programming, Volume
+1: Fundamental Algorithms_, 3rd ed.  Addison-Wesley, 1997.  ISBN
+0-201-89683-4.
+
+[Knuth 1998a].   Knuth, D. E., _The Art of Computer Programming, Volume
+2: Seminumerical Algorithms_, 3rd ed.  Addison-Wesley, 1998.  ISBN
+0-201-89684-2.
+
+[Knuth 1998b].   Knuth, D. E., _The Art of Computer Programming, Volume
+3: Sorting and Searching_, 2nd ed.  Addison-Wesley, 1998.  ISBN
+0-201-89685-0.
+
+[Knuth 1977].   Knuth, D. E., "Deletions that Preserve Randomness",
+_IEEE Trans. on Software Eng._ SE-3 (1977), pp. 351-9.  Reprinted in
+*Note Knuth 2000::.
+
+[Knuth 1978].   Knuth, D. E., "A Trivial Algorithm Whose Analysis
+Isn't", _Journal of Algorithms_ 6 (1985), pp. 301-22.  Reprinted in
+*Note Knuth 2000::.
+
+[Knuth 1992].   Knuth, D. E., _Literate Programming_, CSLI Lecture
+Notes Number 27.  Center for the Study of Language and Information,
+Leland Stanford Junior University, 1992.  ISBN 0-9370-7380-6.
+
+[Knuth 2000].   Knuth, D. E., _Selected Papers on Analysis of
+Algorithms_, CSLI Lecture Notes Number 102.  Center for the Study of
+Language and Information, Leland Stanford Junior University, 2000.  ISBN
+1-57586-212-3.
+
+[Pfaff 1998].   Pfaff, B. L., "An Iterative Algorithm for Deletion from
+AVL-Balanced Binary Trees".  Presented July 1998, annual meeting of Pi
+Mu Epsilon, Toronto, Canada.  `http://www.msu.edu/user/pfaffben/avl/'.
+
+[Sedgewick 1998].   Sedgewick, R., _Algorithms in C, Parts 1-4_, 3rd
+ed.  Addison-Wesley, 1998.  ISBN 0-201-31452-5.
+
+[SGI 1993].   Silicon Graphics, Inc., _Standard Template Library
+Programmer's Guide_.  `http://www.sgi.com/tech/stl/'.
+
+[Stout 1986].   Stout, F. S. and B. L. Warren, "Tree Rebalancing in
+Optimal Time and Space", _Communications of the ACM_ 29 (1986), pp.
+902-908.
+
+[Summit 1999].   Summit, S., "comp.lang.c Answers to Frequently Asked
+Questions", version 3.5.  `http://www.eskimo.com/~scs/C-faq/top.html'.
+ISBN 0-201-84519-9.
+
+
+File: libavl.info,  Node: Supplementary Code,  Next: Glossary,  Prev: References,  Up: Top
+
+Appendix B Supplementary Code
+*****************************
+
+   This appendix contains code too long for the exposition or too far
+from the main topic of the book.
+
+* Menu:
+
+* Option Parser::
+* Command-Line Parser::
+
+
+File: libavl.info,  Node: Option Parser,  Next: Command-Line Parser,  Up: Supplementary Code
+
+B.1 Option Parser
+=================
+
+   The BST test program contains an option parser for handling
+command-line options.  *Note User Interaction::, for an introduction to
+its public interface.  This section describes the option parser's
+implementation.
+
+   The option parsing state is kept in struct option_state:
+
+586. <Option parser 586> =
+/* Option parsing state. */
+struct option_state
+  {
+    const struct option *options; /* List of options. */
+    char **arg_next;            /* Remaining arguments. */
+    char *short_next;           /* When non-null, unparsed short options. */
+  };
+
+See also *Note 587: Option parser-2 and *Note 588: Option parser-3.
+This code is included in *Note 97: testc.
+
+   The initialization function just creates and returns one of these
+structures:
+
+587. <Option parser 586> +=
+/* Creates and returns a command-line options parser.  
+   args is a null-terminated array of command-line arguments, not
+   including program name. */
+static struct option_state *
+option_init (const struct option *options, char **args)
+{
+  struct option_state *state;
+
+  assert (options != NULL && args != NULL);
+
+  state = xmalloc (sizeof *state);
+  state->options = options;
+  state->arg_next = args;
+  state->short_next = NULL;
+
+  return state;
+}
+
+   The option retrieval function uses a couple of helper functions.  The
+code is lengthy, but not complicated:
+
+588. <Option parser 586> +=
+/* Parses a short option whose single-character name is pointed to by
+   state->short_next.  Advances past the option so that the next one
+   will be parsed in the next call to option_get().  Sets *argp to
+   the option's argument, if any.  Returns the option's short name. */
+static int
+handle_short_option (struct option_state *state, char **argp)
+{
+  const struct option *o;
+
+  assert (state != NULL
+          && state->short_next != NULL && *state->short_next != '\0'
+          && state->options != NULL);
+
+  /* Find option in o. */
+  for (o = state->options; ; o++)
+    if (o->long_name == NULL)
+      fail ("unknown option `-%c'; use --help for help", *state->short_next);
+    else if (o->short_name == *state->short_next)
+      break;
+  state->short_next++;
+
+  /* Handle argument. */
+  if (o->has_arg)
+    {
+      if (*state->arg_next == NULL || **state->arg_next == '-')
+        fail ("`-%c' requires an argument; use --help for help");
+
+      *argp = *state->arg_next++;
+    }
+
+  return o->short_name;
+}
+
+/* Parses a long option whose command-line argument is pointed to by
+   *state->arg_next.  Advances past the option so that the next one
+   will be parsed in the next call to option_get().  Sets *argp to
+   the option's argument, if any.  Returns the option's identifier. */
+static int
+handle_long_option (struct option_state *state, char **argp)
+{
+  const struct option *o;	/* Iterator on options. */
+  char name[16];		/* Option name. */
+  const char *arg;		/* Option argument. */
+
+  assert (state != NULL
+          && state->arg_next != NULL && *state->arg_next != NULL
+          && state->options != NULL
+          && argp != NULL);
+
+  /* Copy the option name into name
+     and put a pointer to its argument, or NULL if none, into arg. */
+  {
+    const char *p = *state->arg_next + 2;
+    const char *q = p + strcspn (p, "=");
+    size_t name_len = q - p;
+
+    if (name_len > (sizeof name) - 1)
+      name_len = (sizeof name) - 1;
+    memcpy (name, p, name_len);
+    name[name_len] = '\0';
+
+    arg = (*q == '=') ? q + 1 : NULL;
+  }
+
+  /* Find option in o. */
+  for (o = state->options; ; o++)
+    if (o->long_name == NULL)
+      fail ("unknown option --%s; use --help for help", name);
+    else if (!strcmp (name, o->long_name))
+      break;
+
+  /* Make sure option has an argument if it should. */
+  if ((arg != NULL) != (o->has_arg != 0))
+    {
+      if (arg != NULL)
+        fail ("--%s can't take an argument; use --help for help", name);
+      else
+        fail ("--%s requires an argument; use --help for help", name);
+    }
+
+  /* Advance and return. */
+  state->arg_next++;
+  *argp = (char *) arg;
+  return o->short_name;
+}
+
+/* Retrieves the next option in the state vector state.
+   Returns the option's identifier, or -1 if out of options.
+   Stores the option's argument, or NULL if none, into *argp. */
+static int
+option_get (struct option_state *state, char **argp)
+{
+  assert (state != NULL && argp != NULL);
+
+  /* No argument by default. */
+  *argp = NULL;
+
+  /* Deal with left-over short options. */
+  if (state->short_next != NULL)
+    {
+      if (*state->short_next != '\0')
+        return handle_short_option (state, argp);
+      else
+        state->short_next = NULL;
+    }
+
+  /* Out of options? */
+  if (*state->arg_next == NULL)
+    {
+      free (state);
+      return -1;
+    }
+
+  /* Non-option arguments not supported. */
+  if ((*state->arg_next)[0] != '-')
+    fail ("non-option arguments encountered; use --help for help");
+  if ((*state->arg_next)[1] == '\0')
+    fail ("unknown option `-'; use --help for help");
+
+  /* Handle the option. */
+  if ((*state->arg_next)[1] == '-')
+    return handle_long_option (state, argp);
+  else
+    {
+      state->short_next = *state->arg_next + 1;
+      state->arg_next++;
+      return handle_short_option (state, argp);
+    }
+}
+
+
+File: libavl.info,  Node: Command-Line Parser,  Prev: Option Parser,  Up: Supplementary Code
+
+B.2 Command-Line Parser
+=======================
+
+   The option parser in the previous section handles the general form of
+command-line options.  The code in this section applies that option
+parser to the specific options used by the BST test program.  It has
+helper functions for argument parsing and advice to users.  Here is all
+of it together:
+
+589. <Command line parser 589> =
+/* Command line parser. */
+
+/* If a is a prefix for b or vice versa, returns the length of the
+   match.
+   Otherwise, returns 0. */
+size_t
+match_len (const char *a, const char *b)
+{
+  size_t cnt;
+
+  for (cnt = 0; *a == *b && *a != '\0'; a++, b++)
+    cnt++;
+
+  return (*a != *b && *a != '\0' && *b != '\0') ? 0 : cnt;
+}
+
+/* s should point to a decimal representation of an integer.
+   Returns the value of s, if successful, or 0 on failure. */
+static int
+stoi (const char *s)
+{
+  long x = strtol (s, NULL, 10);
+  return x >= INT_MIN && x <= INT_MAX ? x : 0;
+}
+
+/* Print helpful syntax message and exit. */
+static void
+usage (void)
+{
+  static const char *help[] =
+    {
+      "bst-test, unit test for GNU libavl.\n\n",
+      "Usage: %s [OPTION]...\n\n",
+      "In the option descriptions below, CAPITAL denote arguments.\n",
+      "If a long option shows an argument as mandatory, then it is\n",
+      "mandatory for the equivalent short option also.  See the GNU\n",
+      "libavl manual for more information.\n\n",
+      "-t, --test=TEST     Sets test to perform.  TEST is one of:\n",
+      "                      correctness insert/delete/... (default)\n",
+      "                      overflow    stack overflow test\n",
+      "                      benchmark   benchmark test\n",
+      "                      null        no test\n",
+      "-s, --size=TREE-SIZE  Sets tree size in nodes (default 16).\n",
+      "-r, --repeat=COUNT  Repeats operation COUNT times (default 16).\n",
+      "-i, --insert=ORDER  Sets the insertion order.  ORDER is one of:\n",
+      "                      random      random permutation (default)\n",
+      "                      ascending   ascending order 0...n-1\n",
+      "                      descending  descending order n-1...0\n",
+      "                      balanced    balanced tree order\n",
+      "                      zigzag      zig-zag tree\n",
+      "                      asc-shifted n/2...n-1, 0...n/2-1\n",
+      "                      custom      custom, read from stdin\n",
+      "-d, --delete=ORDER  Sets the deletion order.  ORDER is one of:\n",
+      "                      random   random permutation (default)\n",
+      "                      reverse  reverse order of insertion\n",
+      "                      same     same as insertion order\n",
+      "                      custom   custom, read from stdin\n",
+      "-a, --alloc=POLICY  Sets allocation policy.  POLICY is one of:\n",
+      "                      track     track memory leaks (default)\n",
+      "                      no-track  turn off leak detection\n",
+      "                      fail-CNT  fail after CNT allocations\n",
+      "                      fail%%PCT  fail random PCT%% of allocations\n",
+      "                      sub-B,A   divide B-byte blocks in A-byte units\n",
+      "                    (Ignored for `benchmark' test.)\n",
+      "-A, --incr=INC      Fail policies: arg increment per repetition.\n",
+      "-S, --seed=SEED     Sets initial number seed to SEED.\n",
+      "                    (default based on system time)\n",
+      "-n, --nonstop       Don't stop after a single error.\n",
+      "-q, --quiet         Turns down verbosity level.\n",
+      "-v, --verbose       Turns up verbosity level.\n",
+      "-h, --help          Displays this help screen.\n",
+      "-V, --version       Reports version and copyright information.\n",
+      NULL,
+    };
+
+  const char **p;
+  for (p = help; *p != NULL; p++)
+    printf (*p, pgm_name);
+
+  exit (EXIT_SUCCESS);
+}
+
+/* Parses command-line arguments from null-terminated array args.
+   Sets up options appropriately to correspond. */
+static void
+parse_command_line (char **args, struct test_options *options)
+{
+  static const struct option option_tab[] =
+    {
+      {"test", 't', 1},
+      {"insert", 'i', 1},
+      {"delete", 'd', 1},
+      {"alloc", 'a', 1},
+      {"incr", 'A', 1},
+      {"size", 's', 1},
+      {"repeat", 'r', 1},
+      {"operation", 'o', 1},
+      {"seed", 'S', 1},
+      {"nonstop", 'n', 0},
+      {"quiet", 'q', 0},
+      {"verbose", 'v', 0},
+      {"help", 'h', 0},
+      {"version", 'V', 0},
+      {NULL, 0, 0},
+    };
+
+  struct option_state *state;
+
+  /* Default options. */
+  options->test = TST_CORRECTNESS;
+  options->insert_order = INS_RANDOM;
+  options->delete_order = DEL_RANDOM;
+  options->alloc_policy = MT_TRACK;
+  options->alloc_arg[0] = 0;
+  options->alloc_arg[1] = 0;
+  options->alloc_incr = 0;
+  options->node_cnt = 15; 
+  options->iter_cnt = 15;
+  options->seed_given = 0;
+  options->verbosity = 0;
+  options->nonstop = 0;
+
+  if (*args == NULL)
+    return;
+
+  state = option_init (option_tab, args + 1);
+  for (;;)
+    {
+      char *arg;
+      int id = option_get (state, &arg);
+      if (id == -1)
+        break;
+
+      switch (id)
+        {
+        case 't':
+          if (match_len (arg, "correctness") >= 3)
+            options->test = TST_CORRECTNESS;
+          else if (match_len (arg, "overflow") >= 3)
+            options->test = TST_OVERFLOW;
+          else if (match_len (arg, "null") >= 3)
+            options->test = TST_NULL;
+          else
+            fail ("unknown test \"%s\"", arg);
+          break;
+
+        case 'i':
+          {
+            static const char *orders[INS_CNT] =
+              {
+                "random", "ascending", "descending",
+                "balanced", "zigzag", "asc-shifted", "custom",
+              };
+
+            const char **iter;
+
+            assert (sizeof orders / sizeof *orders == INS_CNT);
+            for (iter = orders; ; iter++)
+              if (iter >= orders + INS_CNT)
+                fail ("unknown order \"%s\"", arg);
+              else if (match_len (*iter, arg) >= 3)
+                {
+                  options->insert_order = iter - orders;
+                  break;
+                }
+          }
+          break;
+
+        case 'd':
+          {
+            static const char *orders[DEL_CNT] =
+              {
+                "random", "reverse", "same", "custom",
+              };
+
+            const char **iter;
+
+            assert (sizeof orders / sizeof *orders == DEL_CNT);
+            for (iter = orders; ; iter++)
+              if (iter >= orders + DEL_CNT)
+                fail ("unknown order \"%s\"", arg);
+              else if (match_len (*iter, arg) >= 3)
+                {
+                  options->delete_order = iter - orders;
+                  break;
+                }
+          }
+          break;
+
+        case 'a':
+          if (match_len (arg, "track") >= 3)
+            options->alloc_policy = MT_TRACK;
+          else if (match_len (arg, "no-track") >= 3)
+            options->alloc_policy = MT_NO_TRACK;
+          else if (!strncmp (arg, "fail", 3))
+            {
+              const char *p = arg + strcspn (arg, "-%");
+              if (*p == '-')
+                options->alloc_policy = MT_FAIL_COUNT;
+              else if (*p == '%')
+                options->alloc_policy = MT_FAIL_PERCENT;
+              else
+                fail ("invalid allocation policy \"%s\"", arg);
+
+              options->alloc_arg[0] = stoi (p + 1);
+            }
+          else if (!strncmp (arg, "suballoc", 3))
+            {
+              const char *p = strchr (arg, '-');
+              const char *q = strchr (arg, ',');
+              if (p == NULL || q == NULL)
+                fail ("invalid allocation policy \"%s\"", arg);
+
+              options->alloc_policy = MT_SUBALLOC;
+              options->alloc_arg[0] = stoi (p + 1);
+              options->alloc_arg[1] = stoi (q + 1);
+              if (options->alloc_arg[MT_BLOCK_SIZE] < 32)
+                fail ("block size too small");
+              else if (options->alloc_arg[MT_ALIGN] 
+                       > options->alloc_arg[MT_BLOCK_SIZE])
+                fail ("alignment cannot be greater than block size");
+              else if (options->alloc_arg[MT_ALIGN] < 1)
+                fail ("alignment must be at least 1");
+            }
+          break;
+
+        case 'A':
+          options->alloc_incr = stoi (arg);
+          break;
+
+        case 's':
+          options->node_cnt = stoi (arg);
+          if (options->node_cnt < 1)
+            fail ("bad tree size \"%s\"", arg);
+          break;
+
+        case 'r':
+          options->iter_cnt = stoi (arg);
+          if (options->iter_cnt < 1)
+            fail ("bad repeat count \"%s\"", arg);
+          break;
+
+        case 'S':
+          options->seed_given = 1;
+          options->seed = strtoul (arg, NULL, 0);
+          break;
+
+        case 'n':
+          options->nonstop = 1;
+          break;
+
+        case 'q':
+          options->verbosity--;
+          break;
+
+        case 'v':
+          options->verbosity++;
+          break;
+
+        case 'h':
+          usage ();
+          break;
+
+        case 'V':
+          fputs ("GNU libavl 2.0\n"
+                 "Copyright (C) 1998-2002 Free Software Foundation, Inc.\n"
+                 "This program comes with NO WARRANTY, not even for\n"
+                 "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+                 "You may redistribute copies under the terms of the\n"
+                 "GNU General Public License.  For more information on\n"
+                 "these matters, see the file named COPYING.\n",
+                 stdout);
+          exit (EXIT_SUCCESS);
+
+        default:
+          assert (0);
+        }
+    }
+}
+
+This code is included in *Note 97: testc.
+
+
+File: libavl.info,  Node: Glossary,  Next: Answers to All the Exercises,  Prev: Supplementary Code,  Up: Top
+
+Appendix C Glossary
+*******************
+
+   "adjacent": Two nodes in a "binary tree" (*note binary tree::) are
+adjacent if one is the child of the other.
+
+   "AVL tree": A type of "balanced tree" (*note balanced tree::), where
+the AVL "balance factor" (*note balance factor::) of each node is
+limited to -1, 0, or +1.
+
+   "balance": To rearrange a "binary search tree" (*note binary search
+tree::) so that it has its minimum possible "height" (*note height::),
+approximately the binary logarithm of its number of nodes.
+
+   "balance condition": In a "balanced tree" (*note balanced tree::),
+the additional rule or rules that limit the tree's height.
+
+   "balance factor": For any node in an "AVL tree" (*note AVL tree::),
+the difference between the "height" (*note height::) of the node's
+"right subtree" (*note right subtree::) and "left subtree" (*note left
+subtree::).
+
+   "balanced tree": A "binary search tree" (*note binary search tree::)
+along with a rule that limits the tree's height in order to avoid a
+"pathological case" (*note pathological case::).  Types of balanced
+trees: "AVL tree" (*note AVL tree::), "red-black tree" (*note red-black
+tree::).
+
+   "binary search": A technique for searching by comparison of keys, in
+which the search space roughly halves in size after each comparison
+step.
+
+   "binary search tree": A "binary tree" (*note binary tree::) with the
+additional property that the key in each node's left child is less than
+the node's key, and that the key in each node's right child is greater
+than the node's key.  In "inorder traversal" (*note inorder
+traversal::), the items in a BST are visited in sorted order of their
+keys.
+
+   "binary tree": A data structure that is either an "empty tree"
+(*note empty tree::) or consists of a "root" (*note root::), a "left
+subtree" (*note left subtree::), and a "right subtree" (*note right
+subtree::).
+
+   "black box": Conceptually, a device whose input and output are
+defined but whose principles of internal operation is not specified.
+
+   "black-height": In a "red-black tree" (*note red-black tree::), the
+number of black nodes along a simple path from a given node down to a
+non-branching node.  Due to "rule 2" (*note rule 2::), this is the same
+regardless of the path chosen.
+
+   "BST": See "binary search tree" (*note binary search tree::).
+
+   "child": In a "binary tree" (*note binary tree::), a "left child"
+(*note left child::) or "right child" (*note right child::) of a node.
+
+   "children": More than one "child" (*note child::).
+
+   "color": In a "red-black tree" (*note red-black tree::), a property
+of a node, either red or black.  Node colors in a red-black tree are
+constrained by "rule 1" (*note rule 1::) and "rule 2" (*note rule 2::)
+
+   "complete binary tree": A "binary tree" (*note binary tree::) in
+which every "simple path" (*note simple path::) from the root down to a
+leaf has the same length and every non-leaf node has two children.
+
+   "compression": A transformation on a binary search tree used to
+"rebalance" (*note rebalance::) (sense 2).
+
+   "deep copy": In making a copy of a complex data structure, it is
+often possible to copy upper levels of data without copying lower
+levels.  If all levels are copied nonetheless, it is a deep copy.  See
+also "shallow copy" (*note shallow copy::).
+
+   "dynamic": 1. When speaking of data, data that can change or (in
+some contexts) varies quickly.  2. In C, memory allocation with
+malloc() and related functions.  See also "static" (*note static::).
+
+   "empty tree": A binary tree without any nodes.
+
+   "height": In a binary tree, the maximum number of nodes that can be
+visited starting at the tree's root and moving only downward.  An an
+empty tree has height 0.
+
+   "idempotent": Having the same effect as if used only once, even if
+used multiple times.  C header files are usually designed to be
+idempotent.
+
+   "inorder predecessor": The node preceding a given node in an
+"inorder traversal" (*note inorder traversal::).
+
+   "inorder successor": The node following a given node in an "inorder
+traversal" (*note inorder traversal::).
+
+   "inorder traversal": A type of binary tree "traversal" (*note
+traversal::) where the root's left subtree is traversed, then the root
+is visited, then the root's right subtree is traversed.
+
+   "iteration": In C, repeating a sequence of statements without using
+recursive function calls, most typically accomplished using a for or
+while loop.  Oppose "recursion" (*note recursion::).
+
+   "key": In a binary search tree, data stored in a "node" (*note
+node::) and used to order nodes.
+
+   "leaf": A "node" (*note node::) whose "children" (*note children::)
+are empty.
+
+   "left child": In a "binary tree" (*note binary tree::), the root of
+a node's left subtree, if that subtree is non-empty.  A node that has
+an empty left subtree may be said to have no left child.
+
+   "left rotation": See *Note rotation::.
+
+   "left subtree": Part of a non-empty "binary tree" (*note binary
+tree::).
+
+   "left-threaded tree": A "binary search tree" (*note binary search
+tree::) augmented to simplify and speed up traversal in reverse of
+"inorder traversal" (*note inorder traversal::), but not traversal in
+the forward direction.
+
+   "literate programming": A philosophy of programming that regards
+software as a type of literature, popularized by Donald Knuth through
+his works such as *Note Knuth 1992::.
+
+   "node": The basic element of a binary tree, consisting of a "key"
+(*note key::), a "left child" (*note left child::), and a "right child"
+(*note right child::).
+
+   "non-branching node": A node in a "binary tree" (*note binary
+tree::) that has exactly zero or one non-empty children.
+
+   "nonterminal node": A "node" (*note node::) with at least one
+nonempty "subtree" (*note subtree::).
+
+   "parent": When one node in a "binary tree" (*note binary tree::) is
+the child of another, the first node.  A node that is not the child of
+any other node has no parent.
+
+   "parent pointer": A pointer within a node to its "parent" (*note
+parent::) node.
+
+   "pathological case": In a "binary search tree" (*note binary search
+tree::) context, a BST whose "height" (*note height::) is much greater
+than the minimum possible.  Avoidable through use of "balanced tree"
+(*note balanced tree::) techniques.
+
+   "path": In a "binary tree" (*note binary tree::), a list of nodes
+such that, for each pair of nodes appearing adjacent in the list, one
+of the nodes is the parent of the other.
+
+   "postorder traversal": A type of binary tree "traversal" (*note
+traversal::) where the root's left subtree is traversed, then the
+root's right subtree is traversed, then the root is visited.
+
+   "preorder traversal": A type of binary tree "traversal" (*note
+traversal::) where the root is visited, then the root's left subtree is
+traversed, then the root's right subtree is traversed.
+
+   "rebalance": 1. After an operation that modifies a "balanced tree"
+(*note balanced tree::), to restore the tree's "balance condition"
+(*note balance condition::), typically by "rotation" (*note rotation::)
+or, in a "red-black tree" (*note red-black tree::), changing the
+"color" (*note color::) of one or more nodes. 2. To reorganize a
+"binary search tree" (*note binary search tree::) so that its shape
+more closely approximates that of a "complete binary tree" (*note
+complete binary tree::).
+
+   "recursion": In C, describes a function that calls itself directly
+or indirectly.  See also "tail recursion" (*note tail recursion::).
+Oppose "iteration" (*note iteration::).
+
+   "red-black tree": A form of "balanced tree" (*note balanced tree::)
+where each node has a "color" (*note color::) and these colors are laid
+out such that they satisfy "rule 1" (*note rule 1::) and "rule 2"
+(*note rule 2::) for red-black trees.
+
+   "right child": In a "binary tree" (*note binary tree::), the root of
+a node's right subtree, if that subtree is non-empty.  A node that has
+an empty right subtree may be said to have no right child.
+
+   "right rotation": See *Note rotation::.
+
+   "right subtree": Part of a non-empty "binary tree" (*note binary
+tree::).
+
+   "right-threaded tree": A "binary search tree" (*note binary search
+tree::) augmented to simplify and speed up "inorder traversal" (*note
+inorder traversal::), but not traversal in the reverse order.
+
+   "rotation": A particular type of simple transformation on a "binary
+search tree" (*note binary search tree::) that changes local structure
+without changing "inorder traversal" (*note inorder traversal::)
+ordering.  *Note BST Rotations::, *Note TBST Rotations::, *Note RTBST
+Rotations::, and *Note PBST Rotations::, for more details.
+
+   "root": A "node" (*note node::) taken as a "binary tree" (*note
+binary tree::) in its own right.  Every node is the root of a binary
+tree, but "root" is most often used to refer to a node that is not a
+"child" (*note child::) of any other node.
+
+   "rule 1": One of the rules governing layout of node colors in a
+"red-black tree" (*note red-black tree::): no red node may have a red
+child.  *Note RB Balancing Rule::.
+
+   "rule 2": One of the rules governing layout of node colors in a
+"red-black tree" (*note red-black tree::): every "simple path" (*note
+simple path::) from a given node to one of its "non-branching node"
+(*note non-branching node::) descendants contains the same number of
+black nodes.  *Note RB Balancing Rule::.
+
+   "sentinel": In the context of searching in a data structure, a piece
+of data used to avoid an explicit test for a null pointer, the end of an
+array, etc., typically by setting its value to that of the looked-for
+data item.
+
+   "sequential search": A technique for searching by comparison of
+keys, in which the search space is typically reduced only by one item
+for each comparison.
+
+   "sequential search with sentinel": A "sequential search" (*note
+sequential search::) in a search space set up with a "sentinel" (*note
+sentinel::).
+
+   "shallow copy": In making a copy of a complex data structure, it is
+often possible to copy upper levels of data without copying lower
+levels.  If lower levels are indeed shared, it is a shallow copy.  See
+also "deep copy" (*note deep copy::).
+
+   "simple path": A "path" (*note path::) that does not include any node
+more than once.
+
+   "static": 1. When speaking of data, data that is invariant or (in
+some contexts) changes rarely.  2. In C, memory allocation other than
+that done with malloc() and related functions.  3. In C, a keyword used
+for a variety of purposes, some of which are related to sense 2.  See
+also "dynamic" (*note dynamic::).
+
+   "subtree": A "binary tree" (*note binary tree::) that is itself a
+child of some "node" (*note node::).
+
+   "symmetric traversal": "inorder traversal" (*note inorder
+traversal::).
+
+   "tag": A field in a "threaded tree" (*note threaded tree::) node
+used to distinguish a "thread" (*note thread::) from a "child" (*note
+child::) pointer.
+
+   "tail recursion": A form of "recursion" (*note recursion::) where a
+function calls itself as its last action.  If the function is non-void,
+the outer call must also return to its caller the value returned by the
+inner call in order to be tail recursive.
+
+   "terminal node": A node with no "left child" (*note left child::) or
+"right child" (*note right child::).
+
+   "thread": In a "threaded tree" (*note threaded tree::), a pointer to
+the predecessor or successor of a "node" (*note node::), replacing a
+child pointer that would otherwise be null.  Distinguished from an
+ordinary child pointer using a "tag" (*note tag::).
+
+   "threaded tree": A form of "binary search tree" (*note binary search
+tree::) augmented to simplify "inorder traversal" (*note inorder
+traversal::).  See also "thread" (*note thread::), "tag" (*note tag::).
+
+   "traversal": To "visit" (*note visit::) each of the nodes in a
+"binary tree" (*note binary tree::) according to some scheme based on
+the tree's structure.  See "inorder traversal" (*note inorder
+traversal::), "preorder traversal" (*note preorder traversal::),
+"postorder traversal" (*note postorder traversal::).
+
+   "undefined behavior": In C, a situation to which the computer's
+response is unpredictable.  It is frequently noted that, when undefined
+behavior is invoked, it is legal for the compiler to "make demons fly
+out of your nose."
+
+   "value": Often kept in a "node" (*note node::) along with the "key"
+(*note key::), a value is auxiliary data not used to determine ordering
+of nodes.
+
+   "vine": A degenerate "binary tree" (*note binary tree::), resembling
+a linked list, in which each node has at most one child.
+
+   "visit": During "traversal" (*note traversal::), to perform an
+operation on a node, such as to display its value or free its
+associated memory.
+

@@ -1,0 +1,1410 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: User Interaction,  Next: Utility Functions,  Prev: Memory Manager,  Up: Testing our BST functions
+
+4.14.5 User Interaction
+-----------------------
+
+   This section briefly discusses `libavl''s data structures and
+functions for parsing command-line arguments.  For more information on
+the command-line arguments accepted by the testing program, refer to the
+`libavl' reference manual.
+
+   The main way that the test program receives instructions from the
+user is through the set of arguments passed to main().  The program
+assumes that these arguments can be controlled easily by the user,
+presumably through some kind of command-based "shell" program.  It
+allows for two kinds of options: traditional UNIX "short options" that
+take the form `-o' and GNU-style "long options" of the form `--option'.
+Either kind of option may take an argument.
+
+   Options are specified using an array of struct option, terminated by
+an all-zero structure:
+
+133. <Test declarations 121> +=
+/* A single command-line option. */
+struct option
+  {
+    const char *long_name;	/* Long name ("--name"). */
+    int short_name;		/* Short name ("-n"); value returned. */
+    int has_arg;		/* Has a required argument? */
+  };
+
+   There are two public functions in the option parser:
+
+struct option_state *option_init (struct option *options, char **args)
+     Creates and returns a struct option_state, initializing it based on
+     the array of arguments passed in.  This structure is used to keep
+     track of the option parsing state.  Sets options as the set of
+     options to parse.
+
+int option_get (struct option_state *state, char **argp)
+     Parses the next option from state and returns the value of the
+     short_name member from its struct option.  Sets *argp to the
+     option's argument or NULL if none.  Returns -1 and destroys state
+     if no options remain.
+
+   These functions' implementation are not too interesting for our
+purposes, so they are relegated to an appendix.  *Note Option Parser::,
+for the full story.
+
+   The option parser provides a lot of support for parsing the command
+line, but of course the individual options have to be handled once they
+are retrieved by option_get().  The parse_command_line() function takes
+care of the whole process:
+
+void parse_command_line (char **args, struct test_options *options)
+     Parses the command-line arguments in args[], which must be
+     terminated with an element set to all zeros, using option_init()
+     and option_get().  Sets up options appropriately to correspond.
+
+   *Note Command-Line Parser::, for source code.  The struct
+test_options initialized by parse_command_line() is described in detail
+below.
+
+
+File: libavl.info,  Node: Utility Functions,  Next: Main Program,  Prev: User Interaction,  Up: Testing our BST functions
+
+4.14.6 Utility Functions
+------------------------
+
+   The first utility function is compare_ints().  This function is not
+used by <*Note testc:: 97> but it is included there because it is used
+by the test modules for all the individual tree structures.
+
+134. <Test utility functions 134> =
+/* Utility functions. */
+
+<*Note Comparison function for |int|s:: 3>
+
+See also *Note 136: Test utility functions-2 and *Note 137: Test
+utility functions-3.
+This code is included in *Note 97: testc.
+
+   It is prototyped in <*Note testh:: 99>:
+
+135. <Test prototypes 101> +=
+int compare_ints (const void *pa, const void *pb, void *param);
+
+   The fail() function prints a provided error message to stderr,
+formatting it as with printf(), and terminates the program
+unsuccessfully:
+
+136. <Test utility functions 134> +=
+/* Prints message on stderr, which is formatted as for printf(), 
+   and terminates the program unsuccessfully. */
+static void
+fail (const char *message, ...)
+{
+  va_list args;
+
+  fprintf (stderr, "%s: ", pgm_name);
+
+  va_start (args, message);
+  vfprintf (stderr, message, args);
+  va_end (args);
+
+  putchar ('\n');
+
+  exit (EXIT_FAILURE);
+}
+
+   Finally, the xmalloc() function is a malloc() wrapper that aborts
+the program if allocation fails:
+
+137. <Test utility functions 134> +=
+/* Allocates and returns a pointer to size bytes of memory.
+   Aborts if allocation fails. */
+static void *
+xmalloc (size_t size)
+{
+  void *block = malloc (size);
+  if (block == NULL && size != 0)
+    fail ("out of memory");
+  return block;
+}
+
+
+File: libavl.info,  Node: Main Program,  Prev: Utility Functions,  Up: Testing our BST functions
+
+4.14.7 Main Program
+-------------------
+
+   Everything comes together in the main program.  The test itself
+(default or overflow) is selected with enum test:
+
+138. <Test declarations 121> +=
+/* Test to perform. */
+enum test
+  {
+    TST_CORRECTNESS,		/* Default tests. */
+    TST_OVERFLOW,		/* Stack overflow test. */
+    TST_NULL                    /* No test, just overhead. */
+  };
+
+   The program's entire behavior is controlled by struct test_options,
+defined as follows:
+
+139. <Test declarations 121> +=
+/* Program options. */
+struct test_options
+  {
+    enum test test;                     /* Test to perform. */
+    enum insert_order insert_order;     /* Insertion order. */
+    enum delete_order delete_order;     /* Deletion order. */
+
+    enum mt_policy alloc_policy;        /* Allocation policy. */
+    int alloc_arg[2];                   /* Policy arguments. */
+    int alloc_incr; /* Amount to increment alloc_arg each iteration. */
+
+    int node_cnt;                       /* Number of nodes in tree. */
+    int iter_cnt;                       /* Number of runs. */
+
+    int seed_given;                     /* Seed provided on command line? */
+    unsigned seed;                      /* Random number seed. */
+
+    int verbosity;                      /* Verbosity level, 0=default. */
+    int nonstop;                        /* Don't stop after one error? */
+  };
+
+   The main() function for the test program is perhaps a bit long, but
+simple.  It begins by parsing the command line and allocating memory,
+then repeats a loop once for each repetition of the test.  Within the
+loop, an insertion and a deletion order are selected, the memory tracker
+is set up, and test function (either test() or test_overflow()) is
+called.
+
+140. <Test main program 140> =
+int
+main (int argc, char *argv[])
+{
+  struct test_options opts;	/* Command-line options. */
+  int *insert, *delete;		/* Insertion and deletion orders. */
+  int success;                  /* Everything okay so far? */
+
+  /* Initialize pgm_name, using argv[0] if sensible. */
+  pgm_name = argv[0] != NULL && argv[0][0] != '\0' ? argv[0] : "bst-test";
+
+  /* Parse command line into options. */
+  parse_command_line (argv, &opts);
+
+  if (opts.verbosity >= 0)
+    fputs ("bst-test for GNU libavl 2.0; use --help to get help.\n", stdout);
+
+  if (!opts.seed_given)
+    opts.seed = time_seed () % 32768u;
+
+  insert = xmalloc (sizeof *insert * opts.node_cnt);
+  delete = xmalloc (sizeof *delete * opts.node_cnt);
+
+  /* Run the tests. */
+  success = 1;
+  while (opts.iter_cnt--)
+    {
+      struct mt_allocator *alloc;
+
+      if (opts.verbosity >= 0)
+        {
+          printf ("Testing seed=%u", opts.seed);
+          if (opts.alloc_incr)
+            printf (", alloc arg=%d", opts.alloc_arg[0]);
+          printf ("...\n");
+          fflush (stdout);
+        }
+
+      /* Generate insertion and deletion order.
+         Seed them separately to ensure deletion order is
+         independent of insertion order. */
+      srand (opts.seed);
+      gen_insertions (opts.node_cnt, opts.insert_order, insert);
+
+      srand (++opts.seed);
+      gen_deletions (opts.node_cnt, opts.delete_order, insert, delete);
+
+      if (opts.verbosity >= 1)
+        {
+          int i;
+
+          printf ("  Insertion order:");
+          for (i = 0; i < opts.node_cnt; i++)
+            printf (" %d", insert[i]);
+          printf (".\n");
+
+          if (opts.test == TST_CORRECTNESS)
+            {
+              printf ("Deletion order:");
+              for (i = 0; i < opts.node_cnt; i++)
+                printf (" %d", delete[i]);
+              printf (".\n");
+            }
+        }
+
+      alloc = mt_create (opts.alloc_policy, opts.alloc_arg, opts.verbosity);
+
+      {
+        int okay;
+        struct libavl_allocator *a = mt_allocator (alloc);
+
+        switch (opts.test)
+          {
+          case TST_CORRECTNESS:
+            okay = test_correctness (a, insert, delete, opts.node_cnt,
+                                     opts.verbosity);
+            break;
+
+          case TST_OVERFLOW:
+            okay = test_overflow (a, insert, opts.node_cnt, opts.verbosity);
+            break;
+
+          case TST_NULL:
+            okay = 1;
+            break;
+
+          default:
+            assert (0);
+          }
+
+        if (okay)
+          {
+            if (opts.verbosity >= 1)
+              printf ("  No errors.\n");
+          }
+        else
+          {
+            success = 0;
+            printf ("  Error!\n");
+          }
+      }
+
+      mt_destroy (alloc);
+      opts.alloc_arg[0] += opts.alloc_incr;
+
+      if (!success && !opts.nonstop)
+        break;
+    }
+
+  free (delete);
+  free (insert);
+
+  return success ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+This code is included in *Note 97: testc.
+
+   The main program initializes our single global variable, pgm_name,
+which receives the name of the program at start of execution:
+
+141. <Test declarations 121> +=
+/* Program name. */
+char *pgm_name;
+
+
+File: libavl.info,  Node: Additional Exercises for BSTs,  Prev: Testing our BST functions,  Up: Binary Search Trees
+
+4.15 Additional Exercises
+=========================
+
+Exercises:
+
+1. Sentinels were a main theme of the chapter before this one.  Figure
+out how to apply sentinel techniques to binary search trees.  Write
+routines for search and insertion in such a binary search tree with
+sentinel.  Test your functions.  (You need not make your code fully
+generic; e.g., it is acceptable to "hard-code" the data type stored in
+the tree.)
+
+
+File: libavl.info,  Node: AVL Trees,  Next: Red-Black Trees,  Prev: Binary Search Trees,  Up: Top
+
+5 AVL Trees
+***********
+
+   In the last chapter, we designed and implemented a table ADT using
+binary search trees.  We were interested in binary trees from the
+beginning because of their promise of speed compared to linear lists.
+
+   But we only get these speed improvements if our binary trees are
+arranged more or less optimally, with the tree's height as small as
+possible.  If we insert and delete items in the tree in random order,
+then chances are that we'll come pretty close to this optimal tree.(1)
+
+   In "pathological" cases, search within binary search trees can be as
+slow as sequential search, or even slower when the extra bookkeeping
+needed for a binary tree is taken into account.  For example, after
+inserting items into a BST in sorted order, we get something like the
+vines on the left and the right below.  The BST in the middle below
+illustrates a more unusual case, a "zig-zag" BST that results from
+inserting items from alternating ends of an ordered list.
+
+                            5    1         1
+                           /      `-._      \
+                          4           5      2
+                         /         _.'        \
+                        3         2            3
+                       /           `_           \
+                      2              4           4
+                     /              /             \
+                    1              3               5
+ 
+ Unfortunately, these pathological cases can easily come up in
+practice, because sorted data in the input to a program is common.  We
+could periodically balance the tree using some heuristic to detect that
+it is "too tall".  In the last chapter, in fact, we used a weak version
+of this idea, rebalancing when a stack overflow force it.  We could
+abandon the idea of a binary search tree, using some other data
+structure.  Finally, we could adopt some modifications to binary search
+trees that prevent the pathological case from occurring.
+
+For the remainder of this book, we're only interested in the latter
+choice.  We'll look at two sets of rules that, when applied to the
+basic structure of a binary search tree, ensure that the tree's height
+is kept within a constant factor of the minimum value.  Although this
+is not as good as keeping the BST's height at its minimum, it comes
+pretty close, and the required operations are much faster.  A tree
+arranged to rules such as these is called a "balanced tree" (*note
+balanced tree::).  The operations used for minimizing tree height are
+said to "rebalance" (*note rebalance::) the tree, even though this is
+different from the sort of rebalancing we did in the previous chapter,
+and are said to maintain the tree's "balance."
+
+   A balanced tree arranged according to the first set of rebalancing
+rules that we'll examine is called an "AVL tree" (*note AVL tree::),
+after its inventors, G. M. Adel'son-Vel'skii< and E. M.  Landis.  AVL
+trees are the subject of this chapter, and the next chapter will
+discuss red-black trees, another type of balanced tree.
+
+   In the following sections, we'll construct a table implementation
+based on AVL trees.  Here's an outline of the AVL code:
+
+142. <avl.h 142> =
+<*Note License:: 1>
+#ifndef AVL_H
+#define AVL_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note BST maximum height:: 28>
+<*Note BST table structure:: 27>
+<*Note AVL node structure:: 144>
+<*Note BST traverser structure:: 61>
+<*Note Table function prototypes:: 15>
+
+#endif /* avl.h */
+
+143. <avl.c 143> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "avl.h"
+
+<*Note AVL functions:: 145>
+
+* Menu:
+
+* AVL Balancing Rule::
+* AVL Data Types::
+* AVL Operations::
+* Inserting into an AVL tree::
+* Deleting from an AVL tree::
+* Traversal of an AVL tree::
+* Copying an AVL tree::
+* Testing AVL Trees::
+
+See also:  *Note Knuth 1998b::, sections 6.2.2 and 6.2.3; *Note Cormen
+1990::, section 13.4.
+
+   ---------- Footnotes ----------
+
+   (1) This seems true intuitively, but there are some difficult
+mathematics in this area.  For details, refer to *Note Knuth 1998b::
+theorem 6.2.2H, *Note Knuth 1977::, and *Note Knuth 1978::.
+
+
+File: libavl.info,  Node: AVL Balancing Rule,  Next: AVL Data Types,  Prev: AVL Trees,  Up: AVL Trees
+
+5.1 Balancing Rule
+==================
+
+   A binary search tree is an AVL tree if the difference in height
+between the subtrees of each of its nodes is between -1 and +1.  Said
+another way, a BST is an AVL tree if it is an empty tree or if its
+subtrees are AVL trees and the difference in height between its left and
+right subtree is between -1 and +1.
+
+   Here are some AVL trees:
+
+                                   3         4
+                         2        / \       / \
+                         ^       2   4     2   5
+                        1 3     /          ^
+                               1          1 3
+ 
+ These binary search trees are not AVL trees:
+
+                                  3       4
+                                 /       /
+                                2       2
+                               /        ^
+                              1        1 3
+ 
+ In an AVL tree, the height of a node's right subtree minus the height
+of its left subtree is called the node's "balance factor" (*note
+balance factor::).  Balance factors are always -1, 0, or +1.  They are
+often represented as one of the single characters -, 0, or +.  Because
+of their importance in AVL trees, balance factors will often be shown
+in this chapter in AVL tree diagrams along with or instead of data
+items.  In tree diagrams, balance factors are enclosed in angle
+brackets: `<->', `<0>', `<+>'.  Here are the AVL trees from above, but
+with balance factors shown in place of data values:
+
+                                <->                  <->
+               <0>            _'   \           __..-'   \
+             _'   \          <->    <0>       <0>        <0>
+            <0>    <0>     _'               _'   \
+                          <0>              <0>    <0>
+ 
+  See also:  *Note Knuth 1998b::, section 6.2.3.
+
+* Menu:
+
+* Analysis of AVL Balancing Rule::
+
+
+File: libavl.info,  Node: Analysis of AVL Balancing Rule,  Prev: AVL Balancing Rule,  Up: AVL Balancing Rule
+
+5.1.1 Analysis
+--------------
+
+   How good is the AVL balancing rule?  That is, before we consider how
+much complication it adds to BST operations, what does this balancing
+rule guarantee about performance?  This is a simple question only if
+you're familiar with the mathematics behind computer science.  For our
+purposes, it suffices to state the results:
+
+     An AVL tree with n nodes has height between log2 (n + 1) and 1.44
+     * log2 (n + 2) - 0.328.  An AVL tree with height h has between pow
+     (2, (h + .328) / 1.44) - 2 and pow (2, h) - 1 nodes.
+
+     For comparison, an optimally balanced BST with n nodes has height
+     ceil (log2 (n + 1)).  An optimally balanced BST with height h has
+     between pow (2, h - 1) and pow (2, h) - 1 nodes.(1)
+
+   The average speed of a search in a binary tree depends on the tree's
+height, so the results above are quite encouraging: an AVL tree will
+never be more than about 50% taller than the corresponding optimally
+balanced tree.  Thus, we have a guarantee of good performance even in
+the worst case, and optimal performance in the best case.
+
+See also:  *Note Knuth 1998b::, theorem 6.2.3A.
+
+   ---------- Footnotes ----------
+
+   (1) Here log2 is the standard C base-2 logarithm function, pow is
+the exponentiation function, and ceil is the "ceiling" or "round up"
+function.  For more information, consult a C reference guide, such as
+*Note Kernighan 1988::.
+
+
+File: libavl.info,  Node: AVL Data Types,  Next: AVL Operations,  Prev: AVL Balancing Rule,  Up: AVL Trees
+
+5.2 Data Types
+==============
+
+   We need to define data types for AVL trees like we did for BSTs.  AVL
+tree nodes contain all the fields that a BST node does, plus a field
+recording its balance factor:
+
+144. <AVL node structure 144> =
+/* An AVL tree node. */
+struct avl_node
+  {
+    struct avl_node *avl_link[2];  /* Subtrees. */
+    void *avl_data;                /* Pointer to data. */
+    signed char avl_balance;       /* Balance factor. */
+  };
+
+This code is included in *Note 142: avlh.
+
+   We're using avl_ as the prefix for all AVL-related identifiers.
+
+   The other data structures for AVL trees are the same as for BSTs.
+
+
+File: libavl.info,  Node: AVL Operations,  Next: Inserting into an AVL tree,  Prev: AVL Data Types,  Up: AVL Trees
+
+5.3 Operations
+==============
+
+   Now we'll implement for AVL trees all the operations that we did for
+BSTs.  Here's the outline.  Creation and search of AVL trees is exactly
+like that for plain BSTs, and the generic table functions for insertion
+convenience, assertion, and memory allocation are still relevant, so we
+just reuse the code.  Of the remaining functions, we will write new
+implementations of the insertion and deletion functions and revise the
+traversal and copy functions.
+
+145. <AVL functions 145> =
+<*Note BST creation function:: 30>
+<*Note BST search function:: 31>
+<*Note AVL item insertion function:: 146>
+<*Note Table insertion convenience functions:: 592>
+<*Note AVL item deletion function:: 164>
+<*Note AVL traversal functions:: 178>
+<*Note AVL copy function:: 185>
+<*Note BST destruction function:: 84>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 143: avlc.
+
+
+File: libavl.info,  Node: Inserting into an AVL tree,  Next: Deleting from an AVL tree,  Prev: AVL Operations,  Up: AVL Trees
+
+5.4 Insertion
+=============
+
+   The insertion function for unbalanced BSTs does not maintain the AVL
+balancing rule, so we have to write a new insertion function.  But
+before we get into the nitty-gritty details, let's talk in generalities.
+This is time well spent because we will be able to apply many of the
+same insights to AVL deletion and insertion and deletion in red-black
+trees.
+
+   Conceptually, there are two stages to any insertion or deletion
+operation in a balanced tree.  The first stage may lead to violation of
+the tree's balancing rule.  If so, we fix it in the second stage.  The
+insertion or deletion itself is done in the first stage, in much the
+same way as in an unbalanced BST, and we may also do a bit of
+additional bookkeeping work, such as updating balance factors in an AVL
+tree, or swapping node "colors" in red-black trees.
+
+   If the first stage of the operation does not lead to a violation of
+the tree's balancing rule, nothing further needs to be done.  But if it
+does, the second stage rearranges nodes and modifies their attributes
+to restore the tree's balance.  This process is said to "rebalance"
+(*note rebalance::) the tree.  The kinds of rebalancing that might be
+necessary depend on the way the operation is performed and the tree's
+balancing rule.  A well-chosen balancing rule helps to minimize the
+necessity for rebalancing.
+
+   When rebalancing does become necessary in an AVL or red-black tree,
+its effects are limited to the nodes along or near the direct path from
+the inserted or deleted node up to the root of the tree.  Usually, only
+one or two of these nodes are affected, but, at most, one simple
+manipulation is performed at each of the nodes along this path.  This
+property ensures that balanced tree operations are efficient (see
+Exercise 1 for details).
+
+   That's enough theory for now.  Let's return to discussing the
+details of AVL insertion.  There are four steps in `libavl''s
+implementation of AVL insertion:
+
+  1. *Search* for the location to insert the new item.
+
+  2. *Insert* the item as a new leaf.
+
+  3. *Update* balance factors in the tree that were changed by the
+     insertion.
+
+  4. *Rebalance* the tree, if necessary.
+
+   Steps 1 and 2 are the same as for insertion into a BST.  Step 3
+performs the additional bookkeeping alluded to above in the general
+description of balanced tree operations.  Finally, step 4 rebalances the
+tree, if necessary, to restore the AVL balancing rule.
+
+   The following sections will cover all the details of AVL insertion.
+For now, here's an outline of avl_probe():
+
+146. <AVL item insertion function 146> =
+void **
+avl_probe (struct avl_table *tree, void *item)
+{
+  <*Note |avl_probe()| local variables:: 147>
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search AVL tree for insertion point:: 148>
+  <*Note Step 2 Insert AVL node:: 149>
+  <*Note Step 3 Update balance factors after AVL insertion:: 150>
+  <*Note Step 4 Rebalance after AVL insertion:: 151>
+}
+
+This code is included in *Note 145: AVL functions.
+
+147. <avl_probe() local variables 147> =
+struct avl_node *y, *z; /* Top node to update balance factor, and parent. */
+struct avl_node *p, *q; /* Iterator, and parent. */
+struct avl_node *n;     /* Newly inserted node. */
+struct avl_node *w;     /* New root of rebalanced subtree. */
+int dir;                /* Direction to descend. */
+
+unsigned char da[AVL_MAX_HEIGHT]; /* Cached comparison results. */
+int k = 0;              /* Number of cached results. */
+
+This code is included in *Note 146: AVL item insertion function, *Note
+301: TAVL item insertion function, and *Note 419: RTAVL item insertion
+function.
+
+* Menu:
+
+* Step 1 in AVL insertion::
+* Step 2 in AVL Insertion::
+* Step 3 in AVL Insertion::
+* Rebalancing AVL trees::
+* AVL insertion symmetric case::
+* AVL insertion example::
+* Recursive Insertion::
+
+See also:  *Note Knuth 1998b::, algorithm 6.2.3A.
+
+Exercises:
+
+*1. When rebalancing manipulations are performed on the chain of nodes
+from the inserted or deleted node to the root, no manipulation takes
+more than a fixed amount of time.  In other words, individual
+manipulations do not involve any kind of iteration or loop.  What can
+you conclude about the speed of an individual insertion or deletion in
+a large balanced tree, compared to the best-case speed of an operation
+for unbalanced BSTs?
+
+
+File: libavl.info,  Node: Step 1 in AVL insertion,  Next: Step 2 in AVL Insertion,  Prev: Inserting into an AVL tree,  Up: Inserting into an AVL tree
+
+5.4.1 Step 1: Search
+--------------------
+
+   The search step is an extended version of the corresponding code for
+BST insertion in <*Note BST item insertion function:: 32>.  The earlier
+code had only two variables to maintain: the current node the direction
+to descend from p.  The AVL code does this, but it maintains some other
+variables, too.  During each iteration of the for loop, p is the node
+we are examining, q is p's parent, y is the most recently examined node
+with nonzero balance factor, z is y's parent, and elements 0...k - 1 of
+array da[] record each direction descended, starting from z, in order
+to arrive at p.  The purposes for many of these variables are surely
+uncertain right now, but they will become clear later.
+
+148. <Step 1: Search AVL tree for insertion point 148> =
+z = (struct avl_node *) &tree->avl_root;
+y = tree->avl_root;
+dir = 0;
+for (q = z, p = y; p != NULL; q = p, p = p->avl_link[dir])
+  {
+    int cmp = tree->avl_compare (item, p->avl_data, tree->avl_param);
+    if (cmp == 0)
+      return &p->avl_data;
+
+    if (p->avl_balance != 0)
+      z = q, y = p, k = 0;
+    da[k++] = dir = cmp > 0;
+  }
+
+This code is included in *Note 146: AVL item insertion function.
+
+
+File: libavl.info,  Node: Step 2 in AVL Insertion,  Next: Step 3 in AVL Insertion,  Prev: Step 1 in AVL insertion,  Up: Inserting into an AVL tree
+
+5.4.2 Step 2: Insert
+--------------------
+
+   Following the search loop, q is the last non-null node examined, so
+it is the parent of the node to be inserted.  The code below creates
+and initializes a new node as a child of q on side dir, and stores a
+pointer to it into n.  Compare this code for insertion to that within
+<*Note BST item insertion function:: 32>.
+
+149. <Step 2: Insert AVL node 149> =
+n = q->avl_link[dir] =
+  tree->avl_alloc->libavl_malloc (tree->avl_alloc, sizeof *n);
+if (n == NULL)
+  return NULL;
+
+tree->avl_count++;
+n->avl_data = item;
+n->avl_link[0] = n->avl_link[1] = NULL;
+n->avl_balance = 0;
+if (y == NULL)
+  return &n->avl_data;
+
+This code is included in *Note 146: AVL item insertion function.
+
+Exercises:
+
+1. How can y be NULL?  Why is this special-cased?
+
+
+File: libavl.info,  Node: Step 3 in AVL Insertion,  Next: Rebalancing AVL trees,  Prev: Step 2 in AVL Insertion,  Up: Inserting into an AVL tree
+
+5.4.3 Step 3: Update Balance Factors
+------------------------------------
+
+   When we add a new node n to an AVL tree, the balance factor of n's
+parent must change, because the new node increases the height of one of
+the parent's subtrees.  The balance factor of n's parent's parent may
+need to change, too, depending on the parent's balance factor, and in
+fact the change can propagate all the way up the tree to its root.
+
+   At each stage of updating balance factors, we are in a similar
+situation.  First, we are examining a particular node p that is one of
+n's direct ancestors.  The first time around, p is n's parent, the next
+time, if necessary, p is n's grandparent, and so on.  Second, the
+height of one of p's subtrees has increased, and which one can be
+determined using da[].
+
+   In general, if the height of p's left subtree increases, p's balance
+factor decreases.  On the other hand, if the right subtree's height
+increases, p's balance factor increases.  If we account for the three
+possible starting balance factors and the two possible sides, there are
+six possibilities.  The three of these corresponding to an increase in
+one subtree's height are symmetric with the others that go along with
+an increase in the other subtree's height.  We treat these three cases
+below.
+
+Case 1: p has balance factor 0
+..............................
+
+   If p had balance factor 0, its new balance factor is - or +,
+depending on the side of the root to which the node was added.  After
+that, the change in height propagates up the tree to p's parent (unless
+p is the tree's root) because the height of the subtree rooted at p's
+parent has also increased.
+
+   The example below shows a new node n inserted as the left child of a
+node with balance factor 0.  On the far left is the original tree before
+insertion; in the middle left is the tree after insertion but before any
+balance factors are adjusted; in the middle right is the tree after the
+first adjustment, with p as n's parent; on the far right is the tree
+after the second adjustment, with p as n's grandparent.  Only in the
+trees on the far left and far right are all of the balance factors
+correct.
+
+                          <0>              <0>               p
+                        _'   \           _'   \             <->
+         <0>           <0>    <0>        p     <0>        _'   \
+       _'   \    =>  _'           =>    <->        =>    <->    <0>
+      <0>    <0>     n                _'               _'
+                    <0>               n                n
+                                     <0>              <0>
+
+Case 2: p's shorter subtree has increased in height
+...................................................
+
+If the new node was added to p's shorter subtree, then the subtree has
+become more balanced and its balance factor becomes 0.  If p started
+out with balance factor +, this means the new node is in p's left
+subtree.  If p had a - balance factor, this means the new node is in
+the right subtree.  Since tree p has the same height as it did before,
+the change does not propagate up the tree any farther, and we are done.
+Here's an example that shows pre-insertion and post-balance factor
+updating views:
+
+                                            <0>
+                      <0>             __..-'   `._
+                __..-'   \           <+>           p
+               <+>        <+>     =>    \         <0>
+                  \          \           <0>    _'   \
+                   <0>        <0>               n     <0>
+                                               <0>
+
+Case 3: p's taller subtree has increased in height
+..................................................
+
+If the new node was added on the taller side of a subtree with nonzero
+balance factor, the balance factor becomes +2 or -2.  This is a
+problem, because balance factors in AVL trees must be between -1 and
++1.  We have to rebalance the tree in this case.  We will cover
+rebalancing later.  For now, take it on faith that rebalancing does not
+increase the height of subtree p as a whole, so there is no need to
+propagate changes any farther up the tree.
+
+   Here's an example of an insertion that leads to rebalancing.  On the
+left is the tree before insertion; in the middle is the tree after
+insertion and updating balance factors; on the right is the tree after
+rebalancing to.  The -2 balance factor is shown as two minus signs
+(--).  The rebalanced tree is the same height as the original tree
+before insertion.
+
+                                   <-->
+                      <->        _'           <0>
+                    _'          <->         _'   \
+                   <0>    =>  _'        =>  n     <0>
+                              n            <0>
+                             <0>
+ 
+ As another demonstration that the height of a rebalanced subtree does
+not change after insertion, here's a similar example that has one more
+layer of nodes.  The trees below follow the same pattern as the ones
+above, but the rebalanced subtree has a parent.  Even though the tree's
+root has the wrong balance factor in the middle diagram, it turns out to
+be correct after rebalancing.
+
+                                    <->
+               <->               _.'   \                 <->
+             _'   \             <-->    <0>        __..-'   \
+            <->    <0>        _'                  <0>        <0>
+          _'           =>    <->            =>  _'   \
+         <0>               _'                   n     <0>
+                           n                   <0>
+                          <0>
+
+Implementation
+..............
+
+Looking at the rules above, we can see that only in case 1, where p's
+balance factor is 0, do changes to balance factors continue to propagate
+upward in the tree.  So we can start from n's parent and move upward in
+the tree, handling case 1 each time, until we hit a nonzero balance
+factor, handle case 2 or case 3 at that node, and we're done (except for
+possible rebalancing afterward).
+
+   Wait a second--there is no efficient way to move upward in a binary
+search tree!(1)  Fortunately, there is another approach we can use.
+Remember the extra code we put into <*Note Step 1 Search AVL tree for
+insertion point:: 148>?  This code kept track of the last node we'd
+passed through that had a nonzero balance factor as s.  We can use s to
+move downward, instead of upward, through the nodes whose balance
+factors are to be updated.
+
+   Node s itself is the topmost node to be updated; when we arrive at
+node n, we know we're done.  We also kept track of the directions we
+moved downward in da[].  Suppose that we've got a node p whose balance
+factor is to be updated and a direction d that we moved from it.  We
+know that if we moved down to the left (d == 0) then the balance factor
+must be decreased, and that if we moved down to the right (d == 1) then
+the balance factor must be increased.
+
+   Now we have enough knowledge to write the code to update balance
+factors.  The results are almost embarrassingly short:
+
+150. <Step 3: Update balance factors after AVL insertion 150> =
+for (p = y, k = 0; p != n; p = p->avl_link[da[k]], k++)
+  if (da[k] == 0)
+    p->avl_balance--;
+  else
+    p->avl_balance++;
+
+This code is included in *Note 146: AVL item insertion function, *Note
+301: TAVL item insertion function, and *Note 419: RTAVL item insertion
+function.
+
+   Now p points to the new node as a consequence of the loop's exit
+condition.  Variable p will not be modified again in this function, so
+it is used in the function's final return statement to take the address
+of the new node's avl_data member (see <*Note AVL item insertion
+function:: 146> above).
+
+Exercises:
+
+1. Can case 3 be applied to the parent of the newly inserted node?
+
+2. For each of the AVL trees below, add a new node with a value smaller
+than any already in the tree and update the balance factors of the
+existing nodes.  For each balance factor that changes, indicate the
+numbered case above that applies.  Which of the trees require
+rebalancing after the insertion?
+
+                    <0>             <+>
+              __..-'   `._        _'   `._              <->
+             <+>          <->    <0>      <0>         _'
+                \       _'              _'   \       <0>
+                 <0>   <0>             <0>    <0>
+ 
+   3. Earlier versions of `libavl' used chars, not unsigned chars, to
+cache the results of comparisons, as the elements of da[] are used
+here.  At some warning levels, this caused the GNU C compiler to emit
+the warning "array subscript has type `char'" when it encountered
+expressions like q->avl_link[da[k]].  Explain why this can be a useful
+warning message.
+
+4. If our AVL trees won't ever have a height greater than 32, then we
+can portably use the bits in a single unsigned long to compactly store
+what the entire da[] array does.  Write a new version of step 3 to use
+this form, along with any necessary modifications to other steps and
+avl_probe()'s local variables.
+
+   ---------- Footnotes ----------
+
+   (1) We could make a list of the nodes as we move down the tree and
+reuse it on the way back up.  We'll do that for deletion, but there's a
+simpler way for insertion, so keep reading.
+
+
+File: libavl.info,  Node: Rebalancing AVL trees,  Next: AVL insertion symmetric case,  Prev: Step 3 in AVL Insertion,  Up: Inserting into an AVL tree
+
+5.4.4 Step 4: Rebalance
+-----------------------
+
+   We've covered steps 1 through 3 so far.  Step 4, rebalancing, is
+somewhat complicated, but it's the key to the entire insertion
+procedure.  It is also similar to, but simpler than, other rebalancing
+procedures we'll see later.  As a result, we're going to discuss it in
+detail.  Follow along carefully and it should all make sense.
+
+   Before proceeding, let's briefly review the circumstances under which
+we need to rebalance.  Looking back a few sections, we see that there
+is only one case where this is required: case 3, when the new node is
+added in the taller subtree of a node with nonzero balance factor.
+
+   Case 3 is the case where y has a -2 or +2 balance factor after
+insertion.  For now, we'll just consider the -2 case, because we can
+write code for the +2 case later in a mechanical way by applying the
+principle of symmetry.  In accordance with this idea, step 4 branches
+into three cases immediately, one for each rebalancing case and a third
+that just returns from the function if no rebalancing is necessary:
+
+151. <Step 4: Rebalance after AVL insertion 151> =
+if (y->avl_balance == -2)
+  {
+    <*Note Rebalance AVL tree after insertion in left subtree:: 152>
+  }
+else if (y->avl_balance == +2)
+  {
+    <*Note Rebalance AVL tree after insertion in right subtree:: 157>
+  }
+else
+  return &n->avl_data;
+
+See also *Note 153: Step 4 Rebalance after AVL insertion-2 and *Note
+154: Step 4 Rebalance after AVL insertion-3.
+This code is included in *Note 146: AVL item insertion function.
+
+   We will call y's left child x.  The new node is somewhere in the
+subtrees of x.  There are now only two cases of interest, distinguished
+on whether x has a + or - balance factor.  These cases are almost
+entirely separate:
+
+152. <Rebalance AVL tree after insertion in left subtree 152> =
+struct avl_node *x = y->avl_link[0];
+if (x->avl_balance == -1)
+  {
+    <*Note Rotate right at |y| in AVL tree:: 155>
+  }
+else
+  {
+    <*Note Rotate left at |x| then right at |y| in AVL tree:: 156>
+  }
+
+This code is included in *Note 151: Step 4 Rebalance after AVL
+insertion and *Note 162: Move down then up in recursive AVL insertion.
+
+   In either case, w receives the root of the rebalanced subtree, which
+is used to update the parent's pointer to the subtree root (recall that
+z is the parent of y):
+
+153. <Step 4: Rebalance after AVL insertion 151> +=
+z->avl_link[y != z->avl_link[0]] = w;
+
+   Finally, we increment the generation number, because the tree's
+structure has changed.  Then we're done and we return to the caller:
+
+154. <Step 4: Rebalance after AVL insertion 151> +=
+tree->avl_generation++;
+return &n->avl_data;
+
+Case 1: x has - balance factor
+..............................
+
+   For a - balance factor, we just rotate right at y.  Then the entire
+process, including insertion and rebalancing, looks like this:
+
+                      |                |          |
+                      y                y          x
+                     <->             <-->        <0>
+                 _.-'   \        _.-'    \      /   `_
+                 x       c =>    x        c => a*      y
+                <0>             <->                   <0>
+               /   \           /   \                 /   \
+              a     b         a*    b               b     c
+ 
+ This figure also introduces a new graphical convention.  The change in
+subtree a between the first and second diagrams is indicated by an
+asterisk (*).(1) In this case, it indicates that the new node was
+inserted in subtree a.
+
+The code here is similar to rotate_right() in the solution to
+Exercise 5.3-2:
+
+155. <Rotate right at y in AVL tree 155> =
+w = x;
+y->avl_link[0] = x->avl_link[1];
+x->avl_link[1] = y;
+x->avl_balance = y->avl_balance = 0;
+
+This code is included in *Note 152: Rebalance AVL tree after insertion
+in left subtree and *Note 529: Rebalance for |-| balance factor in PAVL
+insertion in left subtree.
+
+Case 2: x has + balance factor
+..............................
+
+   This case is just a little more intricate.  First, let x's right
+child be w.  Either w is the new node, or the new node is in one of w's
+subtrees.  To restore balance, we rotate left at x, then rotate right
+at y (this is a kind of "double rotation").  The process, starting just
+after the insertion and showing the results of each rotation, looks
+like this:
+
+                         |               |
+                         y               y           |
+                       <-->            <-->          w
+                  __.-'    \         _'    \        <0>
+                  x         d       w       d =>   /   \
+                 <+>          =>   / \            x     y
+                /   \             x   c           ^     ^
+               a     w            ^              a b   c d
+                     ^           a b
+                    b c
+ 
+ At the beginning, the figure does not show the balance factor of w.
+This is because there are three possibilities:
+
+*Case 2.1:* w has balance factor 0.
+     This means that w is the new node.  a, b, c, and d have height 0.
+     After the rotations, x and y have balance factor 0.
+
+*Case 2.2:* w has balance factor -.
+     a, b, and d have height h > 0, and c has height h - 1.
+
+*Case 2.3:* w has balance factor +.
+     a, c, and d have height h > 0, and b has height h - 1.
+
+156. <Rotate left at x then right at y in AVL tree 156> =
+assert (x->avl_balance == +1);
+w = x->avl_link[1];
+x->avl_link[1] = w->avl_link[0];
+w->avl_link[0] = x;
+y->avl_link[0] = w->avl_link[1];
+w->avl_link[1] = y;
+if (w->avl_balance == -1)
+  x->avl_balance = 0, y->avl_balance = +1;
+else if (w->avl_balance == 0)
+  x->avl_balance = y->avl_balance = 0;
+else /* w->avl_balance == +1 */
+  x->avl_balance = -1, y->avl_balance = 0;
+w->avl_balance = 0;
+
+This code is included in *Note 152: Rebalance AVL tree after insertion
+in left subtree, *Note 177: Update |y|s balance factor after right-side
+AVL deletion, *Note 307: Rebalance for |+| balance factor in TAVL
+insertion in left subtree, *Note 427: Rebalance for |+| balance factor
+in RTAVL insertion in left subtree, and *Note 530: Rebalance for |+|
+balance factor in PAVL insertion in left subtree.
+
+Exercises:
+
+1. Why can't the new node be x rather than a node in x's subtrees?
+
+2. Why can't x have a 0 balance factor?
+
+3. For each subcase of case 2, draw a figure like that given for generic
+case 2 that shows the specific balance factors at each step.
+
+4. Explain the expression z->avl_link[y != z->avl_link[0]] = w in the
+second part of <*Note Step 4 Rebalance after AVL insertion:: 151>
+above.  Why would it be a bad idea to substitute the apparent equivalent
+z->avl_link[y == z->avl_link[1]] = w?
+
+5. Suppose that we wish to make a copy of an AVL tree, preserving the
+original tree's shape, by inserting nodes from the original tree into a
+new tree, using avl_probe().  Will inserting the original tree's nodes
+in level order (see the answer to Exercise 5.7-4) have the desired
+effect?
+
+   ---------- Footnotes ----------
+
+   (1) A "prime" (') is traditional, but primes are easy to overlook.
+
+
+File: libavl.info,  Node: AVL insertion symmetric case,  Next: AVL insertion example,  Prev: Rebalancing AVL trees,  Up: Inserting into an AVL tree
+
+5.4.5 Symmetric Case
+--------------------
+
+   Finally, we need to write code for the case that we chose not to
+discuss earlier, where the insertion occurs in the right subtree of y.
+All we have to do is invert the signs of balance factors and switch
+avl_link[] indexes between 0 and 1.  The results are this:
+
+157. <Rebalance AVL tree after insertion in right subtree 157> =
+struct avl_node *x = y->avl_link[1];
+if (x->avl_balance == +1)
+  {
+    <*Note Rotate left at |y| in AVL tree:: 158>
+  }
+else
+  {
+    <*Note Rotate right at |x| then left at |y| in AVL tree:: 159>
+  }
+
+This code is included in *Note 151: Step 4 Rebalance after AVL
+insertion and *Note 162: Move down then up in recursive AVL insertion.
+
+158. <Rotate left at y in AVL tree 158> =
+w = x;
+y->avl_link[1] = x->avl_link[0];
+x->avl_link[0] = y;
+x->avl_balance = y->avl_balance = 0;
+
+This code is included in *Note 157: Rebalance AVL tree after insertion
+in right subtree and *Note 532: Rebalance for |+| balance factor in
+PAVL insertion in right subtree.
+
+159. <Rotate right at x then left at y in AVL tree 159> =
+assert (x->avl_balance == -1);
+w = x->avl_link[0];
+x->avl_link[0] = w->avl_link[1];
+w->avl_link[1] = x;
+y->avl_link[1] = w->avl_link[0];
+w->avl_link[0] = y;
+if (w->avl_balance == +1)
+  x->avl_balance = 0, y->avl_balance = -1;
+else if (w->avl_balance == 0)
+  x->avl_balance = y->avl_balance = 0;
+else /* w->avl_balance == -1 */
+  x->avl_balance = +1, y->avl_balance = 0;
+w->avl_balance = 0;
+
+This code is included in *Note 157: Rebalance AVL tree after insertion
+in right subtree, *Note 174: Left-side rebalancing case 1 in AVL
+deletion, *Note 310: Rebalance for |-| balance factor in TAVL insertion
+in right subtree, *Note 428: Rebalance for |-| balance factor in RTAVL
+insertion in right subtree, and *Note 533: Rebalance for |-| balance
+factor in PAVL insertion in right subtree.
+
+
+File: libavl.info,  Node: AVL insertion example,  Next: Recursive Insertion,  Prev: AVL insertion symmetric case,  Up: Inserting into an AVL tree
+
+5.4.6 Example
+-------------
+
+   We're done with writing the code.  Now, for clarification, let's run
+through an example designed to need lots of rebalancing along the way.
+Suppose that, starting with an empty AVL tree, we insert 6, 5, and 4, in
+that order.  The first two insertions do not require rebalancing.  After
+inserting 4, rebalancing is needed because the balance factor of node 6
+would otherwise become -2, an invalid value.  This is case 1, so we
+perform a right rotation on 6.  So far, the AVL tree has evolved this
+way:
+
+                                        6
+                               6       /      5
+                        6 =>  /  =>   5   =>  ^
+                             5       /       4 6
+                                    4
+
+If we now insert 1, then 3, a double rotation (case 2.1) becomes
+necessary, in which we rotate left at 1, then rotate right at 4:
+
+                               5            5
+                   5          / \          / \        5
+                  / \        4   6        4   6      / \
+                 4   6 =>  _'      =>    /      =>  3   6
+                /         1             3           ^
+               1           \           /           1 4
+                            3         1
+
+Inserting a final item, 2, requires a right rotation (case 1) on 5:
+
+                                5
+                              _' \        3
+                             3    6     _' \
+                           _' \     => 1    5
+                          1    4        \   ^
+                           \             2 4 6
+                            2
+
+
+File: libavl.info,  Node: Recursive Insertion,  Prev: AVL insertion example,  Up: Inserting into an AVL tree
+
+5.4.7 Aside: Recursive Insertion
+--------------------------------
+
+In previous sections we first looked at recursive approaches because
+they were simpler and more elegant than iterative solutions.  As it
+happens, the reverse is true for insertion into an AVL tree.  But just
+for completeness, we will now design a recursive implementation of
+avl_probe().
+
+   Our first task in such a design is to figure out what arguments and
+return value the recursive core of the insertion function will have.
+We'll begin by considering AVL insertion in the abstract.  Our existing
+function avl_probe() works by first moving down the tree, from the root
+to a leaf, then back up the tree, from leaf to root, as necessary to
+adjust balance factors or rebalance.  In the existing iterative
+version, down and up movement are implemented by pushing nodes onto and
+popping them off from a stack.  In a recursive version, moving down the
+tree becomes a recursive call, and moving up the tree becomes a function
+return.
+
+   While descending the tree, the important pieces of information are
+the tree itself (to allow for comparisons to be made), the current
+node, and the data item we're inserting.  The latter two items need to
+be modifiable by the function, the former because the tree rooted at the
+node may need to be rearranged during a rebalance, and the latter
+because of avl_probe()'s return value.
+
+   While ascending the tree, we'll still have access to all of this
+information, but, to allow for adjustment of balance factors and
+rebalancing, we also need to know whether the subtree visited in a
+nested call became taller.  We can use the function's return value for
+this.
+
+   Finally, we know to stop moving down and start moving up when we
+find a null pointer in the tree, which is the place for the new node to
+be inserted.  This suggests itself naturally as the test used to stop
+the recursion.
+
+   Here is an outline of a recursive insertion function directly
+corresponding to these considerations:
+
+160. <Recursive insertion into AVL tree 160> =
+static int
+probe (struct avl_table *tree, struct avl_node **p, void ***data)
+{
+  struct avl_node *y; /* The current node; shorthand for *p. */
+
+  assert (tree != NULL && p != NULL && data != NULL);
+
+  y = *p;
+  if (y == NULL)
+    {
+      <*Note Found insertion point in recursive AVL insertion:: 161>
+    }
+  else /* y != NULL */
+    {
+      <*Note Move down then up in recursive AVL insertion:: 162>
+    }
+}
+
+See also *Note 163: Recursive insertion into AVL tree-2.
+
+   Variable p is declared as a double pointer (struct avl_node **) and
+data as a triple pointer (void ***).  In both cases, this is because C
+passes arguments by value, so that a function modifying one of its
+arguments produces no change in the value seen in the caller.  As a
+result, to allow a function to modify a scalar, a pointer to it must be
+passed as an argument; to modify a pointer, a double pointer must be
+passed; to modify a double pointer, a triple pointer must be passed.
+This can result in difficult-to-understand code, so it is often
+advisable to copy the dereferenced argument into a local variable for
+read-only use, as *p is copied into y here.
+
+   When the insertion point is found, a new node is created and a
+pointer to it stored into *p.  Because the insertion causes the subtree
+to increase in height (from 0 to 1), a value of 1 is then returned:
+
+161. <Found insertion point in recursive AVL insertion 161> =
+y = *p = tree->avl_alloc->libavl_malloc (tree->avl_alloc, sizeof *y);
+if (y == NULL)
+  {
+    *data = NULL;
+    return 0;
+  }
+
+y->avl_data = **data;
+*data = &y->avl_data;
+y->avl_link[0] = y->avl_link[1] = NULL;
+y->avl_balance = 0;
+
+tree->avl_count++;
+tree->avl_generation++;
+
+return 1;
+
+This code is included in *Note 160: Recursive insertion into AVL tree.
+
+   When we're not at the insertion point, we move down, then back up.
+Whether to move down to the left or the right depends on the value of
+the item to insert relative to the value in the current node y.  Moving
+down is the domain of the recursive call to probe().  If the recursive
+call doesn't increase the height of a subtree of y, then there's
+nothing further to do, so we return immediately.  Otherwise, on the way
+back up, it is necessary to at least adjust y's balance factor, and
+possibly to rebalance as well.  If only adjustment of the balance
+factor is necessary, it is done and the return value is based on
+whether this subtree has changed height in the process.  Rebalancing is
+accomplished using the same code used in iterative insertion.  A
+rebalanced subtree has the same height as before insertion, so the value
+returned is 0.  The details are in the code itself:
+
+162. <Move down then up in recursive AVL insertion 162> =
+struct avl_node *w; /* New root of this subtree; replaces *p. */
+int cmp;
+
+cmp = tree->avl_compare (**data, y->avl_data, tree->avl_param);
+if (cmp < 0)
+  {
+    if (probe (tree, &y->avl_link[0], data) == 0)
+      return 0;
+
+    if (y->avl_balance == +1)
+      {
+        y->avl_balance = 0;
+        return 0;
+      }
+    else if (y->avl_balance == 0)
+      {
+        y->avl_balance = -1;
+        return 1;
+      }
+    else
+      {
+        <*Note Rebalance AVL tree after insertion in left subtree:: 152>
+      }
+  }
+else if (cmp > 0)
+  {
+    struct avl_node *r; /* Right child of y, for rebalancing. */
+
+    if (probe (tree, &y->avl_link[1], data) == 0)
+      return 0;
+
+    if (y->avl_balance == -1)
+      {
+        y->avl_balance = 0;
+        return 0;
+      }
+    else if (y->avl_balance == 0)
+      {
+        y->avl_balance = +1;
+        return 1;
+      }
+    else
+      {
+        <*Note Rebalance AVL tree after insertion in right subtree:: 157>
+      }
+  }
+else /* cmp == 0 */
+  {
+    *data = &y->avl_data;
+    return 0;
+  }
+
+*p = w;
+return 0;
+
+This code is included in *Note 160: Recursive insertion into AVL tree.
+
+   Finally, we need a wrapper function to start the recursion off
+correctly and deal with passing back the results:
+
+163. <Recursive insertion into AVL tree 160> +=
+/* Inserts item into tree and returns a pointer to item's address.
+   If a duplicate item is found in the tree,
+   returns a pointer to the duplicate without inserting item.
+   Returns NULL in case of memory allocation failure. */
+void **
+avl_probe (struct avl_table *tree, void *item)
+{
+  void **ret = &item;
+
+  probe (tree, &tree->avl_root, &ret);
+
+  return ret;
+}
+

@@ -1,0 +1,1318 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+Indirect:
+libavl.info-1: 74
+libavl.info-2: 49954
+libavl.info-3: 99278
+libavl.info-4: 149764
+libavl.info-5: 201639
+libavl.info-6: 256110
+libavl.info-7: 309314
+libavl.info-8: 364927
+libavl.info-9: 415137
+libavl.info-10: 467819
+libavl.info-11: 518139
+libavl.info-12: 568432
+libavl.info-13: 618536
+libavl.info-14: 668991
+libavl.info-15: 718896
+libavl.info-16: 778193
+libavl.info-17: 914084
+libavl.info-18: 931167
+
+Tag Table:
+(Indirect)
+Node: Top74
+Node: Preface737
+Node: Acknowledgements3345
+Node: Contacting the Author4569
+Node: Introduction5428
+Node: Audience6160
+Node: Reading the Code8843
+Ref: Clear hash table entries10428
+Ref: Initialize hash table11049
+Ref: Initialize hash table-212444
+Node: Code Conventions13983
+Node: Code License14566
+Ref: License14759
+Node: The Table ADT16614
+Node: Informal Definition17628
+Node: Identifiers19949
+Ref: Identifiers-Footnote-122264
+Node: Comparison Function22425
+Ref: Table function types23457
+Ref: Comparison function for |int|s24581
+Ref: strictweakordering26135
+Ref: ternarycompare26913
+Node: Item and Copy Functions27612
+Ref: Table function types-227908
+Node: Memory Allocation28685
+Ref: Memory allocator29479
+Ref: Default memory allocation functions30654
+Ref: Default memory allocator header31674
+Ref: libavlallocator32068
+Ref: tblallocatorabort32314
+Ref: moreargs32481
+Node: Creation and Destruction32741
+Ref: Table creation function prototypes32991
+Node: Count35123
+Ref: Table count function prototype35335
+Ref: tblcount35490
+Node: Insertion and Deletion35641
+Ref: Table insertion and deletion function prototypes37051
+Ref: nullinsert39386
+Ref: genericinsertreplace39621
+Node: Assertions39712
+Ref: Table assertion function prototypes40398
+Ref: tblassert40982
+Ref: genericassertions41117
+Node: Traversers41469
+Node: Constructors43489
+Ref: Traverser constructor function prototypes43791
+Node: Manipulators45747
+Ref: Traverser manipulator function prototypes45922
+Node: Table Headers48623
+Ref: Table types48880
+Ref: Table function prototypes49251
+Node: Additional Exercises for Tables49954
+Node: Search Algorithms50408
+Node: Sequential Search51413
+Ref: Sequentially search an array of |int|s52271
+Node: Sequential Search with Sentinel53632
+Ref: Sequentially search an array of |int|s using a sentinel54929
+Node: Sequential Search of Ordered Array57739
+Ref: Sequentially search a sorted array of |int|s58920
+Node: Sequential Search of Ordered Array with Sentinel60289
+Ref: Sequentially search a sorted array of |int|s using a sentinel60828
+Ref: Sequentially search a sorted array of |int|s using a sentinel (2)62299
+Node: Binary Search of Ordered Array62948
+Ref: Binary search of ordered array66439
+Ref: benchmark69459
+Ref: Binary Search of Ordered Array-Footnote-169821
+Node: Binary Search Tree in Array70249
+Ref: Binary search tree entry72051
+Ref: Search of binary search tree stored as array73805
+Node: Dynamic Lists75122
+Ref: Dynamic Lists-Footnote-177461
+Node: Binary Search Trees77648
+Ref: bsth78356
+Ref: bstc78766
+Ref: includeguard78938
+Node: BST Vocabulary79350
+Node: Differing Definitions82928
+Node: BST Data Types85038
+Node: BST Node Structure85630
+Ref: BST node structure86097
+Node: BST Structure86848
+Ref: BST table structure87148
+Node: BST Maximum Height88536
+Ref: BST maximum height89514
+Node: BST Rotations89863
+Ref: bstrotation92694
+Node: BST Operations92862
+Ref: BST operations93491
+Node: Creating a BST93984
+Ref: catalogue-entry-bst-094257
+Ref: BST creation function94262
+Node: Searching a BST94926
+Ref: catalogue-entry-bst-195229
+Ref: BST search function95234
+Node: Inserting into a BST96104
+Ref: catalogue-entry-bst-297591
+Ref: BST item insertion function97596
+Ref: rootcast98665
+Ref: bstprobedblptr98757
+Ref: copyinsorder98845
+Ref: levelorder99070
+Node: Root Insertion in a BST99278
+Ref: catalogue-entry-bst-3101870
+Ref: BST item insertion function root insertion version101875
+Ref: Step 1 Search BST for insertion point root insertion version102253
+Ref: Step 2 Insert new BST node root insertion version102818
+Ref: Step 3 Move BST node to root103204
+Ref: rootins1103840
+Ref: rootins2104540
+Node: Deleting from a BST104902
+Ref: bstdelcase1105989
+Ref: bstdelcase2106930
+Ref: bstdelcase3107914
+Ref: successor108443
+Ref: catalogue-entry-bst-4109642
+Ref: BST item deletion function109647
+Ref: Step 1 Find BST node to delete110525
+Ref: Step 2 Delete BST node110987
+Ref: Case 1 in BST deletion111433
+Ref: Case 2 in BST deletion111677
+Ref: Case 3 in BST deletion112102
+Ref: Case 3 in BST deletion-2112434
+Ref: Step 3 Finish up after deleting BST node112696
+Ref: bstdelcase15113025
+Ref: bstaltdel113107
+Ref: modifydata113380
+Node: Deletion by Merging113690
+Ref: catalogue-entry-bst-5116746
+Ref: BST item deletion function by merging116751
+Ref: Step 1 Find BST node to delete by merging117374
+Ref: Step 2 Delete BST node by merging118399
+Ref: Step 3 Finish up after BST deletion by merging119526
+Node: Traversing a BST119820
+Ref: Traversing a BST-Footnote-1123742
+Node: Recursive Traversal of a BST123948
+Ref: catalogue-entry-bst-6125184
+Ref: Recursive traversal of BST125189
+Ref: Recursive traversal of BST-2125666
+Node: Iterative Traversal of a BST126751
+Ref: Iterative traversal of BST take 1129342
+Ref: Iterative traversal of BST take 2129797
+Ref: Iterative traversal of BST take 3130440
+Ref: Iterative traversal of BST take 4131433
+Ref: catalogue-entry-bst-7132219
+Ref: Iterative traversal of BST take 5132224
+Ref: Iterative Traversal of a BST-Footnote-1133884
+Node: Improving Convenience134000
+Ref: Summing string lengths with |walk()|134587
+Ref: Summing string lengths with |next_item()|135040
+Ref: catalogue-entry-bst-8135977
+Ref: Iterative traversal of BST take 6135982
+Ref: Iterative traversal of BST take 6-2136610
+Ref: Iterative traversal of BST take 6-3137178
+Node: Better Iterative Traversal138784
+Ref: BST traverser structure140911
+Ref: catalogue-entry-bst-9142377
+Ref: BST traverser refresher142382
+Ref: BST traversal functions143549
+Ref: probegeneration144154
+Node: BST Traverser Null Initialization145127
+Ref: catalogue-entry-bst-10145490
+Ref: BST traverser null initializer145495
+Node: BST Traverser First Initialization145828
+Ref: catalogue-entry-bst-11146330
+Ref: BST traverser least-item initializer146335
+Node: BST Traverser Last Initialization147167
+Ref: catalogue-entry-bst-12147591
+Ref: BST traverser greatest-item initializer147596
+Node: BST Traverser Find Initialization148322
+Ref: catalogue-entry-bst-13148787
+Ref: BST traverser search initializer148792
+Node: BST Traverser Insert Initialization149764
+Ref: catalogue-entry-bst-14150175
+Ref: BST traverser insertion initializer150180
+Node: BST Traverser Copying151445
+Ref: catalogue-entry-bst-15151794
+Ref: BST traverser copy initializer151799
+Node: BST Traverser Advancing152651
+Ref: catalogue-entry-bst-16153313
+Ref: catalogue-entry-bst-17153313
+Ref: BST traverser advance function153318
+Ref: Handle case where |x| has a right child154472
+Ref: Handle case where |x| has no right child155245
+Node: BST Traverser Retreating155576
+Ref: catalogue-entry-bst-18155966
+Ref: BST traverser back up function155971
+Node: BST Traversal Current Item157279
+Ref: catalogue-entry-bst-19157517
+Ref: BST traverser current item function157522
+Node: BST Traversal Replacing the Current Item157958
+Ref: catalogue-entry-bst-20158169
+Ref: BST traverser replacement function158174
+Node: Copying a BST158704
+Node: Copying a BST Recursively159186
+Ref: catalogue-entry-bst-21159518
+Ref: Recursive copy of BST take 1159523
+Ref: Recursive copy of BST take 2160482
+Node: Copying a BST Iteratively162100
+Ref: catalogue-entry-bst-22162539
+Ref: Iterative copy of BST162544
+Ref: Iterative copy of BST-2163374
+Ref: Iterative copy of BST-3163928
+Ref: Iterative copy of BST-4165113
+Ref: copystep166054
+Node: Handling errors during iterative BST copying166128
+Ref: BST copy error helper function168216
+Ref: catalogue-entry-bst-23169227
+Ref: BST copy function169232
+Node: Destroying a BST172189
+Node: Destroying a BST by Rotation172613
+Ref: catalogue-entry-bst-24175246
+Ref: BST destruction function175251
+Node: Destroying a BST Recursively176407
+Ref: catalogue-entry-bst-25177098
+Ref: Destroy a BST recursively177103
+Node: Destroying a BST Iteratively177336
+Ref: catalogue-entry-bst-26180685
+Ref: Destroy a BST iteratively180690
+Node: Balancing a BST181960
+Ref: catalogue-entry-bst-27184322
+Ref: BST balance function184327
+Ref: BST extra function prototypes184634
+Node: Transforming a BST into a Vine184987
+Ref: catalogue-entry-bst-28187398
+Ref: BST to vine function187403
+Node: Transforming a Vine into a Balanced BST188120
+Ref: Transforming a Vine into a Balanced BST-Footnote-1193319
+Node: Balancing General Trees193498
+Node: Balancing Implementation196399
+Ref: catalogue-entry-bst-29196704
+Ref: Vine to balanced BST function196709
+Ref: Calculate |leaves|198918
+Ref: Reduce vine general case to special case199589
+Ref: Make special case vine into balanced tree and count height200621
+Ref: Check for tree height in range201357
+Node: Implementing compress()201639
+Ref: catalogue-entry-bst-30202037
+Ref: BST compression function202042
+Node: Joining BSTs202811
+Ref: catalogue-entry-bst-31208773
+Ref: BST join function recursive version208778
+Ref: Joining BSTs-Footnote-1209816
+Node: Testing our BST functions209897
+Ref: testc213696
+Ref: bst-testc214270
+Ref: testh214803
+Ref: Testing our BST functions-Footnote-1215421
+Node: Testing BSTs215631
+Ref: BST test function216703
+Ref: Test prototypes217666
+Ref: Test creating a BST and inserting into it218337
+Ref: Test BST traversal during modifications219774
+Ref: BST traverser check function221476
+Ref: Test deleting nodes from the BST and making copies of it223189
+Ref: Compare two BSTs for structure and content224454
+Ref: Test deleting from an empty tree225737
+Ref: Test destroying the tree226021
+Node: BST Verification226618
+Ref: BST verify function227038
+Ref: Check |tree->bst_count| is correct228054
+Ref: Check BST structure228816
+Ref: Check counted nodes229099
+Ref: Recursively verify BST structure229647
+Ref: Verify binary search tree ordering230629
+Ref: Check that the tree contains all the elements it should231679
+Ref: Check that forward traversal works232830
+Ref: Check that backward traversal works233675
+Ref: Check that traversal from the null element works234804
+Node: Displaying BST structures236024
+Ref: BST print function236835
+Ref: BST print function-2238010
+Node: Test Set Generation238266
+Ref: Test declarations238707
+Node: Testing Overflow240664
+Ref: BST overflow test function241425
+Ref: Test prototypes-2243908
+Ref: Overflow testers244139
+Node: Memory Manager244717
+Ref: Test declarations-2245302
+Ref: Memory tracker246476
+Ref: Memory tracker-2248016
+Ref: Memory tracker-3249359
+Ref: Memory tracker-4250332
+Ref: Memory tracker-5251239
+Ref: Memory tracker-6251753
+Ref: Memory tracker-7254623
+Node: User Interaction256110
+Ref: Test declarations-3257084
+Node: Utility Functions258806
+Ref: Test utility functions259191
+Ref: Test prototypes-3259470
+Ref: Test utility functions-2259707
+Ref: Test utility functions-3260191
+Node: Main Program260466
+Ref: Test declarations-4260731
+Ref: Test declarations-5261049
+Ref: Test main program262311
+Ref: Test declarations-6265444
+Node: Additional Exercises for BSTs265507
+Ref: bstsentinel265693
+Node: AVL Trees266049
+Ref: avlh269316
+Ref: avlc269627
+Ref: AVL Trees-Footnote-1270123
+Node: AVL Balancing Rule270318
+Node: Analysis of AVL Balancing Rule272286
+Ref: Analysis of AVL Balancing Rule-Footnote-1273582
+Node: AVL Data Types273815
+Ref: AVL node structure274135
+Node: AVL Operations274558
+Ref: AVL functions275171
+Node: Inserting into an AVL tree275635
+Ref: catalogue-entry-avl-0278338
+Ref: AVL item insertion function278344
+Ref: |avl_probe()| local variables278803
+Ref: balancedspeed279679
+Node: Step 1 in AVL insertion280112
+Ref: Step 1 Search AVL tree for insertion point281011
+Node: Step 2 in AVL Insertion281467
+Ref: Step 2 Insert AVL node281988
+Node: Step 3 in AVL Insertion282403
+Ref: Step 3 Update balance factors after AVL insertion289588
+Ref: avlinsert290308
+Ref: Step 3 in AVL Insertion-Footnote-1291586
+Node: Rebalancing AVL trees291773
+Ref: Step 4 Rebalance after AVL insertion293013
+Ref: Rebalance AVL tree after insertion in left subtree293711
+Ref: Step 4 Rebalance after AVL insertion-2294280
+Ref: Step 4 Rebalance after AVL insertion-3294508
+Ref: Rotate right at |y| in AVL tree295560
+Ref: catalogue-entry-bst-32297271
+Ref: Rotate left at |x| then right at |y| in AVL tree297277
+Ref: ynezlink0298378
+Ref: Rebalancing AVL trees-Footnote-1298949
+Node: AVL insertion symmetric case299020
+Ref: Rebalance AVL tree after insertion in right subtree299487
+Ref: Rotate left at |y| in AVL tree299888
+Ref: catalogue-entry-bst-33300195
+Ref: Rotate right at |x| then left at |y| in AVL tree300201
+Node: AVL insertion example301036
+Node: Recursive Insertion302805
+Ref: catalogue-entry-avl-1304912
+Ref: Recursive insertion into AVL tree304918
+Ref: Found insertion point in recursive AVL insertion306306
+Ref: Move down then up in recursive AVL insertion307608
+Ref: Recursive insertion into AVL tree-2308904
+Node: Deleting from an AVL tree309314
+Ref: catalogue-entry-avl-2310306
+Ref: AVL item deletion function310312
+Node: Deleting an AVL node step 1 - Search311423
+Ref: avldelsaveitem312249
+Ref: Step 1 Search AVL tree for item to delete312255
+Node: Deleting an AVL node step 2 - Delete312703
+Ref: Step 2 Delete item from AVL tree313300
+Ref: Step 2 Delete item from AVL tree-2314105
+Ref: Case 1 in AVL deletion314381
+Ref: Case 2 in AVL deletion314908
+Ref: Case 3 in AVL deletion315690
+Ref: avlmodifydata316162
+Node: Deleting an AVL node step 3 - Update316409
+Ref: Steps 3--4 Update balance factors and rebalance after AVL deletion317947
+Ref: Update |y|s balance factor after left-side AVL deletion322540
+Node: Deleting an AVL node step 4 - Rebalance322854
+Ref: Step 4 Rebalance after AVL deletion323316
+Ref: avldelcase1323728
+Ref: Left-side rebalancing case 1 in AVL deletion324474
+Ref: avldel2324793
+Ref: Left-side rebalancing case 2 in AVL deletion326182
+Node: Deleting an AVL node step 5 - Finish Up326871
+Ref: Step 5 Finish up and return after AVL deletion327111
+Node: AVL deletion symmetric case327297
+Ref: Update |y|s balance factor after right-side AVL deletion327590
+Node: Traversal of an AVL tree328421
+Ref: AVL traversal functions328806
+Ref: catalogue-entry-avl-3329704
+Ref: AVL traverser insertion initializer329710
+Ref: catalogue-entry-avl-4330401
+Ref: AVL traverser least-item initializer330407
+Ref: catalogue-entry-avl-5331036
+Ref: AVL traverser greatest-item initializer331042
+Ref: catalogue-entry-avl-6331673
+Ref: AVL traverser search initializer331679
+Ref: catalogue-entry-avl-7332548
+Ref: AVL traverser advance function332554
+Ref: catalogue-entry-avl-8333661
+Ref: AVL traverser back up function333667
+Node: Copying an AVL tree334935
+Ref: catalogue-entry-avl-9335298
+Ref: AVL copy function335304
+Node: Testing AVL Trees338036
+Ref: avl-testc338588
+Ref: Compare two AVL trees for structure and content339030
+Ref: Recursively verify AVL tree structure340224
+Ref: Verify AVL node balance factor341537
+Ref: AVL tree verify function342182
+Ref: Check AVL tree structure342928
+Node: Red-Black Trees343221
+Ref: rbh344377
+Ref: rbc344683
+Node: RB Balancing Rule345060
+Ref: blackenroot348842
+Node: Analysis of Red-Black Balancing Rule349416
+Node: RB Data Types350215
+Ref: RB node structure350614
+Ref: RB maximum height351143
+Node: Operations in an RB Tree351531
+Ref: RB functions352060
+Node: Inserting into an RB tree352520
+Ref: catalogue-entry-rb-0353165
+Ref: RB item insertion function353171
+Ref: |rb_probe()| local variables353537
+Node: Inserting an RB node step 1 - Search354395
+Ref: Step 1 Search RB tree for insertion point354876
+Node: Inserting an RB node step 2 - Insert355329
+Ref: Step 2 Insert RB node355569
+Node: Inserting an RB node step 3 - Rebalance356034
+Ref: Step 3 Rebalance after RB insertion358188
+Ref: Left-side rebalancing after RB insertion359120
+Ref: rbinscase1359697
+Ref: Case 1 in left-side RB insertion rebalancing361028
+Ref: rbinscase2361506
+Ref: Case 2 in left-side RB insertion rebalancing362527
+Ref: rbinscase3363012
+Ref: Case 3 in left-side RB insertion rebalancing364252
+Ref: mink3364630
+Node: RB insertion symmetric case364927
+Ref: Right-side rebalancing after RB insertion365159
+Ref: Case 1 in right-side RB insertion rebalancing365695
+Ref: Case 2 in right-side RB insertion rebalancing366017
+Ref: Case 3 in right-side RB insertion rebalancing366427
+Node: Initial Black Insertion in an RB Tree366795
+Ref: catalogue-entry-rb-1367463
+Ref: RB item insertion function initial black367469
+Ref: Step 3 Rebalance after initial-black RB insertion368507
+Ref: Left-side rebalancing after initial-black RB insertion369371
+Ref: Case 1 in left-side initial-black RB insertion rebalancing370940
+Ref: Case 2 in left-side initial-black RB insertion rebalancing372130
+Ref: Case 3 in left-side initial-black RB insertion rebalancing373370
+Ref: Right-side rebalancing after initial-black RB insertion373683
+Ref: Case 1 in right-side initial-black RB insertion rebalancing374279
+Ref: Case 2 in right-side initial-black RB insertion rebalancing374520
+Ref: Case 3 in right-side initial-black RB insertion rebalancing374856
+Node: Deleting from an RB tree375118
+Ref: catalogue-entry-rb-2375705
+Ref: RB item deletion function375711
+Node: Deleting an RB node step 2 - Delete376671
+Ref: rbcolorswap379656
+Ref: Step 2 Delete item from RB tree380942
+Ref: rbdel1381409
+Ref: Case 1 in RB deletion381591
+Ref: rbdel2381823
+Ref: Case 2 in RB deletion382545
+Ref: rbdel3382879
+Ref: Case 3 in RB deletion383876
+Ref: noswapcolors384366
+Node: Deleting an RB node step 3 - Rebalance384728
+Ref: Step 3 Rebalance tree after RB deletion385335
+Ref: Rebalance after RB deletion386556
+Ref: Left-side rebalancing after RB deletion387584
+Ref: rbdcr388403
+Ref: Ensure |w| is black in left-side RB deletion rebalancing389741
+Ref: rbdelcase1390697
+Ref: Case 1 in left-side RB deletion rebalancing391779
+Ref: rbdelcase2392166
+Ref: Case 2 in left-side RB deletion rebalancing393152
+Ref: rbdelcase3393667
+Ref: Transform left-side RB deletion rebalancing case 3 into case 2394623
+Node: Deleting an RB node step 4 - Finish up395091
+Ref: Step 4 Finish up after RB deletion395417
+Node: RB deletion symmetric case395637
+Ref: Right-side rebalancing after RB deletion395820
+Ref: Ensure |w| is black in right-side RB deletion rebalancing396581
+Ref: Case 1 in right-side RB deletion rebalancing397095
+Ref: Transform right-side RB deletion rebalancing case 3 into case 2397372
+Ref: Case 2 in right-side RB deletion rebalancing397850
+Node: Testing RB Trees398308
+Ref: rb-testc398623
+Ref: Compare two RB trees for structure and content399060
+Ref: Recursively verify RB tree structure400250
+Ref: Verify RB node color401608
+Ref: Verify RB node rule 1 compliance402045
+Ref: Verify RB node rule 2 compliance402739
+Ref: RB tree verify function403224
+Ref: Check root is black404028
+Ref: Check RB tree structure404257
+Node: Threaded Binary Search Trees404518
+Ref: tbsth406050
+Ref: tbstc406381
+Ref: Threaded Binary Search Trees-Footnote-1406815
+Node: Threads406978
+Node: TBST Data Types409785
+Ref: TBST node structure410198
+Ref: TBST table structure411019
+Node: TBST Operations411901
+Ref: TBST functions412447
+Node: Creating a TBST412959
+Ref: catalogue-entry-tbst-0413239
+Ref: TBST creation function413245
+Node: Searching a TBST414059
+Ref: catalogue-entry-tbst-1414500
+Ref: TBST search function414506
+Node: Inserting into a TBST415137
+Ref: catalogue-entry-tbst-2416935
+Ref: TBST item insertion function416941
+Ref: Step 1 Search TBST for insertion point417432
+Ref: Step 2 Insert TBST node417982
+Node: Deleting from a TBST418701
+Ref: catalogue-entry-tbst-3419224
+Ref: TBST item deletion function419230
+Ref: Find TBST node to delete420120
+Ref: Delete TBST node420904
+Ref: Case 1 in TBST deletion422878
+Ref: Case 2 in TBST deletion423924
+Ref: Case 3 in TBST deletion425108
+Ref: Case 4 in TBST deletion427640
+Ref: Case 4 in TBST deletion-2428042
+Ref: Case 4 in TBST deletion-3428378
+Ref: Finish up after deleting TBST node428871
+Ref: tbstparent429090
+Ref: ptrtaglink429256
+Ref: tbstthreadsearch429630
+Node: Traversing a TBST429911
+Ref: TBST traverser structure431057
+Ref: TBST traversal functions431676
+Node: TBST Traverser Null Initialization432636
+Ref: catalogue-entry-tbst-4432859
+Ref: TBST traverser null initializer432865
+Node: TBST Traverser First Initialization433213
+Ref: catalogue-entry-tbst-5433455
+Ref: TBST traverser first initializer433461
+Node: TBST Traverser Last Initialization433972
+Ref: catalogue-entry-tbst-6434212
+Ref: TBST traverser last initializer434218
+Node: TBST Traverser Find Initialization434727
+Ref: catalogue-entry-tbst-7435066
+Ref: TBST traverser search initializer435072
+Node: TBST Traverser Insert Initialization435805
+Ref: catalogue-entry-tbst-8436209
+Ref: TBST traverser insertion initializer436215
+Node: TBST Traverser Copying436877
+Ref: catalogue-entry-tbst-9437096
+Ref: TBST traverser copy initializer437102
+Node: TBST Traverser Advancing437594
+Ref: catalogue-entry-tbst-10438219
+Ref: TBST traverser advance function438225
+Node: TBST Traverser Retreating438964
+Ref: catalogue-entry-tbst-11439153
+Ref: TBST traverser back up function439159
+Node: Copying a TBST439847
+Ref: catalogue-entry-tbst-12442970
+Ref: TBST node copy function442976
+Ref: catalogue-entry-tbst-13444744
+Ref: TBST copy function444750
+Ref: TBST main copy function444958
+Ref: TBST copy error helper function447967
+Node: Destroying a TBST448657
+Ref: catalogue-entry-tbst-14449220
+Ref: TBST destruction function449226
+Node: Balancing a TBST450046
+Ref: catalogue-entry-tbst-15450950
+Ref: TBST balance function450956
+Ref: TBST main balance function451213
+Node: Transforming a TBST into a Vine451578
+Ref: catalogue-entry-tbst-16452413
+Ref: TBST tree-to-vine function452419
+Node: Transforming a Vine into a Balanced TBST455115
+Ref: catalogue-entry-tbst-17455758
+Ref: TBST vine-to-tree function455764
+Ref: catalogue-entry-tbst-18458709
+Ref: TBST vine compression function458715
+Ref: Reduce TBST vine general case to special case459768
+Ref: Make special case TBST vine into balanced tree and count height460059
+Ref: Make special case TBST vine into balanced tree and count height-2460772
+Node: Testing TBSTs460966
+Ref: tbst-testc461800
+Ref: TBST print function462234
+Ref: Compare two TBSTs for structure and content463350
+Ref: Recursively verify TBST structure464863
+Ref: TBST verify function465662
+Ref: TBST test function466327
+Ref: Test TBST balancing466923
+Node: Threaded AVL Trees467819
+Ref: tavlh468790
+Ref: tavlc469110
+Node: TAVL Data Types469429
+Ref: TAVL node structure469740
+Ref: tavlnodesize470290
+Node: TBST Rotations470507
+Ref: tbstrot472593
+Node: TAVL Operations472726
+Ref: TAVL functions473121
+Node: Inserting into a TAVL tree473597
+Ref: catalogue-entry-tavl-0473971
+Ref: TAVL item insertion function473977
+Node: Steps 1 and 2 in TAVL Insertion474544
+Ref: Step 1 Search TAVL tree for insertion point475257
+Ref: Step 2 Insert TAVL node476028
+Node: Rebalancing TAVL trees476237
+Ref: Step 4 Rebalance after TAVL insertion476645
+Ref: Rebalance TAVL tree after insertion in left subtree477329
+Ref: Rebalance for |-| balance factor in TAVL insertion in left subtree477978
+Ref: catalogue-entry-tavl-1480594
+Ref: Rebalance for |+| balance factor in TAVL insertion in left subtree480600
+Ref: tavlaltdblrot481265
+Node: TAVL insertion symmetric case481402
+Ref: Rebalance TAVL tree after insertion in right subtree481672
+Ref: Rebalance for |+| balance factor in TAVL insertion in right subtree482075
+Ref: catalogue-entry-tavl-2482484
+Ref: Rebalance for |-| balance factor in TAVL insertion in right subtree482490
+Node: Deleting from a TAVL tree483133
+Ref: catalogue-entry-tavl-3483671
+Ref: TAVL item deletion function483677
+Node: Deleting a TAVL node step 1 - Search484607
+Ref: Step 1 Search TAVL tree for item to delete485074
+Node: Deleting a TAVL node step 2 - Delete485578
+Ref: Step 2 Delete item from TAVL tree486323
+Ref: Case 1 in TAVL deletion487219
+Ref: Case 2 in TAVL deletion487643
+Ref: Case 3 in TAVL deletion488147
+Ref: Case 4 in TAVL deletion488674
+Node: Deleting a TAVL node step 3 - Update489145
+Ref: Steps 3 and 4 Update balance factors and rebalance after TAVL deletion490271
+Node: Deleting a TAVL node step 4 - Rebalance490950
+Ref: Step 4 Rebalance after TAVL deletion491515
+Ref: Rebalance for |-| balance factor after TAVL deletion in left subtree492347
+Ref: tavldelcase2492687
+Ref: Rebalance for 0 balance factor after TAVL deletion in left subtree493540
+Ref: tavldelcase3493930
+Ref: Rebalance for |+| balance factor after TAVL deletion in left subtree495318
+Node: TAVL deletion symmetric case495681
+Ref: Steps 3 and 4 Symmetric case in TAVL deletion495954
+Ref: Rebalance for |+| balance factor after TAVL deletion in right subtree496842
+Ref: Rebalance for 0 balance factor after TAVL deletion in right subtree497134
+Ref: Rebalance for |-| balance factor after TAVL deletion in right subtree497478
+Node: Finding the Parent of a TBST Node497851
+Ref: catalogue-entry-tbst-19500381
+Ref: Find parent of a TBST node500387
+Ref: tbstrootparent501948
+Ref: tbstdelstack502114
+Node: Copying a TAVL Tree502459
+Ref: catalogue-entry-tavl-4502791
+Ref: TAVL node copy function502797
+Ref: TAVL copy function503636
+Node: Testing TAVL Trees503867
+Ref: tavl-testc504042
+Ref: Compare two TAVL trees for structure and content504489
+Ref: Recursively verify TAVL tree structure506117
+Node: Threaded Red-Black Trees507241
+Ref: trbh507810
+Ref: trbc508125
+Node: TRB Data Types508393
+Ref: TRB node structure508847
+Node: TRB Operations509515
+Ref: TRB functions509973
+Node: Inserting into a TRB tree510445
+Ref: catalogue-entry-trb-0510675
+Ref: TRB item insertion function510681
+Node: Steps 1 and 2 in TRB Insertion511536
+Ref: Step 1 Search TRB tree for insertion point511855
+Ref: Step 2 Insert TRB node512551
+Node: Step 3 in TRB Insertion512768
+Ref: Step 3 Rebalance after TRB insertion513084
+Ref: Left-side rebalancing after TRB insertion513663
+Ref: Case 1 in left-side TRB insertion rebalancing514824
+Ref: Case 2 in left-side TRB insertion rebalancing516629
+Ref: Case 3 in left-side TRB insertion rebalancing517817
+Node: TRB insertion symmetric case518139
+Ref: Right-side rebalancing after TRB insertion518310
+Ref: Case 1 in right-side TRB insertion rebalancing518881
+Ref: Case 2 in right-side TRB insertion rebalancing519083
+Ref: Case 3 in right-side TRB insertion rebalancing519414
+Node: Deleting from a TRB Tree520095
+Ref: catalogue-entry-trb-1520336
+Ref: TRB item deletion function520342
+Node: Deleting a TRB node step 1 - Search521200
+Ref: Step 1 Search TRB tree for item to delete521481
+Node: Deleting a TRB node step 2 - Delete521994
+Ref: Step 2 Delete item from TRB tree522547
+Ref: Case 1 in TRB deletion523506
+Ref: Case 2 in TRB deletion524038
+Ref: Case 3 in TRB deletion524666
+Ref: Case 4 in TRB deletion525458
+Node: Deleting a TRB node step 3 - Rebalance526566
+Ref: Step 3 Rebalance tree after TRB deletion526959
+Ref: Left-side rebalancing after TRB deletion527871
+Ref: Ensure |w| is black in left-side TRB deletion rebalancing528871
+Ref: Case 1 in left-side TRB deletion rebalancing529235
+Ref: Case 2 in left-side TRB deletion rebalancing530299
+Ref: Transform left-side TRB deletion rebalancing case 3 into case 2531534
+Node: Deleting a TRB node step 4 - Finish up531917
+Ref: Step 4 Finish up after TRB deletion532245
+Node: TRB deletion symmetric case532447
+Ref: Right-side rebalancing after TRB deletion532631
+Ref: Ensure |w| is black in right-side TRB deletion rebalancing533448
+Ref: Case 1 in right-side TRB deletion rebalancing533671
+Ref: Case 2 in right-side TRB deletion rebalancing533870
+Ref: Transform right-side TRB deletion rebalancing case 3 into case 2534214
+Node: Testing TRB Trees534765
+Ref: trb-testc534950
+Ref: Compare two TRB trees for structure and content535392
+Ref: Recursively verify TRB tree structure537000
+Ref: Verify TRB node rule 1 compliance538164
+Node: Right-Threaded Binary Search Trees538839
+Ref: rtbsth541179
+Ref: rtbstc541515
+Ref: Right-Threaded Binary Search Trees-Footnote-1542212
+Node: RTBST Data Types542502
+Ref: RTBST node structure542696
+Node: RTBST Operations543202
+Ref: RTBST functions543380
+Node: Searching an RTBST543901
+Ref: catalogue-entry-rtbst-0544436
+Ref: RTBST search function544442
+Node: Inserting into an RTBST545230
+Ref: catalogue-entry-rtbst-1545779
+Ref: RTBST item insertion function545785
+Ref: Step 1 Search RTBST for insertion point546289
+Ref: Step 2 Insert new node into RTBST tree548283
+Node: Deleting from an RTBST548871
+Ref: RTBST item deletion function549470
+Ref: Step 1 Find RTBST node to delete550155
+Ref: Step 3 Finish up after deleting RTBST node550896
+Node: Right-looking deletion in a RTBST551233
+Ref: catalogue-entry-rtbst-2551684
+Ref: Step 2 Delete RTBST node right-looking551690
+Ref: Case 1 in right-looking RTBST deletion552721
+Ref: Case 2 in right-looking RTBST deletion553910
+Ref: Case 3 in right-looking RTBST deletion554508
+Ref: Case 4 in right-looking RTBST deletion555228
+Node: Left-looking deletion in an RTBST556185
+Ref: catalogue-entry-rtbst-3557634
+Ref: Step 2 Delete RTBST node left-looking557640
+Ref: Case 1 in left-looking RTBST deletion558938
+Ref: Case 2 in left-looking RTBST deletion559310
+Ref: Case 3 in left-looking RTBST deletion560267
+Ref: Case 4 in left-looking RTBST deletion560847
+Ref: Case 4 in left-looking RTBST deletion-2561307
+Ref: Case 4 in left-looking RTBST deletion-3561651
+Node: Comparing deletion algorithms562125
+Node: Traversing an RTBST565015
+Ref: RTBST traversal functions565749
+Node: RTBST Traverser First Initialization566566
+Ref: catalogue-entry-rtbst-4566967
+Ref: RTBST traverser first initializer566973
+Node: RTBST Traverser Last Initialization567495
+Ref: catalogue-entry-rtbst-5567902
+Ref: RTBST traverser last initializer567908
+Node: RTBST Traverser Find Initialization568432
+Ref: catalogue-entry-rtbst-6568754
+Ref: RTBST traverser search initializer568760
+Node: RTBST Traverser Advancing569632
+Ref: catalogue-entry-rtbst-7570095
+Ref: RTBST traverser advance function570101
+Node: RTBST Traverser Retreating570809
+Ref: catalogue-entry-rtbst-8571337
+Ref: RTBST traverser back up function571343
+Ref: Find predecessor of RTBST node with no left child573884
+Ref: Find predecessor of RTBST node with left child574645
+Node: Copying an RTBST574966
+Ref: RTBST main copy function575887
+Ref: catalogue-entry-rtbst-9577631
+Ref: RTBST node copy function577637
+Ref: RTBST copy error helper function578705
+Ref: catalogue-entry-rtbst-10579134
+Ref: RTBST copy function579140
+Node: Destroying an RTBST579347
+Ref: catalogue-entry-rtbst-11579635
+Ref: RTBST destruction function579641
+Node: Balancing an RTBST580473
+Ref: catalogue-entry-rtbst-12580801
+Ref: RTBST balance function580807
+Ref: catalogue-entry-rtbst-13581210
+Ref: RTBST tree-to-vine function581216
+Ref: catalogue-entry-rtbst-14581908
+Ref: RTBST vine compression function581914
+Node: Testing RTBSTs582770
+Ref: rtbst-testc582974
+Ref: RTBST print function583412
+Ref: Compare two RTBSTs for structure and content584517
+Ref: Recursively verify RTBST structure585724
+Node: Right-Threaded AVL Trees586482
+Ref: rtavlh587142
+Ref: rtavlc587467
+Node: RTAVL Data Types587799
+Ref: RTAVL node structure588199
+Node: RTAVL Operations588765
+Ref: RTAVL functions589183
+Node: RTBST Rotations589667
+Ref: rtbstrot591583
+Node: Inserting into an RTAVL Tree591722
+Ref: catalogue-entry-rtavl-0592041
+Ref: RTAVL item insertion function592047
+Node: Steps 1-1 in RTAVL Insertion592585
+Ref: Step 1 Search RTAVL tree for insertion point593166
+Ref: Step 2 Insert RTAVL node593965
+Node: Rebalancing RTAVL trees594530
+Ref: Step 4 Rebalance after RTAVL insertion595253
+Ref: Step 4 Rebalance RTAVL tree after insertion to left595997
+Ref: Step 4 Rebalance RTAVL tree after insertion to right596404
+Ref: Rebalance for |-| balance factor in RTAVL insertion in left subtree598394
+Ref: Rebalance for |+| balance factor in RTAVL insertion in right subtree599339
+Ref: rtavlinscase2599830
+Ref: Rebalance for |+| balance factor in RTAVL insertion in left subtree600971
+Ref: Rebalance for |-| balance factor in RTAVL insertion in right subtree602044
+Node: Deleting from an RTAVL tree602555
+Ref: catalogue-entry-rtavl-1602794
+Ref: RTAVL item deletion function602800
+Node: Deleting a RTAVL node step 1 - Search603681
+Ref: Step 1 Search RTAVL tree for item to delete604164
+Node: Deleting a RTAVL node step 2 - Delete604913
+Ref: Step 2 Delete RTAVL node605429
+Ref: Case 1 in RTAVL deletion606241
+Ref: Case 2 in RTAVL deletion606801
+Ref: Case 3 in RTAVL deletion607309
+Ref: Case 4 in RTAVL deletion607792
+Ref: Case 4 in RTAVL deletion-2608248
+Ref: Case 4 in RTAVL deletion-3608565
+Node: Deleting a RTAVL node step 3 - Update608741
+Ref: Steps 3 and 4 Update balance factors and rebalance after RTAVL deletion609154
+Node: Deleting a RTAVL node step 4 - Rebalance609891
+Ref: Step 4 Rebalance after RTAVL deletion in left subtree610460
+Ref: Step 4 Rebalance after RTAVL deletion in right subtree611160
+Ref: Rebalance for |-| balance factor after left-side RTAVL deletion612361
+Ref: Rebalance for |+| balance factor after right-side RTAVL deletion612673
+Ref: Rebalance for 0 balance factor after left-side RTAVL deletion613312
+Ref: Rebalance for 0 balance factor after right-side RTAVL deletion613561
+Ref: Rebalance for |+| balance factor after left-side RTAVL deletion614775
+Ref: Rebalance for |-| balance factor after right-side RTAVL deletion615741
+Node: Copying an RTAVL Tree616998
+Ref: catalogue-entry-rtavl-2617349
+Ref: RTAVL copy function617355
+Ref: catalogue-entry-rtavl-3617592
+Ref: RTAVL node copy function617598
+Node: Testing RTAVL Trees618536
+Ref: rtavl-testc618679
+Ref: Compare two RTAVL trees for structure and content619131
+Ref: Recursively verify RTAVL tree structure620445
+Node: Right-Threaded Red-Black Trees621532
+Ref: rtrbh622075
+Ref: rtrbc622395
+Node: RTRB Data Types622673
+Ref: RTRB node structure623059
+Node: RTRB Operations623757
+Ref: RTRB functions624079
+Node: Inserting into an RTRB Tree624559
+Ref: catalogue-entry-rtrb-0624906
+Ref: RTRB item insertion function624912
+Node: Steps 1 and 2 in RTRB Insertion625717
+Ref: Step 1 Search RTRB tree for insertion point626345
+Ref: Step 2 Insert RTRB node627084
+Node: Step 3 in RTRB Insertion627643
+Ref: Step 3 Rebalance after RTRB insertion627915
+Ref: Left-side rebalancing after RTRB insertion628986
+Ref: Right-side rebalancing after RTRB insertion629563
+Ref: Case 1 in left-side RTRB insertion rebalancing630349
+Ref: Case 1 in right-side RTRB insertion rebalancing630550
+Ref: Case 2 in left-side RTRB insertion rebalancing631915
+Ref: Case 2 in right-side RTRB insertion rebalancing632898
+Ref: Case 3 in left-side RTRB insertion rebalancing634302
+Ref: Case 3 in right-side RTRB insertion rebalancing635236
+Node: Deleting from an RTRB tree635535
+Ref: catalogue-entry-rtrb-1635868
+Ref: RTRB item deletion function635874
+Node: Deleting an RTRB node step 2 - Delete636647
+Ref: Step 2 Delete RTRB node637119
+Ref: Case 1 in RTRB deletion637944
+Ref: Case 2 in RTRB deletion638296
+Ref: Case 3 in RTRB deletion638681
+Ref: Case 4 in RTRB deletion639331
+Node: Deleting an RTRB node step 3 - Rebalance639960
+Ref: Step 3 Rebalance after RTRB deletion640423
+Ref: Left-side rebalancing after RTRB deletion641678
+Ref: Right-side rebalancing after RTRB deletion642496
+Ref: Case 2 in left-side RTRB deletion rebalancing644359
+Ref: Case 2 in right-side RTRB deletion rebalancing645508
+Ref: Transform left-side RTRB deletion rebalancing case 3 into case 2646929
+Ref: Transform right-side RTRB deletion rebalancing case 3 into case 2648078
+Node: Deleting an RTRB node step 4 - Finish up648448
+Ref: Step 4 Finish up after RTRB deletion648657
+Node: Testing RTRB Trees648844
+Ref: rtrb-testc648997
+Ref: Compare two RTRB trees for structure and content649444
+Ref: Recursively verify RTRB tree structure650753
+Ref: Verify RTRB node rule 1 compliance651885
+Node: BSTs with Parent Pointers652571
+Ref: pbsth655207
+Ref: pbstc655538
+Ref: BSTs with Parent Pointers-Footnote-1655897
+Node: PBST Data Types656025
+Ref: PBST node structure656423
+Node: PBST Operations657687
+Ref: PBST functions658408
+Node: Inserting into a PBST658916
+Ref: catalogue-entry-pbst-0659221
+Ref: PBST item insertion function659227
+Ref: Step 1 Search PBST tree for insertion point659744
+Ref: Step 2 Insert PBST node660136
+Node: Deleting from a PBST660627
+Ref: catalogue-entry-pbst-1660919
+Ref: PBST item deletion function660925
+Ref: Step 1 Find PBST node to delete661676
+Ref: Step 1 Find PBST node to delete-2662398
+Ref: Step 2 Delete PBST node662610
+Ref: pbstdel1663069
+Ref: Case 1 in PBST deletion663239
+Ref: pbstdel2663612
+Ref: Case 2 in PBST deletion664127
+Ref: pbstdel3664535
+Ref: Case 3 in PBST deletion664831
+Ref: Case 3 in PBST deletion-2666095
+Ref: Step 3 Finish up after deleting PBST node666520
+Node: Traversing a PBST666912
+Ref: PBST traversal functions667295
+Node: PBST Traverser First Initialization668082
+Ref: catalogue-entry-pbst-2668439
+Ref: PBST traverser first initializer668445
+Node: PBST Traverser Last Initialization668991
+Ref: catalogue-entry-pbst-3669324
+Ref: PBST traverser last initializer669330
+Node: PBST Traverser Find Initialization669874
+Ref: catalogue-entry-pbst-4670349
+Ref: PBST traverser search initializer670355
+Node: PBST Traverser Insert Initialization671025
+Ref: catalogue-entry-pbst-5671369
+Ref: PBST traverser insertion initializer671375
+Node: PBST Traverser Advancing672487
+Ref: catalogue-entry-pbst-6673572
+Ref: PBST traverser advance function673806
+Node: PBST Traverser Retreating674784
+Ref: catalogue-entry-pbst-7675061
+Ref: PBST traverser back up function675067
+Node: Copying a PBST676043
+Ref: catalogue-entry-pbst-8676629
+Ref: PBST copy function676635
+Ref: PBST copy error helper function679705
+Node: Balancing a PBST680215
+Ref: catalogue-entry-pbst-9680719
+Ref: PBST balance function680725
+Ref: catalogue-entry-pbst-10681079
+Ref: Vine to balanced PBST function681085
+Ref: PBST extra function prototypes681654
+Ref: catalogue-entry-pbst-11682658
+Ref: Update parent pointers function682664
+Node: Testing PBSTs683608
+Ref: pbst-testc683741
+Ref: Compare two PBSTs for structure and content684173
+Ref: Recursively verify PBST structure685689
+Ref: Verify PBST node parent pointers686432
+Node: AVL Trees with Parent Pointers687075
+Ref: pavlh687709
+Ref: pavlc688029
+Node: PAVL Data Types688375
+Ref: PAVL node structure688693
+Node: PBST Rotations689120
+Ref: pbstrot690046
+Node: PAVL Operations690186
+Ref: PAVL functions690529
+Node: Inserting into a PAVL tree691001
+Ref: catalogue-entry-pavl-0691694
+Ref: PAVL item insertion function691700
+Node: Steps 1 and 2 in PAVL Insertion692560
+Ref: Step 1 Search PAVL tree for insertion point693243
+Ref: Step 2 Insert PAVL node693797
+Node: Step 3 in PAVL Insertion694006
+Ref: Step 3 Update balance factors after PAVL insertion694995
+Node: Rebalancing PAVL trees695574
+Ref: Step 4 Rebalance after PAVL insertion696470
+Ref: Rebalance PAVL tree after insertion in left subtree697124
+Ref: Rebalance for |-| balance factor in PAVL insertion in left subtree697796
+Ref: Rebalance for |+| balance factor in PAVL insertion in left subtree699109
+Node: PAVL insertion symmetric case699597
+Ref: Rebalance PAVL tree after insertion in right subtree699771
+Ref: Rebalance for |+| balance factor in PAVL insertion in right subtree700174
+Ref: Rebalance for |-| balance factor in PAVL insertion in right subtree700508
+Node: Deleting from a PAVL tree700997
+Ref: catalogue-entry-pavl-1701680
+Ref: PAVL item deletion function701686
+Node: Deleting a PAVL node step 2 - Delete702410
+Ref: Step 2 Delete item from PAVL tree703036
+Ref: Case 1 in PAVL deletion703678
+Ref: Case 2 in PAVL deletion703988
+Ref: Case 3 in PAVL deletion704347
+Node: Deleting a PAVL node step 3 - Update704540
+Ref: Steps 3 and 4 Update balance factors and rebalance after PAVL deletion705015
+Node: Deleting a PAVL node step 4 - Rebalance705780
+Ref: Step 4 Rebalance after PAVL deletion706114
+Ref: Left-side rebalancing case 1 in PAVL deletion706665
+Ref: Left-side rebalancing case 2 in PAVL deletion707367
+Node: PAVL deletion symmetric case707857
+Ref: Steps 3 and 4 Symmetric case in PAVL deletion708046
+Ref: Right-side rebalancing case 1 in PAVL deletion708592
+Ref: Right-side rebalancing case 2 in PAVL deletion708862
+Node: Traversing a PAVL Tree709362
+Ref: PAVL traversal functions709821
+Node: Copying a PAVL Tree710409
+Ref: catalogue-entry-pavl-2710708
+Ref: PAVL copy function710714
+Node: Testing PAVL Trees713610
+Ref: pavl-testc713799
+Ref: Compare two PAVL trees for structure and content714245
+Ref: Recursively verify PAVL tree structure715949
+Node: Red-Black Trees with Parent Pointers716978
+Ref: prbh717431
+Ref: prbc717746
+Node: PRB Data Types718014
+Ref: PRB node structure718382
+Node: PRB Operations718896
+Ref: PRB functions719334
+Node: Inserting into a PRB tree719802
+Ref: catalogue-entry-prb-0720391
+Ref: PRB item insertion function720397
+Node: Step 2 in PRB Insertion721167
+Ref: Step 2 Insert PRB node721488
+Node: Step 3 in PRB Insertion721648
+Ref: Step 3 Rebalance after PRB insertion723129
+Ref: Left-side rebalancing after PRB insertion724063
+Ref: Case 1 in left-side PRB insertion rebalancing725576
+Ref: Case 2 in left-side PRB insertion rebalancing726587
+Ref: Case 3 in left-side PRB insertion rebalancing727933
+Node: PRB insertion symmetric case728229
+Ref: Right-side rebalancing after PRB insertion728402
+Ref: Case 1 in right-side PRB insertion rebalancing729035
+Ref: Case 2 in right-side PRB insertion rebalancing729249
+Ref: Case 3 in right-side PRB insertion rebalancing729646
+Node: Deleting from a PRB Tree729944
+Ref: catalogue-entry-prb-1730402
+Ref: PRB item deletion function730408
+Node: Deleting a PRB node step 2 - Delete731296
+Ref: Step 2 Delete item from PRB tree731822
+Ref: Case 1 in PRB deletion732489
+Ref: Case 2 in PRB deletion732986
+Ref: Case 3 in PRB deletion733558
+Node: Deleting a PRB node step 3 - Rebalance733781
+Ref: Step 3 Rebalance tree after PRB deletion734640
+Ref: Left-side rebalancing after PRB deletion735868
+Ref: Ensure |w| is black in left-side PRB deletion rebalancing737641
+Ref: Case 1 in left-side PRB deletion rebalancing738186
+Ref: Case 2 in left-side PRB deletion rebalancing738541
+Ref: Transform left-side PRB deletion rebalancing case 3 into case 2739807
+Node: Deleting a PRB node step 4 - Finish up740216
+Ref: Step 4 Finish up after PRB deletion740455
+Node: PRB deletion symmetric case740657
+Ref: Right-side rebalancing after PRB deletion740843
+Ref: Ensure |w| is black in right-side PRB deletion rebalancing741637
+Ref: Case 1 in right-side PRB deletion rebalancing742029
+Ref: Case 2 in right-side PRB deletion rebalancing742193
+Ref: Transform right-side PRB deletion rebalancing case 3 into case 2742632
+Node: Testing PRB Trees743043
+Ref: prb-testc743228
+Ref: Compare two PRB trees for structure and content743669
+Ref: Recursively verify PRB tree structure744887
+Node: References746306
+Ref: Aho 1986746473
+Ref: Bentley 2000746620
+Ref: Brown 2001746725
+Ref: Cormen 1990746878
+Ref: FSF 1999747018
+Ref: FSF 2001747113
+Ref: ISO 1990747201
+Ref: ISO 1998747416
+Ref: ISO 1999747538
+Ref: Kernighan 1976747663
+Ref: Kernighan 1988747783
+Ref: Knuth 1997747922
+Ref: Knuth 1998a748074
+Ref: Knuth 1998b748229
+Ref: Knuth 1977748381
+Ref: Knuth 1978748539
+Ref: Knuth 1992748694
+Ref: Knuth 2000748892
+Ref: Pfaff 1998749112
+Ref: Sedgewick 1998749327
+Ref: SGI 1993749445
+Ref: Stout 1986749565
+Ref: Summit 1999749711
+Node: Supplementary Code749873
+Node: Option Parser750184
+Ref: Option parser750602
+Ref: Option parser-2751073
+Ref: Option parser-3751665
+Node: Command-Line Parser755496
+Ref: Command line parser755946
+Node: Glossary765346
+Ref: adjacent765499
+Ref: AVL tree765613
+Ref: balance765777
+Ref: balance condition765979
+Ref: balance factor766109
+Ref: balanced tree766331
+Ref: binary search766621
+Ref: binary search tree766768
+Ref: binary tree767120
+Ref: black box767336
+Ref: black-height767472
+Ref: BST767717
+Ref: child767783
+Ref: children767924
+Ref: color767979
+Ref: complete binary tree768191
+Ref: compression768399
+Ref: deep copy768510
+Ref: dynamic768760
+Ref: empty tree768962
+Ref: height769013
+Ref: idempotent769179
+Ref: inorder predecessor769326
+Ref: inorder successor769440
+Ref: inorder traversal769552
+Ref: iteration769745
+Ref: key769939
+Ref: leaf770039
+Ref: left child770122
+Ref: left rotation770321
+Ref: left subtree770364
+Ref: left-threaded tree770441
+Ref: literate programming770671
+Ref: node770848
+Ref: non-branching node771013
+Ref: nonterminal node771136
+Ref: parent771240
+Ref: parent pointer771413
+Ref: pathological case771498
+Ref: path771746
+Ref: postorder traversal771927
+Ref: preorder traversal772122
+Ref: rebalance772316
+Ref: recursion772815
+Ref: red-black tree772994
+Ref: right child773242
+Ref: right rotation773445
+Ref: right subtree773489
+Ref: right-threaded tree773567
+Ref: rotation773770
+Ref: root774107
+Ref: rule 1774356
+Ref: rule 2774529
+Ref: sentinel774845
+Ref: sequential search775072
+Ref: sequential search with sentinel775231
+Ref: shallow copy775383
+Ref: simple path775630
+Ref: static775720
+Ref: subtree776036
+Ref: symmetric traversal776143
+Ref: tag776219
+Ref: tail recursion776376
+Ref: terminal node776634
+Ref: thread776744
+Ref: threaded tree777005
+Ref: traversal777215
+Ref: undefined behavior777532
+Ref: value777761
+Ref: vine777915
+Ref: visit778045
+Node: Answers to All the Exercises778193
+Ref: Aborting allocator784791
+Ref: Table count macro787148
+Ref: Table insertion convenience functions787991
+Ref: Table assertion function control directives789123
+Ref: Table assertion functions790280
+Ref: seq-testc793821
+Ref: Uniform binary search of ordered array794807
+Ref: Binary search using |bsearch()|795844
+Ref: blps implementation of |bsearch()|796967
+Ref: srch-testc797658
+Ref: Search functions798027
+Ref: Array of search functions798713
+Ref: Array of search functions-2799031
+Ref: Cheating search800154
+Ref: Timer functions800665
+Ref: Timer functions-2801383
+Ref: Search test functions801881
+Ref: Search test functions-2803328
+Ref: Search test functions-3803973
+Ref: Search test main program804570
+Ref: Parse search test command line805156
+Ref: String to integer function |stoi()|805524
+Ref: Initialize search test array806105
+Ref: Run search tests806414
+Ref: Clean up after search tests806634
+Ref: Usage printer for search test program806757
+Ref: Initialize |smaller| and |larger| within binary search tree811206
+Ref: bin-ary-testc811972
+Ref: Main program to test |binary_search_tree_array()|812415
+Ref: Show filebin-ary-test usage message813351
+Ref: catalogue-entry-bst-34816012
+Ref: catalogue-entry-bst-35816228
+Ref: catalogue-entry-bst-36818260
+Ref: BST item insertion function alternate version818266
+Ref: catalogue-entry-bst-37819492
+Ref: Level-order traversal819498
+Ref: catalogue-entry-bst-38820436
+Ref: Root insertion of existing node in arbitrary subtree820442
+Ref: Step 1 Search for insertion point in arbitrary subtree821264
+Ref: Step 2 Insert |n| into arbitrary subtree821725
+Ref: catalogue-entry-bst-39822114
+Ref: Robust root insertion of existing node in arbitrary subtree822120
+Ref: Step 1 Robustly search for insertion point in arbitrary subtree823228
+Ref: Step 3 Robustly move BST node to root823965
+Ref: catalogue-entry-bst-40826699
+Ref: Case 15 in BST deletion826705
+Ref: catalogue-entry-bst-41826879
+Ref: Case 3 in BST deletion alternate version826885
+Ref: catalogue-entry-bst-42828258
+Ref: Recursive traversal of BST using nested function828264
+Ref: catalogue-entry-bst-43830422
+Ref: Iterative traversal of BST with dynamically allocated stack830428
+Ref: catalogue-entry-bst-44833159
+Ref: Handle stack overflow during BST traversal833165
+Ref: catalogue-entry-bst-45837484
+Ref: BST traverser refresher with caching837490
+Ref: catalogue-entry-bst-46839375
+Ref: Robust recursive copy of BST take 1839381
+Ref: Recursive deallocation function840151
+Ref: catalogue-entry-bst-47840405
+Ref: Robust recursive copy of BST take 2840411
+Ref: catalogue-entry-bst-48841207
+Ref: Robust recursive copy of BST take 3841213
+Ref: Intermediate step between |bst_copy_recursive_2()| and |bst_copy_iterative()|842406
+Ref: catalogue-entry-bst-49844559
+Ref: BST join function iterative version844565
+Ref: Generate random permutation of integers849245
+Ref: Generate permutation for balanced tree849945
+Ref: Insertion and deletion order generation850543
+Ref: Random number seeding853177
+Ref: Overflow testers-2853783
+Ref: BSTS structures856612
+Ref: BSTS functions856993
+Ref: BSTS functions-2857618
+Ref: BSTS test858539
+Ref: bstsc859467
+Ref: catalogue-entry-avl-10863745
+Ref: Step 3 Update balance factors after AVL insertion with bitmasks863751
+Ref: catalogue-entry-avl-11867423
+Ref: Case 3 in AVL deletion alternate version867429
+Ref: catalogue-entry-rb-3874256
+Ref: Step 2 Delete item from RB tree alternate version874262
+Ref: Step 2 Delete item from RB tree alternate version-2874760
+Ref: Step 2 Delete item from RB tree alternate version-3875186
+Ref: catalogue-entry-tbst-20876102
+Ref: Find TBST node to delete with parent node algorithm876108
+Ref: catalogue-entry-tbst-21877783
+Ref: Case 4 in TBST deletion alternate version877789
+Ref: catalogue-entry-tbst-22881671
+Ref: catalogue-entry-tbst-23882050
+Ref: catalogue-entry-tavl-5882796
+Ref: Rebalance |+| balance in TAVL insertion in left subtree alternate version882802
+Ref: catalogue-entry-tavl-6883422
+Ref: Case 4 in TAVL deletion alternate version883428
+Ref: catalogue-entry-tavl-7886439
+Ref: TAVL item deletion function with stack886445
+Ref: Step 2 Delete item from TAVL tree with stack887253
+Ref: Case 1 in TAVL deletion with stack887951
+Ref: Case 2 in TAVL deletion with stack888269
+Ref: Case 3 in TAVL deletion with stack888565
+Ref: Case 4 in TAVL deletion with stack889040
+Ref: Steps 3 and 4 Update balance factors and rebalance after TAVL deletion with stack889896
+Ref: Step 4 Rebalance after TAVL deletion with stack890502
+Ref: Steps 3 and 4 Symmetric case in TAVL deletion with stack891471
+Ref: catalogue-entry-trb-2892818
+Ref: TRB item insertion function without stack892824
+Ref: catalogue-entry-trb-3896570
+Ref: Case 4 in TRB deletion alternate version896576
+Ref: catalogue-entry-trb-4897380
+Ref: TRB item deletion function without stack897386
+Ref: catalogue-entry-rtbst-15905240
+Ref: Case 4 in right-looking RTBST deletion alternate version905246
+Ref: catalogue-entry-rtbst-16905781
+Ref: Case 4 in left-looking RTBST deletion alternate version905787
+Ref: catalogue-entry-rtbst-17906362
+Ref: catalogue-entry-rtbst-18906719
+Ref: catalogue-entry-rtavl-4907360
+Ref: Step 2 Delete RTAVL node right-looking907366
+Ref: Case 1 in RTAVL deletion right-looking907972
+Ref: Case 2 in RTAVL deletion right-looking908295
+Ref: Case 3 in RTAVL deletion right-looking908547
+Ref: Case 4 in RTAVL deletion right-looking908992
+Ref: catalogue-entry-rtavl-5909775
+Ref: Case 4 in RTAVL deletion alternate version909781
+Ref: catalogue-entry-pbst-12910578
+Ref: PBST balance function with integrated parent updates910584
+Ref: catalogue-entry-pbst-13910866
+Ref: Vine to balanced PBST function with parent updates910872
+Ref: Set parents of main vine911606
+Ref: catalogue-entry-pbst-14911825
+Ref: PBST compression function911831
+Ref: catalogue-entry-pbst-15912486
+Ref: catalogue-entry-pbst-16912835
+Node: Catalogue of Algorithms914084
+Node: Index931167
+
+End Tag Table

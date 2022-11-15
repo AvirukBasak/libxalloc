@@ -1,0 +1,1564 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Testing RTAVL Trees,  Prev: Copying an RTAVL Tree,  Up: Right-Threaded AVL Trees
+
+11.7 Testing
+============
+
+449. <rtavl-test.c 449> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "rtavl.h"
+#include "test.h"
+
+<*Note RTBST print function:: 412>
+<*Note BST traverser check function:: 104>
+<*Note Compare two RTAVL trees for structure and content:: 450>
+<*Note Recursively verify RTAVL tree structure:: 451>
+<*Note AVL tree verify function:: 190>
+<*Note BST test function:: 100>
+<*Note BST overflow test function:: 122>
+
+450. <Compare two RTAVL trees for structure and content 450> =
+static int
+compare_trees (struct rtavl_node *a, struct rtavl_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      if (a != NULL || b != NULL)
+        {
+          printf (" a=%d b=%d\n",
+                  a ? *(int *) a->rtavl_data : -1,
+                  b ? *(int *) b->rtavl_data : -1);
+          assert (0);
+        }
+      return 1;
+    }
+  assert (a != b);
+
+  if (*(int *) a->rtavl_data != *(int *) b->rtavl_data
+      || a->rtavl_rtag != b->rtavl_rtag 
+      || a->rtavl_balance != b->rtavl_balance)
+    {
+      printf (" Copied nodes differ: a=%d (bal=%d) b=%d (bal=%d) a:",
+              *(int *) a->rtavl_data, a->rtavl_balance,
+              *(int *) b->rtavl_data, b->rtavl_balance);
+
+      if (a->rtavl_rtag == RTAVL_CHILD)
+        printf ("r");
+
+      printf (" b:");
+      if (b->rtavl_rtag == RTAVL_CHILD)
+        printf ("r");
+
+      printf ("\n");
+      return 0;
+    }
+
+  if (a->rtavl_rtag == RTAVL_THREAD)
+    assert ((a->rtavl_link[1] == NULL) != (a->rtavl_link[1] != b->rtavl_link[1]));
+
+  okay = compare_trees (a->rtavl_link[0], b->rtavl_link[0]);
+  if (a->rtavl_rtag == RTAVL_CHILD)
+    okay &= compare_trees (a->rtavl_link[1], b->rtavl_link[1]);
+  return okay;
+}
+
+This code is included in *Note 449: rtavl-testc.
+
+451. <Recursively verify RTAVL tree structure 451> =
+static void
+recurse_verify_tree (struct rtavl_node *node, int *okay, size_t *count, 
+                     int min, int max, int *height)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+  int subheight[2];     /* Heights of subtrees. */
+
+  if (node == NULL)
+    {
+      *count = 0;
+      *height = 0;
+      return;
+    }
+  d = *(int *) node->rtavl_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  subcount[0] = subcount[1] = 0;
+  subheight[0] = subheight[1] = 0;
+  recurse_verify_tree (node->rtavl_link[0], okay, &subcount[0], 
+                       min, d -  1, &subheight[0]);
+  if (node->rtavl_rtag == RTAVL_CHILD)
+    recurse_verify_tree (node->rtavl_link[1], okay, &subcount[1], 
+                         d + 1, max, &subheight[1]);
+  *count = 1 + subcount[0] + subcount[1];
+  *height = 1 + (subheight[0] > subheight[1] ? subheight[0] : subheight[1]);
+
+  <*Note Verify AVL node balance factor:: 189>
+}
+
+This code is included in *Note 449: rtavl-testc.
+
+
+File: libavl.info,  Node: Right-Threaded Red-Black Trees,  Next: BSTs with Parent Pointers,  Prev: Right-Threaded AVL Trees,  Up: Top
+
+12 Right-Threaded Red-Black Trees
+*********************************
+
+   This chapter is this book's final demonstration of right-threaded
+trees, carried out by using them in a red-black tree implementation of
+tables.  The chapter, and the code, follow the pattern that should now
+be familiar, using rtrb_ as the naming prefix and often referring to
+right-threaded right-black trees as "RTRB trees".
+
+452. <rtrb.h 452> =
+<*Note License:: 1>
+#ifndef RTRB_H
+#define RTRB_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note RB maximum height:: 195>
+<*Note TBST table structure:: 250>
+<*Note RTRB node structure:: 454>
+<*Note TBST traverser structure:: 267>
+<*Note Table function prototypes:: 15>
+
+#endif /* rtrb.h */
+
+453. <rtrb.c 453> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "rtrb.h"
+
+<*Note RTRB functions:: 455>
+
+* Menu:
+
+* RTRB Data Types::
+* RTRB Operations::
+* Inserting into an RTRB Tree::
+* Deleting from an RTRB tree::
+* Testing RTRB Trees::
+
+
+File: libavl.info,  Node: RTRB Data Types,  Next: RTRB Operations,  Prev: Right-Threaded Red-Black Trees,  Up: Right-Threaded Red-Black Trees
+
+12.1 Data Types
+===============
+
+   Like any right-threaded tree node, an RTRB node has a right tag, and
+like any red-black tree node, an RTRB node has a color, either red or
+black.  The combination is straightforward, as shown here.
+
+454. <RTRB node structure 454> =
+/* Color of a red-black node. */
+enum rtrb_color
+  {
+    RTRB_BLACK,                     /* Black. */
+    RTRB_RED                        /* Red. */
+  };
+
+/* Characterizes a link as a child pointer or a thread. */
+enum rtrb_tag
+  {
+    RTRB_CHILD,                     /* Child pointer. */
+    RTRB_THREAD                     /* Thread. */
+  };
+
+/* A threaded binary search tree node. */
+struct rtrb_node
+  {
+    struct rtrb_node *rtrb_link[2]; /* Subtrees. */
+    void *rtrb_data;                /* Pointer to data. */
+    unsigned char rtrb_color;       /* Color. */
+    unsigned char rtrb_rtag;        /* Tag field. */
+  };
+
+This code is included in *Note 452: rtrbh.
+
+
+File: libavl.info,  Node: RTRB Operations,  Next: Inserting into an RTRB Tree,  Prev: RTRB Data Types,  Up: Right-Threaded Red-Black Trees
+
+12.2 Operations
+===============
+
+   Most of the operations on RTRB trees can be borrowed from the
+corresponding operations on TBSTs, RTBSTs, or RTAVL trees, as shown
+below.
+
+455. <RTRB functions 455> =
+<*Note TBST creation function:: 252>
+<*Note RTBST search function:: 376>
+<*Note RTRB item insertion function:: 456>
+<*Note Table insertion convenience functions:: 592>
+<*Note RTRB item deletion function:: 468>
+<*Note RTBST traversal functions:: 395>
+<*Note RTAVL copy function:: 447>
+<*Note RTBST destruction function:: 407>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 453: rtrbc.
+
+
+File: libavl.info,  Node: Inserting into an RTRB Tree,  Next: Deleting from an RTRB tree,  Prev: RTRB Operations,  Up: Right-Threaded Red-Black Trees
+
+12.3 Insertion
+==============
+
+   Insertion is, as usual, one of the operations that must be newly
+implemented for our new type of tree.  There is nothing surprising in
+the function's outline:
+
+456. <RTRB item insertion function 456> =
+void **
+rtrb_probe (struct rtrb_table *tree, void *item)
+{
+  struct rtrb_node *pa[RTRB_MAX_HEIGHT]; /* Nodes on stack. */
+  unsigned char da[RTRB_MAX_HEIGHT];   /* Directions moved from stack nodes. */
+  int k;                               /* Stack height. */
+
+  struct rtrb_node *p; /* Current node in search. */
+  struct rtrb_node *n; /* New node. */
+  int dir;             /* Side of p on which p is located. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search RTRB tree for insertion point:: 457>
+  <*Note Step 2 Insert RTRB node:: 458>
+  <*Note Step 3 Rebalance after RTRB insertion:: 459>
+
+  return &n->rtrb_data;
+}
+
+This code is included in *Note 455: RTRB functions.
+
+* Menu:
+
+* Steps 1 and 2 in RTRB Insertion::
+* Step 3 in RTRB Insertion::
+
+
+File: libavl.info,  Node: Steps 1 and 2 in RTRB Insertion,  Next: Step 3 in RTRB Insertion,  Prev: Inserting into an RTRB Tree,  Up: Inserting into an RTRB Tree
+
+12.3.1 Steps 1 and 2: Search and Insert
+---------------------------------------
+
+   The process of search and insertion proceeds as usual.  Stack pa[],
+with pa[k - 1] at top of stack, records the parents of the node p
+currently under consideration, with corresponding stack da[] indicating
+the direction moved.  We use the standard code for insertion into an
+RTBST.  When the loop exits, p is the node under which a new node
+should be inserted on side dir.
+
+457. <Step 1: Search RTRB tree for insertion point 457> =
+da[0] = 0;
+pa[0] = (struct rtrb_node *) &tree->rtrb_root;
+k = 1;
+if (tree->rtrb_root != NULL)
+  for (p = tree->rtrb_root; ; p = p->rtrb_link[dir])
+    {
+      int cmp = tree->rtrb_compare (item, p->rtrb_data, tree->rtrb_param);
+      if (cmp == 0)
+        return &p->rtrb_data;
+
+      pa[k] = p;
+      da[k++] = dir = cmp > 0;
+
+      if (dir == 0)
+        {
+          if (p->rtrb_link[0] == NULL)
+            break;
+        }
+      else /* dir == 1 */
+        {
+          if (p->rtrb_rtag == RTRB_THREAD)
+            break;
+        }
+    }
+else
+  {
+    p = (struct rtrb_node *) &tree->rtrb_root;
+    dir = 0;
+  }
+
+This code is included in *Note 456: RTRB item insertion function.
+
+458. <Step 2: Insert RTRB node 458> =
+n = tree->rtrb_alloc->libavl_malloc (tree->rtrb_alloc, sizeof *n);
+if (n == NULL)
+  return NULL;
+
+tree->rtrb_count++;
+n->rtrb_data = item;
+n->rtrb_link[0] = NULL;
+if (dir == 0)
+  {
+    if (tree->rtrb_root != NULL)
+      n->rtrb_link[1] = p;
+    else
+      n->rtrb_link[1] = NULL;
+  }
+else /* dir == 1 */
+  {
+    p->rtrb_rtag = RTRB_CHILD;
+    n->rtrb_link[1] = p->rtrb_link[1];
+  }
+n->rtrb_rtag = RTRB_THREAD;
+n->rtrb_color = RTRB_RED;
+p->rtrb_link[dir] = n;
+
+This code is included in *Note 456: RTRB item insertion function.
+
+
+File: libavl.info,  Node: Step 3 in RTRB Insertion,  Prev: Steps 1 and 2 in RTRB Insertion,  Up: Inserting into an RTRB Tree
+
+12.3.2 Step 3: Rebalance
+------------------------
+
+   The rebalancing outline follows <*Note Step 3 Rebalance after RB
+insertion:: 201>.
+
+459. <Step 3: Rebalance after RTRB insertion 459> =
+while (k >= 3 && pa[k - 1]->rtrb_color == RTRB_RED)
+  {
+    if (da[k - 2] == 0)
+      {
+        <*Note Left-side rebalancing after RTRB insertion:: 460>
+      }
+    else
+      {
+        <*Note Right-side rebalancing after RTRB insertion:: 461>
+      }
+  }
+tree->rtrb_root->rtrb_color = RTRB_BLACK;
+
+This code is included in *Note 456: RTRB item insertion function.
+
+   The choice of case for insertion on the left side is made in the same
+way as in <*Note Left-side rebalancing after RB insertion:: 202>,
+except that of course right-side tests for non-empty subtrees are made
+using rtrb_rtag instead of rtrb_link[1], and similarly for insertion on
+the right side.  In short, we take q (which is not a real variable) as
+the new node n if this is the first time through the loop, or a node
+whose color has just been changed to red otherwise.  We know that both
+q and its parent pa[k - 1] are red, violating rule 1 for red-black
+trees, and that q's grandparent pa[k - 2] is black.  Here is the code
+to distinguish cases:
+
+460. <Left-side rebalancing after RTRB insertion 460> =
+struct rtrb_node *y = pa[k - 2]->rtrb_link[1];
+if (pa[k - 2]->rtrb_rtag == RTRB_CHILD && y->rtrb_color == RTRB_RED)
+  {
+    <*Note Case 1 in left-side RTRB insertion rebalancing:: 462>
+  }
+else
+  {
+    struct rtrb_node *x;
+
+    if (da[k - 1] == 0)
+      y = pa[k - 1];
+    else
+      {
+        <*Note Case 3 in left-side RTRB insertion rebalancing:: 466>
+      }
+
+    <*Note Case 2 in left-side RTRB insertion rebalancing:: 464>
+    break;
+  }
+
+This code is included in *Note 459: Step 3 Rebalance after RTRB
+insertion.
+
+461. <Right-side rebalancing after RTRB insertion 461> =
+struct rtrb_node *y = pa[k - 2]->rtrb_link[0];
+if (pa[k - 2]->rtrb_link[0] != NULL && y->rtrb_color == RTRB_RED)
+  {
+    <*Note Case 1 in right-side RTRB insertion rebalancing:: 463>
+  }
+else
+  {
+    struct rtrb_node *x;
+
+    if (da[k - 1] == 1)
+      y = pa[k - 1];
+    else
+      {
+        <*Note Case 3 in right-side RTRB insertion rebalancing:: 467>
+      }
+
+    <*Note Case 2 in right-side RTRB insertion rebalancing:: 465>
+    break;
+  }
+
+This code is included in *Note 459: Step 3 Rebalance after RTRB
+insertion.
+
+Case 1: q's uncle is red
+........................
+
+   If node q's uncle is red, then no links need be changed.  Instead,
+we will just recolor nodes.  We reuse the code for RB insertion (*note
+rbinscase1::):
+
+462. <Case 1 in left-side RTRB insertion rebalancing 462> =
+<*Note Case 1 in left-side RB insertion rebalancing:: 203>
+
+This code is included in *Note 460: Left-side rebalancing after RTRB
+insertion.
+
+463. <Case 1 in right-side RTRB insertion rebalancing 463> =
+<*Note Case 1 in right-side RB insertion rebalancing:: 207>
+
+This code is included in *Note 461: Right-side rebalancing after RTRB
+insertion.
+
+Case 2: q is on same side of parent as parent is of grandparent
+...............................................................
+
+   If q is a left child of its parent y and y is a left child of its
+own parent x, or if both q and y are right children, then we rotate at
+x away from y.  This is the same that we would do in an unthreaded RB
+tree (*note rbinscase2::).
+
+   However, as usual, we must make sure that threads are fixed up
+properly in the rotation.  In particular, for case 2 in left-side
+rebalancing, we must convert a right thread of y, after rotation, into
+a null left child pointer of x, like this:
+
+                                   |
+                               pa[k-2],x              |
+                                  <b>                 y
+                   ____....---'         \            <b>
+                  pa[k-1],y              d       _.-'   \
+                     <r>                   =>    q        x
+              _.-'         \                    <r>      <r>
+              q             [x]                /   \        \
+             <r>                              a     b        d
+            /   \
+           a     b
+464. <Case 2 in left-side RTRB insertion rebalancing 464> =
+<*Note Case 2 in left-side RB insertion rebalancing:: 204>
+
+if (y->rtrb_rtag == RTRB_THREAD)
+  {
+    y->rtrb_rtag = RTRB_CHILD;
+    x->rtrb_link[0] = NULL;
+  }
+
+This code is included in *Note 460: Left-side rebalancing after RTRB
+insertion.
+
+   For the right-side rebalancing case, we must convert a null left
+child of y, after rotation, into a right thread of x:
+
+                 |
+              pa[k-2]                               |
+                <b>                                 y
+             /       \                             <b>
+            a         pa[k-1],y              __..-'   `_
+                         <r>           =>    x           q
+                               `_           <r>         <r>
+                                  q        /   \       /   \
+                                 <r>      a     [y]   c     d
+                                /   \
+                               c     d
+465. <Case 2 in right-side RTRB insertion rebalancing 465> =
+<*Note Case 2 in right-side RB insertion rebalancing:: 208>
+
+if (x->rtrb_link[1] == NULL)
+  {
+    x->rtrb_rtag = RTRB_THREAD;
+    x->rtrb_link[1] = y;
+  }
+
+This code is included in *Note 461: Right-side rebalancing after RTRB
+insertion.
+
+Case 3: q is on opposite side of parent as parent is of grandparent
+...................................................................
+
+   If q is a left child and its parent is a right child, or vice versa,
+then we have an instance of case 3, and we rotate at q's parent in the
+direction from q to its parent.  We handle this case as seen before for
+unthreaded RB trees (*note rbinscase3::), with the addition of fix-ups
+for threads during rotation.
+
+   The left-side fix-up and the code to do it look like this:
+
+                                |                        |
+                             pa[k-2]                    <b>
+                               <b>                  _.-'   \
+               _____....----'       \               y       d
+              pa[k-1],x              d             <r>
+                 <r>                   =>    __..-'   \
+             /         \                     x         c
+            a           y,q                 <r>
+                        <r>                /   \
+                           \              a     [y]
+                            c
+466. <Case 3 in left-side RTRB insertion rebalancing 466> =
+<*Note Case 3 in left-side RB insertion rebalancing:: 205>
+
+if (x->rtrb_link[1] == NULL)
+  {
+    x->rtrb_rtag = RTRB_THREAD;
+    x->rtrb_link[1] = y;
+  }
+
+This code is included in *Note 460: Left-side rebalancing after RTRB
+insertion.
+
+   Here's the right-side fix-up and code:
+
+                 |                              |
+              pa[k-2]                          <b>
+                <b>                           /   `_
+             /       `--...___               a       y
+            a                 pa[k-1],x             <r>
+                                 <r>      =>       /   \
+                        __..-'         \          b      x
+                       q,y              d               <r>
+                       <r>                                 \
+                      /   \                                 d
+                     b     [x]
+467. <Case 3 in right-side RTRB insertion rebalancing 467> =
+<*Note Case 3 in right-side RB insertion rebalancing:: 209>
+
+if (y->rtrb_rtag == RTRB_THREAD)
+  {
+    y->rtrb_rtag = RTRB_CHILD;
+    x->rtrb_link[0] = NULL;
+  }
+
+This code is included in *Note 461: Right-side rebalancing after RTRB
+insertion.
+
+
+File: libavl.info,  Node: Deleting from an RTRB tree,  Next: Testing RTRB Trees,  Prev: Inserting into an RTRB Tree,  Up: Right-Threaded Red-Black Trees
+
+12.4 Deletion
+=============
+
+   The process of deletion from an RTRB tree is the same that we've seen
+many times now.  Code for the first step is borrowed from RTAVL
+deletion:
+
+468. <RTRB item deletion function 468> =
+void *
+rtrb_delete (struct rtrb_table *tree, const void *item)
+{
+  struct rtrb_node *pa[RTRB_MAX_HEIGHT]; /* Nodes on stack. */
+  unsigned char da[RTRB_MAX_HEIGHT];   /* Directions moved from stack nodes. */
+  int k;                               /* Stack height. */
+
+  struct rtrb_node *p;
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search RTAVL tree for item to delete:: 430>
+  <*Note Step 2 Delete RTRB node:: 469>
+  <*Note Step 3 Rebalance after RTRB deletion:: 474>
+  <*Note Step 4 Finish up after RTRB deletion:: 481>
+}
+
+This code is included in *Note 455: RTRB functions.
+
+* Menu:
+
+* Deleting an RTRB node step 2 - Delete::
+* Deleting an RTRB node step 3 - Rebalance::
+* Deleting an RTRB node step 4 - Finish up::
+
+
+File: libavl.info,  Node: Deleting an RTRB node step 2 - Delete,  Next: Deleting an RTRB node step 3 - Rebalance,  Prev: Deleting from an RTRB tree,  Up: Deleting from an RTRB tree
+
+12.4.1 Step 2: Delete
+---------------------
+
+   We use left-looking deletion.  At this point, p is the node to
+delete.  After the deletion, x is the node that replaced p, or a null
+pointer if the node was deleted without replacement.  The cases are
+distinguished in the usual way:
+
+469. <Step 2: Delete RTRB node 469> =
+if (p->rtrb_link[0] == NULL)
+  {
+    if (p->rtrb_rtag == RTRB_CHILD)
+      {
+        <*Note Case 1 in RTRB deletion:: 470>
+      }
+    else
+      {
+        <*Note Case 2 in RTRB deletion:: 471>
+      }
+  }
+else
+  {
+    enum rtrb_color t;
+    struct rtrb_node *r = p->rtrb_link[0];
+
+    if (r->rtrb_rtag == RTRB_THREAD)
+      {
+        <*Note Case 3 in RTRB deletion:: 472>
+      }
+    else
+      {
+        <*Note Case 4 in RTRB deletion:: 473>
+      }
+  }
+
+This code is included in *Note 468: RTRB item deletion function.
+
+Case 1: p has a right child but no left child
+.............................................
+
+   If p, the node to be deleted, has a right child but no left child,
+then we replace it by its right child.  This is the same as <*Note Case
+1 in RTAVL deletion:: 432>.
+
+470. <Case 1 in RTRB deletion 470> =
+<*Note Case 1 in RTAVL deletion:: 432>
+
+This code is included in *Note 469: Step 2 Delete RTRB node.
+
+Case 2: p has a right thread and no left child
+..............................................
+
+   Similarly, case 2 is the same as <*Note Case 2 in RTAVL deletion::
+433>, with the addition of an assignment to x.
+
+471. <Case 2 in RTRB deletion 471> =
+<*Note Case 2 in RTAVL deletion:: 433>
+
+This code is included in *Note 469: Step 2 Delete RTRB node.
+
+Case 3: p's left child has a right thread
+.........................................
+
+   If p has a left child r, and r has a right thread, then we replace p
+by r and transfer p's former right link to r.  Node r also receives p's
+balance factor.
+
+472. <Case 3 in RTRB deletion 472> =
+r->rtrb_link[1] = p->rtrb_link[1];
+r->rtrb_rtag = p->rtrb_rtag;
+t = r->rtrb_color;
+r->rtrb_color = p->rtrb_color;
+p->rtrb_color = t;
+pa[k - 1]->rtrb_link[da[k - 1]] = r;
+da[k] = 0;
+pa[k++] = r;
+
+This code is included in *Note 469: Step 2 Delete RTRB node.
+
+Case 4: p's left child has a right child
+........................................
+
+   The fourth case, where p has a left child that itself has a right
+child, uses the same algorithm as <*Note Case 4 in RTAVL deletion::
+435>, except that instead of setting the balance factor of s, we swap
+the colors of t and s as in <*Note Case 3 in RB deletion:: 224>.
+
+473. <Case 4 in RTRB deletion 473> =
+struct rtrb_node *s;
+int j = k++;
+
+for (;;)
+  {
+    da[k] = 1;
+    pa[k++] = r;
+    s = r->rtrb_link[1];
+    if (s->rtrb_rtag == RTRB_THREAD)
+      break;
+
+    r = s;
+  }
+
+da[j] = 0;
+pa[j] = pa[j - 1]->rtrb_link[da[j - 1]] = s;
+
+if (s->rtrb_link[0] != NULL)
+  r->rtrb_link[1] = s->rtrb_link[0];
+else
+  {
+    r->rtrb_rtag = RTRB_THREAD;
+    r->rtrb_link[1] = s;
+  }
+
+s->rtrb_link[0] = p->rtrb_link[0];
+s->rtrb_link[1] = p->rtrb_link[1];
+s->rtrb_rtag = p->rtrb_rtag;
+
+t = s->rtrb_color;
+s->rtrb_color = p->rtrb_color;
+p->rtrb_color = t;
+
+This code is included in *Note 469: Step 2 Delete RTRB node.
+
+
+File: libavl.info,  Node: Deleting an RTRB node step 3 - Rebalance,  Next: Deleting an RTRB node step 4 - Finish up,  Prev: Deleting an RTRB node step 2 - Delete,  Up: Deleting from an RTRB tree
+
+12.4.2 Step 3: Rebalance
+------------------------
+
+   The rebalancing step's outline is much like that for deletion in a
+symmetrically threaded tree, except that we must check for a null child
+pointer on the left side of x versus a thread on the right side:
+
+474. <Step 3: Rebalance after RTRB deletion 474> =
+if (p->rtrb_color == RTRB_BLACK)
+  {
+    for (; k > 1; k--)
+      {
+        struct rtrb_node *x;
+        if (da[k - 1] == 0 || pa[k - 1]->rtrb_rtag == RTRB_CHILD)
+          x = pa[k - 1]->rtrb_link[da[k - 1]];
+        else
+          x = NULL;
+        if (x != NULL && x->rtrb_color == RTRB_RED)
+          {
+            x->rtrb_color = RTRB_BLACK;
+            break;
+          }
+
+        if (da[k - 1] == 0)
+          {
+            <*Note Left-side rebalancing after RTRB deletion:: 475>
+          }
+        else
+          {
+            <*Note Right-side rebalancing after RTRB deletion:: 476>
+          }
+      }
+
+    if (tree->rtrb_root != NULL)
+      tree->rtrb_root->rtrb_color = RTRB_BLACK;
+  }
+
+This code is included in *Note 468: RTRB item deletion function.
+
+   As for RTRB insertion, rebalancing on either side of the root is not
+symmetric because the tree structure itself is not symmetric, but again
+the rebalancing steps are very similar.  The outlines of the left-side
+and right-side rebalancing code are below.  The code for ensuring that
+w is black and for case 1 on each side are the same as the
+corresponding unthreaded RB code, because none of that code needs to
+check for empty trees:
+
+475. <Left-side rebalancing after RTRB deletion 475> =
+struct rtrb_node *w = pa[k - 1]->rtrb_link[1];
+
+if (w->rtrb_color == RTRB_RED) 
+  {
+    <*Note Ensure |w| is black in left-side RB deletion rebalancing:: 228>
+  }
+
+if ((w->rtrb_link[0] == NULL
+     || w->rtrb_link[0]->rtrb_color == RTRB_BLACK)
+    && (w->rtrb_rtag == RTRB_THREAD
+        || w->rtrb_link[1]->rtrb_color == RTRB_BLACK))
+  {
+    <*Note Case 1 in left-side RB deletion rebalancing:: 229>
+  }
+else
+  {
+    if (w->rtrb_rtag == RTRB_THREAD
+        || w->rtrb_link[1]->rtrb_color == RTRB_BLACK)
+      {
+        <*Note Transform left-side RTRB deletion rebalancing case 3 into case 2:: 479>
+      }
+
+    <*Note Case 2 in left-side RTRB deletion rebalancing:: 477>
+    break;
+  }
+
+This code is included in *Note 474: Step 3 Rebalance after RTRB
+deletion.
+
+476. <Right-side rebalancing after RTRB deletion 476> =
+struct rtrb_node *w = pa[k - 1]->rtrb_link[0];
+
+if (w->rtrb_color == RTRB_RED) 
+  {
+    <*Note Ensure |w| is black in right-side RB deletion rebalancing:: 234>
+  }
+
+if ((w->rtrb_link[0] == NULL
+     || w->rtrb_link[0]->rtrb_color == RTRB_BLACK)
+    && (w->rtrb_rtag == RTRB_THREAD
+        || w->rtrb_link[1]->rtrb_color == RTRB_BLACK))
+  {
+    <*Note Case 1 in right-side RB deletion rebalancing:: 235>
+  }
+else
+  {
+    if (w->rtrb_link[0] == NULL
+        || w->rtrb_link[0]->rtrb_color == RTRB_BLACK)
+      {
+        <*Note Transform right-side RTRB deletion rebalancing case 3 into case 2:: 480>
+      }
+
+    <*Note Case 2 in right-side RTRB deletion rebalancing:: 478>
+    break;
+  }
+
+This code is included in *Note 474: Step 3 Rebalance after RTRB
+deletion.
+
+Case 2: w's child opposite the deletion is red
+..............................................
+
+   If the deletion was on the left side of w and w's right child is
+red, we rotate left at pa[k - 1] and perform some recolorings, as we
+did for unthreaded RB trees (*note rbdelcase2::).  There is a special
+case when w has no left child.  This must be transformed into a thread
+from leading to w following the rotation:
+
+                    |                                  |
+                pa[k-1],B                             w,C
+                   <g>                                <g>
+            _.-'         \                      __..-'   `_
+           x,A            w,C                   B           D
+           <b>            <b>        =>        <b>         <b>
+          /   \              `_            _.-'   \       /   \
+         a     b                D         x,A      [C]   d     e
+                               <r>        <b>
+                              /   \      /   \
+                             d     e    a     b
+477. <Case 2 in left-side RTRB deletion rebalancing 477> =
+<*Note Case 2 in left-side RB deletion rebalancing:: 230>
+
+if (w->rtrb_link[0]->rtrb_link[1] == NULL)
+  {
+    w->rtrb_link[0]->rtrb_rtag = RTRB_THREAD;
+    w->rtrb_link[0]->rtrb_link[1] = w;
+  }
+
+This code is included in *Note 475: Left-side rebalancing after RTRB
+deletion.
+
+   Alternately, if the deletion was on the right side of w and w's left
+child is right, we rotate right at pa[k - 1] and recolor.  There is an
+analogous special case:
+
+                           |                       |
+                       pa[k-1],C                  w,B
+                          <g>                     <g>
+                 __..-'         `_            _.-'   \
+                w,B               x,D         A        C
+                <b>               <b>   =>   <b>      <b>
+            _.-'   \             /   \      /   \        `_
+            A       [C]         d     e    a     b         x,D
+           <r>                                             <b>
+          /   \                                           /   \
+         a     b                                         d     e
+478. <Case 2 in right-side RTRB deletion rebalancing 478> =
+<*Note Case 2 in right-side RB deletion rebalancing:: 237>
+
+if (w->rtrb_rtag == RTRB_THREAD)
+  {
+    w->rtrb_rtag = RTRB_CHILD;
+    pa[k - 1]->rtrb_link[0] = NULL;
+  }
+
+This code is included in *Note 476: Right-side rebalancing after RTRB
+deletion.
+
+Case 3: w's child on the side of the deletion is red
+....................................................
+
+   If the deletion was on the left side of w and w's left child is red,
+then we rotate right at w and recolor, as in case 3 for unthreaded RB
+trees (*note rbdelcase3::).  There is a special case when w's left
+child has a right thread.  This must be transformed into a null left
+child of w's right child following the rotation:
+
+                 |                                 |
+             pa[k-1],B                         pa[k-1],B
+                <g>                               <g>
+         _.-'         `--...___            _.-'         `_
+        x,A                    w,D        x,A             w,C
+        <b>                    <b>   =>   <b>             <b>
+       /   \             __..-'   \      /   \           /   \
+      a     b            C         e    a     b         c      D
+                        <r>                                   <r>
+                       /   \                                     \
+                      c     [D]                                   e
+479. <Transform left-side RTRB deletion rebalancing case 3 into case 2 479> =
+<*Note Transform left-side RB deletion rebalancing case 3 into case 2:: 231>
+
+if (w->rtrb_rtag == RTRB_THREAD)
+  {
+    w->rtrb_rtag = RTRB_CHILD;
+    w->rtrb_link[1]->rtrb_link[0] = NULL;
+  }
+
+This code is included in *Note 475: Left-side rebalancing after RTRB
+deletion.
+
+   Alternately, if the deletion was on the right side of w and w's
+right child is red, we rotate left at w and recolor.  There is an
+analogous special case:
+
+                     |                                 |
+                 pa[k-1],C                         pa[k-1],C
+                    <g>                               <g>
+         ___..--'         `_                   _.-'         `_
+        w,A                 x,D               w,B             x,D
+        <b>                 <b>   =>          <b>             <b>
+       /   \               /   \        __..-'   \           /   \
+      a      B            d     e       A         c         d     e
+            <r>                        <r>
+               \                      /   \
+                c                    a     [B]
+480. <Transform right-side RTRB deletion rebalancing case 3 into case 2 480> =
+<*Note Transform right-side RB deletion rebalancing case 3 into case 2:: 236>
+
+if (w->rtrb_link[0]->rtrb_link[1] == NULL)
+  {
+    w->rtrb_link[0]->rtrb_rtag = RTRB_THREAD;
+    w->rtrb_link[0]->rtrb_link[1] = w;
+  }
+
+This code is included in *Note 476: Right-side rebalancing after RTRB
+deletion.
+
+
+File: libavl.info,  Node: Deleting an RTRB node step 4 - Finish up,  Prev: Deleting an RTRB node step 3 - Rebalance,  Up: Deleting from an RTRB tree
+
+12.4.3 Step 4: Finish Up
+------------------------
+
+481. <Step 4: Finish up after RTRB deletion 481> =
+tree->rtrb_alloc->libavl_free (tree->rtrb_alloc, p);
+return (void *) item;
+
+This code is included in *Note 468: RTRB item deletion function.
+
+
+File: libavl.info,  Node: Testing RTRB Trees,  Prev: Deleting from an RTRB tree,  Up: Right-Threaded Red-Black Trees
+
+12.5 Testing
+============
+
+482. <rtrb-test.c 482> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "rtrb.h"
+#include "test.h"
+
+<*Note RTBST print function:: 412>
+<*Note BST traverser check function:: 104>
+<*Note Compare two RTRB trees for structure and content:: 483>
+<*Note Recursively verify RTRB tree structure:: 484>
+<*Note RB tree verify function:: 244>
+<*Note BST test function:: 100>
+<*Note BST overflow test function:: 122>
+
+483. <Compare two RTRB trees for structure and content 483> =
+static int
+compare_trees (struct rtrb_node *a, struct rtrb_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      if (a != NULL || b != NULL)
+        {
+          printf (" a=%d b=%d\n",
+                  a ? *(int *) a->rtrb_data : -1,
+                  b ? *(int *) b->rtrb_data : -1);
+          assert (0);
+        }
+      return 1;
+    }
+  assert (a != b);
+
+  if (*(int *) a->rtrb_data != *(int *) b->rtrb_data
+      || a->rtrb_rtag != b->rtrb_rtag 
+      || a->rtrb_color != b->rtrb_color)
+    {
+      printf (" Copied nodes differ: a=%d%c b=%d%c a:",
+              *(int *) a->rtrb_data, a->rtrb_color == RTRB_RED ? 'r' : 'b',
+              *(int *) b->rtrb_data, b->rtrb_color == RTRB_RED ? 'r' : 'b');
+
+      if (a->rtrb_rtag == RTRB_CHILD)
+        printf ("r");
+
+      printf (" b:");
+      if (b->rtrb_rtag == RTRB_CHILD)
+        printf ("r");
+
+      printf ("\n");
+      return 0;
+    }
+
+  if (a->rtrb_rtag == RTRB_THREAD)
+    assert ((a->rtrb_link[1] == NULL) != (a->rtrb_link[1] != b->rtrb_link[1]));
+
+  okay = compare_trees (a->rtrb_link[0], b->rtrb_link[0]);
+  if (a->rtrb_rtag == RTRB_CHILD)
+    okay &= compare_trees (a->rtrb_link[1], b->rtrb_link[1]);
+  return okay;
+}
+
+This code is included in *Note 482: rtrb-testc.
+
+484. <Recursively verify RTRB tree structure 484> =
+static void
+recurse_verify_tree (struct rtrb_node *node, int *okay, size_t *count, 
+                     int min, int max, int *bh)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+  int subbh[2];         /* Black-heights of subtrees. */
+
+  if (node == NULL)
+    {
+      *count = 0;
+      *bh = 0;
+      return;
+    }
+  d = *(int *) node->rtrb_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  subcount[0] = subcount[1] = 0;
+  subbh[0] = subbh[1] = 0;
+  recurse_verify_tree (node->rtrb_link[0], okay, &subcount[0], 
+                       min, d - 1, &subbh[0]);
+  if (node->rtrb_rtag == RTRB_CHILD)
+    recurse_verify_tree (node->rtrb_link[1], okay, &subcount[1], 
+                         d + 1, max, &subbh[1]);
+  *count = 1 + subcount[0] + subcount[1];
+  *bh = (node->rtrb_color == RTRB_BLACK) + subbh[0];
+
+  <*Note Verify RB node color:: 241>
+  <*Note Verify RTRB node rule 1 compliance:: 485>
+  <*Note Verify RB node rule 2 compliance:: 243>
+}
+
+This code is included in *Note 482: rtrb-testc.
+
+485. <Verify RTRB node rule 1 compliance 485> =
+/* Verify compliance with rule 1. */
+if (node->rtrb_color == RTRB_RED)
+  {
+    if (node->rtrb_link[0] != NULL
+        && node->rtrb_link[0]->rtrb_color == RTRB_RED)
+      {
+        printf (" Red node %d has red left child %d\n",
+                d, *(int *) node->rtrb_link[0]->rtrb_data);
+        *okay = 0;
+      }
+
+    if (node->rtrb_rtag == RTRB_CHILD
+        && node->rtrb_link[1]->rtrb_color == RTRB_RED)
+      {
+        printf (" Red node %d has red right child %d\n",
+                d, *(int *) node->rtrb_link[1]->rtrb_data);
+        *okay = 0;
+      }
+  }
+
+This code is included in *Note 484: Recursively verify RTRB tree
+structure.
+
+
+File: libavl.info,  Node: BSTs with Parent Pointers,  Next: AVL Trees with Parent Pointers,  Prev: Right-Threaded Red-Black Trees,  Up: Top
+
+13 BSTs with Parent Pointers
+****************************
+
+   The preceding six chapters introduced two different forms of threaded
+trees, which simplified traversal by eliminating the need for a stack.
+There is another way to accomplish the same purpose: add to each node a
+"parent pointer" (*note parent pointer::), a link from the node to its
+parent.  A binary search tree so augmented is called a BST with parent
+pointers, or PBST for short.(1)  In this chapter, we show how to add
+parent pointers to binary trees.  The next two chapters will add them
+to AVL trees and red-black trees.
+
+   Parent pointers and threads have equivalent power.  That is, given a
+node within a threaded tree, we can find the node's parent, and given a
+node within a tree with parent pointers, we can determine the targets
+of any threads that the node would have in a similar threaded tree.
+
+   Parent pointers have some advantages over threads.  In particular,
+parent pointers let us more efficiently eliminate the stack for
+insertion and deletion in balanced trees.  Rebalancing during these
+operations requires us to locate the parents of nodes.  In our
+implementations of threaded balanced trees, we wrote code to do this,
+but it took a relatively complicated and slow helper function.  Parent
+pointers make it much faster and easier.  It is also easier to search a
+tree with parent pointers than a threaded tree, because there is no
+need to check tags.  Outside of purely technical issues, many people
+find the use of parent pointers more intuitive than threads.
+
+   On the other hand, to traverse a tree with parent pointers in inorder
+we may have to follow several parent pointers instead of a single
+thread.  What's more, parent pointers take extra space for a third
+pointer field in every node, whereas the tag fields in threaded
+balanced trees often fit into node structures without taking up
+additional room (see Exercise 9.1-1).  Finally, maintaining parent
+pointers on insertion and deletion takes time.  In fact, we'll see that
+it takes more operations (and thus, all else being equal, time) than
+maintaining threads.
+
+   In conclusion, a general comparison of parent pointers with threads
+reveals no clear winner.  Further discussion of the merits of parent
+pointers versus those of threads will be postponed until later in this
+book.  For now, we'll stick to the problems of parent pointer
+implementation.
+
+   Here's the outline of the PBST code.  We're using the prefix pbst_
+this time:
+
+486. <pbst.h 486> =
+<*Note License:: 1>
+#ifndef PBST_H
+#define PBST_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note TBST table structure:: 250>
+<*Note PBST node structure:: 488>
+<*Note TBST traverser structure:: 267>
+<*Note Table function prototypes:: 15>
+<*Note BST extra function prototypes:: 88>
+
+#endif /* pbst.h */
+
+487. <pbst.c 487> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "pbst.h"
+
+<*Note PBST functions:: 489>
+
+* Menu:
+
+* PBST Data Types::
+* PBST Operations::
+* Inserting into a PBST::
+* Deleting from a PBST::
+* Traversing a PBST::
+* Copying a PBST::
+* Balancing a PBST::
+* Testing PBSTs::
+
+   ---------- Footnotes ----------
+
+   (1) This abbreviation might be thought of as expanding to "parented
+BST" or "parental BST", but those are not proper terms.
+
+
+File: libavl.info,  Node: PBST Data Types,  Next: PBST Operations,  Prev: BSTs with Parent Pointers,  Up: BSTs with Parent Pointers
+
+13.1 Data Types
+===============
+
+   For PBSTs we reuse TBST table and traverser structures.  In fact, the
+only data type that needs revision is the node structure.  We take the
+basic form of a node and add a member pbst_parent to point to its
+parent node:
+
+488. <PBST node structure 488> =
+/* A binary search tree with parent pointers node. */
+struct pbst_node
+  {
+    struct pbst_node *pbst_link[2];   /* Subtrees. */
+    struct pbst_node *pbst_parent;    /* Parent. */
+    void *pbst_data;                  /* Pointer to data. */
+  };
+
+This code is included in *Note 486: pbsth.
+
+   There is one special case: what should be the value of pbst_parent
+for a node that has no parent, that is, in the tree's root?  There are
+two reasonable choices.
+
+   First, pbst_parent could be NULL in the root.  This makes it easy to
+check whether a node is the tree's root.  On the other hand, we often
+follow a parent pointer in order to change the link down from the
+parent, and NULL as the root node's pbst_parent requires a special case.
+
+   We can eliminate this special case if the root's pbst_parent is the
+tree's pseudo-root node, that is, (struct pbst_node *)
+&tree->pbst_root.  The downside of this choice is that it becomes
+uglier, and perhaps slower, to check whether a node is the tree's root,
+because a comparison must be made against a non-constant expression
+instead of simply NULL.
+
+   In this book, we make the former choice, so pbst_parent is NULL in
+the tree's root node.
+
+See also:  *Note Cormen 1990::, section 11.4.
+
+
+File: libavl.info,  Node: PBST Operations,  Next: Inserting into a PBST,  Prev: PBST Data Types,  Up: BSTs with Parent Pointers
+
+13.2 Operations
+===============
+
+   When we added parent pointers to BST nodes, we did not change the
+interpretation of any of the node members.  This means that any
+function that examines PBSTs without modifying them will work without
+change.  We take advantage of that for tree search.  We also get away
+with it for destruction, since there's no problem with failing to
+update parent pointers in that case.  Although we could, technically,
+do the same for traversal, that would negate much of the advantage of
+parent pointers, so we reimplement them.  Here is the overall outline:
+
+489. <PBST functions 489> =
+<*Note TBST creation function:: 252>
+<*Note BST search function:: 31>
+<*Note PBST item insertion function:: 490>
+<*Note Table insertion convenience functions:: 592>
+<*Note PBST item deletion function:: 493>
+<*Note PBST traversal functions:: 502>
+<*Note PBST copy function:: 509>
+<*Note BST destruction function:: 84>
+<*Note PBST balance function:: 511>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 487: pbstc.
+
+
+File: libavl.info,  Node: Inserting into a PBST,  Next: Deleting from a PBST,  Prev: PBST Operations,  Up: BSTs with Parent Pointers
+
+13.3 Insertion
+==============
+
+   The only difference between this code and <*Note BST item insertion
+function:: 32> is that we set n's parent pointer after insertion.
+
+490. <PBST item insertion function 490> =
+void **
+pbst_probe (struct pbst_table *tree, void *item)
+{
+  struct pbst_node *p, *q; /* Current node in search and its parent. */
+  int dir;                 /* Side of q on which p is located. */
+  struct pbst_node *n;     /* Newly inserted node. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search PBST tree for insertion point:: 491>
+  <*Note Step 2 Insert PBST node:: 492>
+
+  return &n->pbst_data;
+}
+
+This code is included in *Note 489: PBST functions.
+
+491. <Step 1: Search PBST tree for insertion point 491> =
+for (q = NULL, p = tree->pbst_root; p != NULL; q = p, p = p->pbst_link[dir])
+  {
+    int cmp = tree->pbst_compare (item, p->pbst_data, tree->pbst_param);
+    if (cmp == 0)
+      return &p->pbst_data;
+    dir = cmp > 0;
+  }
+
+This code is included in *Note 490: PBST item insertion function and
+*Note 555: PRB item insertion function.
+
+492. <Step 2: Insert PBST node 492> =
+n = tree->pbst_alloc->libavl_malloc (tree->pbst_alloc, sizeof *p);
+if (n == NULL)
+  return NULL;
+
+tree->pbst_count++;
+n->pbst_link[0] = n->pbst_link[1] = NULL;
+n->pbst_parent = q;
+n->pbst_data = item;
+if (q != NULL)
+  q->pbst_link[dir] = n;
+else
+  tree->pbst_root = n;
+
+This code is included in *Note 490: PBST item insertion function, *Note
+525: Step 2 Insert PAVL node, and *Note 556: Step 2 Insert PRB node.
+
+See also:  *Note Cormen 1990::, section 13.3.
+
+
+File: libavl.info,  Node: Deleting from a PBST,  Next: Traversing a PBST,  Prev: Inserting into a PBST,  Up: BSTs with Parent Pointers
+
+13.4 Deletion
+=============
+
+   The new aspect of deletion in a PBST is that we must properly adjust
+parent pointers.  The outline is the same as usual:
+
+493. <PBST item deletion function 493> =
+void *
+pbst_delete (struct pbst_table *tree, const void *item)
+{
+  struct pbst_node *p; /* Traverses tree to find node to delete. */
+  struct pbst_node *q; /* Parent of p. */
+  int dir;             /* Side of q on which p is linked. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Find PBST node to delete:: 494>
+  <*Note Step 2 Delete PBST node:: 496>
+  <*Note Step 3 Finish up after deleting PBST node:: 501>
+}
+
+This code is included in *Note 489: PBST functions.
+
+   We find the node to delete by using p to search for item.  For the
+first time in implementing a deletion routine, we do not keep track of
+the current node's parent, because we can always find it out later with
+little effort:
+
+494. <Step 1: Find PBST node to delete 494> =
+if (tree->pbst_root == NULL)
+  return NULL;
+
+p = tree->pbst_root;
+for (;;)
+  {
+    int cmp = tree->pbst_compare (item, p->pbst_data, tree->pbst_param);
+    if (cmp == 0)
+      break;
+
+    dir = cmp > 0;
+    p = p->pbst_link[dir];
+    if (p == NULL)
+      return NULL;
+  }
+item = p->pbst_data;
+
+See also *Note 495: Step 1 Find PBST node to delete-2.
+This code is included in *Note 493: PBST item deletion function, *Note
+534: PAVL item deletion function, and *Note 566: PRB item deletion
+function.
+
+   Now we've found the node to delete, p.  The first step in deletion
+is to find the parent of p as q.  Node p is q's child on side dir.
+Deletion of the root is a special case:
+
+495. <Step 1: Find PBST node to delete 494> +=
+q = p->pbst_parent;
+if (q == NULL)
+  {
+    q = (struct pbst_node *) &tree->pbst_root;
+    dir = 0;
+  }
+
+   The remainder of the deletion follows the usual outline:
+
+496. <Step 2: Delete PBST node 496> =
+if (p->pbst_link[1] == NULL)
+  {
+    <*Note Case 1 in PBST deletion:: 497>
+  }
+else
+  {
+    struct pbst_node *r = p->pbst_link[1];
+    if (r->pbst_link[0] == NULL)
+      {
+        <*Note Case 2 in PBST deletion:: 498>
+      }
+    else
+      {
+        <*Note Case 3 in PBST deletion:: 499>
+      }
+  }
+
+This code is included in *Note 493: PBST item deletion function.
+
+Case 1: p has no right child
+............................
+
+   If p has no right child, then we can replace it by its left child,
+if any.  If p does have a left child then we must update its parent to
+be p's former parent.
+
+497. <Case 1 in PBST deletion 497> =
+q->pbst_link[dir] = p->pbst_link[0];
+if (q->pbst_link[dir] != NULL)
+  q->pbst_link[dir]->pbst_parent = p->pbst_parent;
+
+This code is included in *Note 496: Step 2 Delete PBST node, *Note 536:
+Case 1 in PAVL deletion, and *Note 568: Case 1 in PRB deletion.
+
+Case 2: p's right child has no left child
+.........................................
+
+   When we delete a node with a right child that in turn has no left
+child, the operation looks like this:
+
+                               |         |
+                               p         r
+                              / \        ^
+                             a   r   => a b
+                                  \
+                                   b
+ 
+ The key points to notice are that node r's parent changes and so does
+the parent of r's new left child, if there is one.  We update these in
+deletion:
+
+498. <Case 2 in PBST deletion 498> =
+r->pbst_link[0] = p->pbst_link[0];
+q->pbst_link[dir] = r;
+r->pbst_parent = p->pbst_parent;
+if (r->pbst_link[0] != NULL)
+  r->pbst_link[0]->pbst_parent = r;
+
+This code is included in *Note 496: Step 2 Delete PBST node, *Note 537:
+Case 2 in PAVL deletion, and *Note 569: Case 2 in PRB deletion.
+
+Case 3: p's right child has a left child
+........................................
+
+   If p's right child has a left child, then we replace p by its
+successor, as usual.  Finding the successor s and its parent r is a
+little simpler than usual, because we can move up the tree so easily.
+We know that s has a non-null parent so there is no need to handle that
+special case:
+
+499. <Case 3 in PBST deletion 499> =
+struct pbst_node *s = r->pbst_link[0];
+while (s->pbst_link[0] != NULL)
+  s = s->pbst_link[0];
+r = s->pbst_parent;
+
+See also *Note 500: Case 3 in PBST deletion-2.
+This code is included in *Note 496: Step 2 Delete PBST node, *Note 538:
+Case 3 in PAVL deletion, and *Note 570: Case 3 in PRB deletion.
+
+   The only other change here is that we must update parent pointers.
+It is easy to pick out the ones that must be changed by looking at a
+diagram of the deletion:
+
+                       |                  |
+                       p                  s
+                      / `--...___        / `-..__
+                     a           x      a        x
+                               _' \            _' \
+                              ...  d          ...  d
+                            _'       =>      /
+                           r                r
+                         _' \               ^
+                        s    c             b c
+                         \
+                          b
+
+Node s's parent changes, as do the parents of its new right child x
+and, if it has one, its left child a.  Perhaps less obviously, if s
+originally had a right child, it becomes the new left child of r, so
+its new parent is r:
+
+500. <Case 3 in PBST deletion 499> +=
+r->pbst_link[0] = s->pbst_link[1];
+s->pbst_link[0] = p->pbst_link[0];
+s->pbst_link[1] = p->pbst_link[1];
+q->pbst_link[dir] = s;
+if (s->pbst_link[0] != NULL)
+  s->pbst_link[0]->pbst_parent = s;
+s->pbst_link[1]->pbst_parent = s;
+s->pbst_parent = p->pbst_parent;
+if (r->pbst_link[0] != NULL)
+  r->pbst_link[0]->pbst_parent = r;
+
+   Finally, we free the deleted node p and return its data:
+
+501. <Step 3: Finish up after deleting PBST node 501> =
+tree->pbst_alloc->libavl_free (tree->pbst_alloc, p);
+tree->pbst_count--;
+return (void *) item;
+
+This code is included in *Note 493: PBST item deletion function.
+
+See also:  *Note Cormen 1990::, section 13.3.
+
+Exercises:
+
+1. In case 1, can we change the right side of the assignment in the if
+statement's consequent from p->pbst_parent to q?
+
+
+File: libavl.info,  Node: Traversing a PBST,  Next: Copying a PBST,  Prev: Deleting from a PBST,  Up: BSTs with Parent Pointers
+
+13.5 Traversal
+==============
+
+   The traverser for a PBST is just like that for a TBST, so we can
+reuse a couple of the TBST functions.  Besides that and a couple of
+completely generic functions, we have to reimplement the traversal
+functions.
+
+502. <PBST traversal functions 502> =
+<*Note TBST traverser null initializer:: 269>
+<*Note PBST traverser first initializer:: 503>
+<*Note PBST traverser last initializer:: 504>
+<*Note PBST traverser search initializer:: 505>
+<*Note PBST traverser insertion initializer:: 506>
+<*Note TBST traverser copy initializer:: 274>
+<*Note PBST traverser advance function:: 507>
+<*Note PBST traverser back up function:: 508>
+<*Note BST traverser current item function:: 74>
+<*Note BST traverser replacement function:: 75>
+
+This code is included in *Note 489: PBST functions.
+
+* Menu:
+
+* PBST Traverser First Initialization::
+* PBST Traverser Last Initialization::
+* PBST Traverser Find Initialization::
+* PBST Traverser Insert Initialization::
+* PBST Traverser Advancing::
+* PBST Traverser Retreating::
+
+
+File: libavl.info,  Node: PBST Traverser First Initialization,  Next: PBST Traverser Last Initialization,  Prev: Traversing a PBST,  Up: Traversing a PBST
+
+13.5.1 Starting at the First Node
+---------------------------------
+
+   Finding the smallest node in the tree is just a matter of starting
+from the root and descending as far to the left as we can.
+
+503. <PBST traverser first initializer 503> =
+void *
+pbst_t_first (struct pbst_traverser *trav, struct pbst_table *tree)
+{
+  assert (tree != NULL && trav != NULL);
+
+  trav->pbst_table = tree;
+  trav->pbst_node = tree->pbst_root;
+  if (trav->pbst_node != NULL)
+    {
+      while (trav->pbst_node->pbst_link[0] != NULL)
+        trav->pbst_node = trav->pbst_node->pbst_link[0];
+      return trav->pbst_node->pbst_data;
+    }
+  else
+    return NULL;
+}
+
+This code is included in *Note 502: PBST traversal functions and *Note
+546: PAVL traversal functions.
+

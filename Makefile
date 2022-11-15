@@ -26,8 +26,8 @@ LIB         := -L$(LIB_DIR) -l$(LIB_NAME) -lm
 # targets
 
 TARGET_NAME := lib$(LIB_NAME)
-TARGET      := $(LIB_DIR)/$(TARGET_NAME).a
-DBG_TARGET  := $(LIB_DIR)/$(TARGET_NAME)-dbg.a
+TARGET      := $(BIN_DIR)/$(TARGET_NAME).a
+DBG_TARGET  := $(BIN_DIR)/$(TARGET_NAME)-dbg.a
 
 SOURCES     := $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT))
 TESTSRC     := $(shell find $(TEST_DIR)/ -name "*."$(SRCEXT))
@@ -58,18 +58,20 @@ $(DBG_TARGET): $(DBG_OBJECTS)
 	ar rcs $(DBG_TARGET) $(BUILD_DIR)/*-dbg.$(OBJEXT)
 
 $(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
-	@grep --no-filename -v '^#\s*include\s*"' $(HEADERS) > $(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT)
-	$(info make $(LIB_DIR)/$(TARGET_NAME).$(HEADEREXT))
+	@grep --no-filename -v '^#\s*include\s*"' $(HEADERS) > $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT)
+	$(info make $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT))
 
 ## execution
 
 test: mkdirp $(TARGET) $(TESTSRC)
-	@$(CC) $(CFLAGS) $(INCLUDE) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test $(LIB)
+	@$(CC) $(CFLAGS) $(INCLUDE) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test -L$(BIN_DIR) $(LIB)
 	./$(BIN_DIR)/test
+	@rm ./$(BIN_DIR)/test
 
 testdbg: mkdirp $(DBG_OBJECTS) $(TESTSRC)
 	@$(CC) $(CDBGFLAGS) $(INCLUDE) $(DBG_OBJECTS) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg
 	$(DBG) $(BIN_DIR)/test-dbg
+	@rm ./$(BIN_DIR)/test-dbg
 
 ## mkdirp
 
@@ -87,4 +89,3 @@ cleaner:
 	@cd $(SRC_DIR) && $(MAKE) cleaner
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(BIN_DIR)
-	@rm -rf $(LIB_DIR)

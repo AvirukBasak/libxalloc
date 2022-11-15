@@ -1,0 +1,1603 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: PBST Traverser Last Initialization,  Next: PBST Traverser Find Initialization,  Prev: PBST Traverser First Initialization,  Up: Traversing a PBST
+
+13.5.2 Starting at the Last Node
+--------------------------------
+
+   This is the same as starting from the least item, except that we
+descend to the right.
+
+504. <PBST traverser last initializer 504> =
+void *
+pbst_t_last (struct pbst_traverser *trav, struct pbst_table *tree)
+{
+  assert (tree != NULL && trav != NULL);
+
+  trav->pbst_table = tree;
+  trav->pbst_node = tree->pbst_root;
+  if (trav->pbst_node != NULL)
+    {
+      while (trav->pbst_node->pbst_link[1] != NULL)
+        trav->pbst_node = trav->pbst_node->pbst_link[1];
+      return trav->pbst_node->pbst_data;
+    }
+  else
+    return NULL;
+}
+
+This code is included in *Note 502: PBST traversal functions and *Note
+546: PAVL traversal functions.
+
+
+File: libavl.info,  Node: PBST Traverser Find Initialization,  Next: PBST Traverser Insert Initialization,  Prev: PBST Traverser Last Initialization,  Up: Traversing a PBST
+
+13.5.3 Starting at a Found Node
+-------------------------------
+
+   To start from a particular item, we search for it in the tree.  If it
+exists then we initialize the traverser to it.  Otherwise, we
+initialize the traverser to the null item and return a null pointer.
+There are no surprises here.
+
+505. <PBST traverser search initializer 505> =
+void *
+pbst_t_find (struct pbst_traverser *trav, struct pbst_table *tree, void *item)
+{
+  struct pbst_node *p;
+  int dir;
+
+  assert (trav != NULL && tree != NULL && item != NULL);
+
+  trav->pbst_table = tree;
+  for (p = tree->pbst_root; p != NULL; p = p->pbst_link[dir])
+    {
+      int cmp = tree->pbst_compare (item, p->pbst_data, tree->pbst_param);
+      if (cmp == 0)
+        {
+          trav->pbst_node = p;
+          return p->pbst_data;
+        }
+
+      dir = cmp > 0;
+    }
+
+  trav->pbst_node = NULL;
+  return NULL;
+}
+
+This code is included in *Note 502: PBST traversal functions and *Note
+546: PAVL traversal functions.
+
+
+File: libavl.info,  Node: PBST Traverser Insert Initialization,  Next: PBST Traverser Advancing,  Prev: PBST Traverser Find Initialization,  Up: Traversing a PBST
+
+13.5.4 Starting at an Inserted Node
+-----------------------------------
+
+   This function combines the functionality of search and insertion with
+initialization of a traverser.
+
+506. <PBST traverser insertion initializer 506> =
+void *
+pbst_t_insert (struct pbst_traverser *trav, struct pbst_table *tree,
+               void *item)
+{
+  struct pbst_node *p, *q; /* Current node in search and its parent. */
+  int dir;                 /* Side of q on which p is located. */
+  struct pbst_node *n;     /* Newly inserted node. */
+
+  assert (trav != NULL && tree != NULL && item != NULL);
+
+  trav->pbst_table = tree;
+  for (q = NULL, p = tree->pbst_root; p != NULL; q = p, p = p->pbst_link[dir])
+    {
+      int cmp = tree->pbst_compare (item, p->pbst_data, tree->pbst_param);
+      if (cmp == 0)
+        {
+          trav->pbst_node = p;
+          return p->pbst_data;
+        }
+      dir = cmp > 0;
+    }
+
+  trav->pbst_node = n =
+    tree->pbst_alloc->libavl_malloc (tree->pbst_alloc, sizeof *p);
+  if (n == NULL)
+    return NULL;
+
+  tree->pbst_count++;
+  n->pbst_link[0] = n->pbst_link[1] = NULL;
+  n->pbst_parent = q;
+  n->pbst_data = item;
+  if (q != NULL)
+    q->pbst_link[dir] = n;
+  else
+    tree->pbst_root = n;
+
+  return item;
+}
+
+This code is included in *Note 502: PBST traversal functions.
+
+
+File: libavl.info,  Node: PBST Traverser Advancing,  Next: PBST Traverser Retreating,  Prev: PBST Traverser Insert Initialization,  Up: Traversing a PBST
+
+13.5.5 Advancing to the Next Node
+---------------------------------
+
+   There are the same three cases for advancing a traverser as the other
+types of binary trees that we've already looked at.  Two of the cases,
+the ones where we're starting from the null item or a node that has a
+right child, are unchanged.
+
+   The third case, where the node that we're starting from has no right
+child, is the case that must be revised.  We can use the same algorithm
+that we did for ordinary BSTs without threads or parent pointers,
+described earlier (*note Better Iterative Traversal::).  Simply put, we
+move upward in the tree until we move up to the right (or until we move
+off the top of the tree).
+
+   The code uses q to move up the tree and p as q's child, so the
+termination condition is when p is q's left child or q becomes a null
+pointer.  There is a non-null successor in the former case, where the
+situation looks like this:
+
+                                    |
+                                    q
+                                   / \
+                                  p   c
+                                  ^
+                                 a b
+
+507. <PBST traverser advance function 507> =
+void *
+pbst_t_next (struct pbst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  if (trav->pbst_node == NULL)
+    return pbst_t_first (trav, trav->pbst_table);
+  else if (trav->pbst_node->pbst_link[1] == NULL)
+    {
+      struct pbst_node *q, *p; /* Current node and its child. */
+      for (p = trav->pbst_node, q = p->pbst_parent; ;
+           p = q, q = q->pbst_parent) 
+        if (q == NULL || p == q->pbst_link[0])
+          {
+            trav->pbst_node = q;
+            return trav->pbst_node != NULL ? trav->pbst_node->pbst_data : NULL;
+          }
+    }
+  else
+    {
+      trav->pbst_node = trav->pbst_node->pbst_link[1];
+      while (trav->pbst_node->pbst_link[0] != NULL)
+        trav->pbst_node = trav->pbst_node->pbst_link[0];
+      return trav->pbst_node->pbst_data;
+    }
+}
+
+This code is included in *Note 502: PBST traversal functions and *Note
+546: PAVL traversal functions.
+
+See also:  *Note Cormen 1990::, section 13.2.
+
+
+File: libavl.info,  Node: PBST Traverser Retreating,  Prev: PBST Traverser Advancing,  Up: Traversing a PBST
+
+13.5.6 Backing Up to the Previous Node
+--------------------------------------
+
+   This is the same as advancing a traverser, except that we reverse the
+directions.
+
+508. <PBST traverser back up function 508> =
+void *
+pbst_t_prev (struct pbst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  if (trav->pbst_node == NULL)
+    return pbst_t_last (trav, trav->pbst_table);
+  else if (trav->pbst_node->pbst_link[0] == NULL)
+    {
+      struct pbst_node *q, *p; /* Current node and its child. */
+      for (p = trav->pbst_node, q = p->pbst_parent; ;
+           p = q, q = q->pbst_parent)
+        if (q == NULL || p == q->pbst_link[1])
+          {
+            trav->pbst_node = q;
+            return trav->pbst_node != NULL ? trav->pbst_node->pbst_data : NULL;
+          }
+    }
+  else
+    {
+      trav->pbst_node = trav->pbst_node->pbst_link[0];
+      while (trav->pbst_node->pbst_link[1] != NULL)
+        trav->pbst_node = trav->pbst_node->pbst_link[1];
+      return trav->pbst_node->pbst_data;
+    }
+}
+
+This code is included in *Note 502: PBST traversal functions and *Note
+546: PAVL traversal functions.
+
+See also:  *Note Cormen 1990::, section 13.2.
+
+
+File: libavl.info,  Node: Copying a PBST,  Next: Balancing a PBST,  Prev: Traversing a PBST,  Up: BSTs with Parent Pointers
+
+13.6 Copying
+============
+
+   To copy BSTs with parent pointers, we use a simple adaptation of our
+original algorithm for copying BSTs, as implemented in <*Note BST copy
+function:: 83>.  That function used a stack to keep track of the nodes
+that need to be revisited to have their right subtrees copies.  We can
+eliminate that by using the parent pointers.  Instead of popping a pair
+of nodes off the stack, we ascend the tree until we moved up to the
+left:
+
+509. <PBST copy function 509> =
+<*Note PBST copy error helper function:: 510>
+
+struct pbst_table *
+pbst_copy (const struct pbst_table *org, pbst_copy_func *copy,
+           pbst_item_func *destroy, struct libavl_allocator *allocator)
+{
+  struct pbst_table *new;
+  const struct pbst_node *x;
+  struct pbst_node *y;
+
+  assert (org != NULL);
+  new = pbst_create (org->pbst_compare, org->pbst_param,
+                    allocator != NULL ? allocator : org->pbst_alloc);
+  if (new == NULL)
+    return NULL;
+  new->pbst_count = org->pbst_count;
+  if (new->pbst_count == 0)
+    return new;
+
+  x = (const struct pbst_node *) &org->pbst_root;
+  y = (struct pbst_node *) &new->pbst_root;
+  for (;;)
+    {
+      while (x->pbst_link[0] != NULL)
+        {
+          y->pbst_link[0] =
+            new->pbst_alloc->libavl_malloc (new->pbst_alloc,
+                                            sizeof *y->pbst_link[0]);
+          if (y->pbst_link[0] == NULL)
+            {
+              if (y != (struct pbst_node *) &new->pbst_root)
+                {
+                  y->pbst_data = NULL;
+                  y->pbst_link[1] = NULL;
+                }
+
+              copy_error_recovery (y, new, destroy);
+              return NULL;
+            }
+          y->pbst_link[0]->pbst_parent = y;
+
+          x = x->pbst_link[0];
+          y = y->pbst_link[0];
+        }
+      y->pbst_link[0] = NULL;
+
+      for (;;)
+        {
+          if (copy == NULL)
+            y->pbst_data = x->pbst_data;
+          else
+            {
+              y->pbst_data = copy (x->pbst_data, org->pbst_param);
+              if (y->pbst_data == NULL)
+                {
+                  y->pbst_link[1] = NULL;
+                  copy_error_recovery (y, new, destroy);
+                  return NULL;
+                }
+            }
+
+          if (x->pbst_link[1] != NULL)
+            {
+              y->pbst_link[1] =
+                new->pbst_alloc->libavl_malloc (new->pbst_alloc,
+                                               sizeof *y->pbst_link[1]);
+              if (y->pbst_link[1] == NULL)
+                {
+                  copy_error_recovery (y, new, destroy);
+                  return NULL;
+                }
+              y->pbst_link[1]->pbst_parent = y;
+
+              x = x->pbst_link[1];
+              y = y->pbst_link[1];
+              break;
+            }
+          else
+            y->pbst_link[1] = NULL;
+
+          for (;;)
+            {
+              const struct pbst_node *w = x;
+              x = x->pbst_parent;
+              if (x == NULL)
+                {
+                  new->pbst_root->pbst_parent = NULL;
+                  return new;
+                }
+              y = y->pbst_parent;
+
+              if (w == x->pbst_link[0])
+                break;
+            }
+        }
+    }
+}
+
+This code is included in *Note 489: PBST functions.
+
+   Recovering from an error changes in the same way.  We ascend from the
+node where we were copying when memory ran out and set the right
+children of the nodes where we ascended to the right to null pointers,
+then destroy the fixed-up tree:
+
+510. <PBST copy error helper function 510> =
+static void
+copy_error_recovery (struct pbst_node *q,
+                     struct pbst_table *new, pbst_item_func *destroy)
+{
+  assert (q != NULL && new != NULL);
+
+  for (;;)
+    {
+      struct pbst_node *p = q;
+      q = q->pbst_parent;
+      if (q == NULL)
+        break;
+
+      if (p == q->pbst_link[0])
+        q->pbst_link[1] = NULL;
+    }
+
+  pbst_destroy (new, destroy);
+}
+
+This code is included in *Note 509: PBST copy function and *Note 547:
+PAVL copy function.
+
+
+File: libavl.info,  Node: Balancing a PBST,  Next: Testing PBSTs,  Prev: Copying a PBST,  Up: BSTs with Parent Pointers
+
+13.7 Balance
+============
+
+   We can balance a PBST in the same way that we would balance a BST
+without parent pointers.  In fact, we'll use the same code, with the
+only change omitting only the maximum height check.  This code doesn't
+set parent pointers, so afterward we traverse the tree to take care of
+that.
+
+   Here are the pieces of the core code that need to be repeated:
+
+511. <PBST balance function 511> =
+<*Note BST to vine function:: 89>
+<*Note Vine to balanced PBST function:: 512>
+<*Note Update parent pointers function:: 514>
+
+void
+pbst_balance (struct pbst_table *tree)
+{
+  assert (tree != NULL);
+
+  tree_to_vine (tree);
+  vine_to_tree (tree);
+  update_parents (tree);
+}
+
+This code is included in *Note 489: PBST functions.
+
+512. <Vine to balanced PBST function 512> =
+<*Note BST compression function:: 95>
+
+static void
+vine_to_tree (struct pbst_table *tree)
+{
+  unsigned long vine;      /* Number of nodes in main vine. */
+  unsigned long leaves;    /* Nodes in incomplete bottom level, if any. */
+  int height;              /* Height of produced balanced tree. */
+
+  <*Note Calculate |leaves|:: 91>
+  <*Note Reduce vine general case to special case:: 92>
+  <*Note Make special case vine into balanced tree and count height:: 93>
+}
+
+This code is included in *Note 511: PBST balance function.
+
+513. <PBST extra function prototypes 513> =
+
+/* Special PBST functions. */
+void pbst_balance (struct pbst_table *tree);
+
+Updating Parent Pointers
+........................
+
+   The procedure for rebalancing a binary tree leaves the nodes' parent
+pointers pointing every which way.  Now we'll fix them.  Incidentally,
+this is a general procedure, so the same code could be used in other
+situations where we have a tree to which we want to add parent pointers.
+
+   The procedure takes the same form as an inorder traversal, except
+that there is nothing to do in the place where we would normally visit
+the node.  Instead, every time we move down to the left or the right, we
+set the parent pointer of the node we move to.
+
+   The code is straightforward enough.  The basic strategy is to always
+move down to the left when possible; otherwise, move down to the right
+if possible; otherwise, repeatedly move up until we've moved up to the
+left to arrive at a node with a right child, then move to that right
+child.
+
+514. <Update parent pointers function 514> =
+static void
+update_parents (struct pbst_table *tree)
+{
+  struct pbst_node *p;
+
+  if (tree->pbst_root == NULL)
+    return;
+
+  tree->pbst_root->pbst_parent = NULL;
+  for (p = tree->pbst_root; ; p = p->pbst_link[1])
+    {
+      for (; p->pbst_link[0] != NULL; p = p->pbst_link[0])
+        p->pbst_link[0]->pbst_parent = p;
+
+      for (; p->pbst_link[1] == NULL; p = p->pbst_parent)
+        {
+          for (;;)
+            {
+              if (p->pbst_parent == NULL)
+                return;
+
+              if (p == p->pbst_parent->pbst_link[0])
+                break;
+              p = p->pbst_parent;
+            }
+        }
+
+      p->pbst_link[1]->pbst_parent = p;
+    }
+}
+
+This code is included in *Note 511: PBST balance function.
+
+Exercises:
+
+1. There is another approach to updating parent pointers: we can do it
+during the compressions.  Implement this approach.  Make sure not to
+miss any pointers.
+
+
+File: libavl.info,  Node: Testing PBSTs,  Prev: Balancing a PBST,  Up: BSTs with Parent Pointers
+
+13.8 Testing
+============
+
+515. <pbst-test.c 515> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "pbst.h"
+#include "test.h"
+
+<*Note BST print function:: 119>
+<*Note BST traverser check function:: 104>
+<*Note Compare two PBSTs for structure and content:: 516>
+<*Note Recursively verify PBST structure:: 517>
+<*Note BST verify function:: 109>
+<*Note TBST test function:: 295>
+<*Note BST overflow test function:: 122>
+
+516. <Compare two PBSTs for structure and content 516> =
+static int
+compare_trees (struct pbst_node *a, struct pbst_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      assert (a == NULL && b == NULL);
+      return 1;
+    }
+
+  if (*(int *) a->pbst_data != *(int *) b->pbst_data
+      || ((a->pbst_link[0] != NULL) != (b->pbst_link[0] != NULL))
+      || ((a->pbst_link[1] != NULL) != (b->pbst_link[1] != NULL))
+      || ((a->pbst_parent != NULL) != (b->pbst_parent != NULL))
+      || (a->pbst_parent != NULL && b->pbst_parent != NULL
+          && a->pbst_parent->pbst_data != b->pbst_parent->pbst_data))
+    {
+      printf (" Copied nodes differ:\n"
+              "  a: %d, parent %d, %s left child, %s right child\n"
+              "  b: %d, parent %d, %s left child, %s right child\n",
+              *(int *) a->pbst_data,
+              a->pbst_parent != NULL ? *(int *) a->pbst_parent : -1,
+              a->pbst_link[0] != NULL ? "has" : "no",
+              a->pbst_link[1] != NULL ? "has" : "no",
+              *(int *) b->pbst_data,
+              b->pbst_parent != NULL ? *(int *) b->pbst_parent : -1,
+              b->pbst_link[0] != NULL ? "has" : "no",
+              b->pbst_link[1] != NULL ? "has" : "no");
+      return 0;
+    }
+
+  okay = 1;
+  if (a->pbst_link[0] != NULL)
+    okay &= compare_trees (a->pbst_link[0], b->pbst_link[0]);
+  if (a->pbst_link[1] != NULL)
+    okay &= compare_trees (a->pbst_link[1], b->pbst_link[1]);
+  return okay;
+}
+
+This code is included in *Note 515: pbst-testc.
+
+517. <Recursively verify PBST structure 517> =
+static void
+recurse_verify_tree (struct pbst_node *node, int *okay, size_t *count, 
+                     int min, int max)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+  int i;
+
+  if (node == NULL)
+    {
+      *count = 0;
+      return;
+    }
+  d = *(int *) node->pbst_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  recurse_verify_tree (node->pbst_link[0], okay, &subcount[0], min, d - 1);
+  recurse_verify_tree (node->pbst_link[1], okay, &subcount[1], d + 1, max);
+  *count = 1 + subcount[0] + subcount[1];
+
+  <*Note Verify PBST node parent pointers:: 518>
+}
+
+This code is included in *Note 515: pbst-testc.
+
+518. <Verify PBST node parent pointers 518> =
+for (i = 0; i < 2; i++)
+  {
+    if (node->pbst_link[i] != NULL
+        && node->pbst_link[i]->pbst_parent != node)
+      {
+        printf (" Node %d has parent %d (should be %d).\n",
+                *(int *) node->pbst_link[i]->pbst_data,
+                (node->pbst_link[i]->pbst_parent != NULL
+                 ? *(int *) node->pbst_link[i]->pbst_parent->pbst_data : -1),
+                d);
+        *okay = 0;
+      }
+  }
+
+This code is included in *Note 517: Recursively verify PBST structure,
+*Note 550: Recursively verify PAVL tree structure, and *Note 585:
+Recursively verify PRB tree structure.
+
+
+File: libavl.info,  Node: AVL Trees with Parent Pointers,  Next: Red-Black Trees with Parent Pointers,  Prev: BSTs with Parent Pointers,  Up: Top
+
+14 AVL Trees with Parent Pointers
+*********************************
+
+   This chapter adds parent pointers to AVL trees.  The result is a data
+structure that combines the strengths of AVL trees and trees with
+parent pointers.  Of course, there's no free lunch: it combines their
+disadvantages, too.
+
+   The abbreviation we'll use for the term "AVL tree with parent
+pointers" is "PAVL tree", with corresponding prefix pavl_.  Here's the
+outline for the PAVL table implementation:
+
+519. <pavl.h 519> =
+<*Note License:: 1>
+#ifndef PAVL_H
+#define PAVL_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note BST maximum height:: 28>
+<*Note TBST table structure:: 250>
+<*Note PAVL node structure:: 521>
+<*Note TBST traverser structure:: 267>
+<*Note Table function prototypes:: 15>
+
+#endif /* pavl.h */
+
+520. <pavl.c 520> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "pavl.h"
+
+<*Note PAVL functions:: 522>
+
+* Menu:
+
+* PAVL Data Types::
+* PBST Rotations::
+* PAVL Operations::
+* Inserting into a PAVL tree::
+* Deleting from a PAVL tree::
+* Traversing a PAVL Tree::
+* Copying a PAVL Tree::
+* Testing PAVL Trees::
+
+
+File: libavl.info,  Node: PAVL Data Types,  Next: PBST Rotations,  Prev: AVL Trees with Parent Pointers,  Up: AVL Trees with Parent Pointers
+
+14.1 Data Types
+===============
+
+   A PAVL tree node has a parent pointer and an AVL balance field in
+addition to the usual members needed for any binary search tree:
+
+521. <PAVL node structure 521> =
+/* An PAVL tree node. */
+struct pavl_node
+  {
+    struct pavl_node *pavl_link[2]; /* Subtrees. */
+    struct pavl_node *pavl_parent;  /* Parent node. */
+    void *pavl_data;                /* Pointer to data. */
+    signed char pavl_balance;       /* Balance factor. */
+  };
+
+This code is included in *Note 519: pavlh.
+
+   The other data structures are the same as the corresponding ones for
+TBSTs.
+
+
+File: libavl.info,  Node: PBST Rotations,  Next: PAVL Operations,  Prev: PAVL Data Types,  Up: AVL Trees with Parent Pointers
+
+14.2 Rotations
+==============
+
+   Let's consider how rotations work in PBSTs.  Here's the usual
+illustration of a rotation:
+
+                               |        |
+                               Y        X
+                              / \      / \
+                             X   c    a   Y
+                             ^            ^
+                            a b          b c
+ 
+ As we move from the left side to the right side, rotating right at Y,
+the parents of up to three nodes change.  In any case, Y's former
+parent becomes X's new parent and X becomes Y's new parent.  In
+addition, if b is not an empty subtree, then the parent of subtree b's
+root node becomes Y.  Moving from right to left, the situation is
+reversed.
+
+See also:  *Note Cormen 1990::, section 14.2.
+
+Exercises:
+
+1. Write functions for right and left rotations in BSTs with parent
+pointers, analogous to those for plain BSTs developed in Exercise 5.3-2.
+
+
+File: libavl.info,  Node: PAVL Operations,  Next: Inserting into a PAVL tree,  Prev: PBST Rotations,  Up: AVL Trees with Parent Pointers
+
+14.3 Operations
+===============
+
+   As usual, we must reimplement the item insertion and deletion
+functions.  The tree copy function and some of the traversal functions
+also need to be rewritten.
+
+522. <PAVL functions 522> =
+<*Note TBST creation function:: 252>
+<*Note BST search function:: 31>
+<*Note PAVL item insertion function:: 523>
+<*Note Table insertion convenience functions:: 592>
+<*Note PAVL item deletion function:: 534>
+<*Note PAVL traversal functions:: 546>
+<*Note PAVL copy function:: 547>
+<*Note BST destruction function:: 84>
+<*Note Default memory allocation functions:: 6>
+<*Note Table assertion functions:: 594>
+
+This code is included in *Note 520: pavlc.
+
+
+File: libavl.info,  Node: Inserting into a PAVL tree,  Next: Deleting from a PAVL tree,  Prev: PAVL Operations,  Up: AVL Trees with Parent Pointers
+
+14.4 Insertion
+==============
+
+   The same basic algorithm has been used for insertion in all of our
+AVL tree variants so far.  (In fact, all three functions share the same
+set of local variables.)  For PAVL trees, we will slightly modify our
+approach.  In particular, until now we have cached comparison results
+on the way down in order to quickly adjust balance factors after the
+insertion.  Parent pointers let us avoid this caching but still
+efficiently update balance factors.
+
+   Before we look closer, here is the function's outline:
+
+523. <PAVL item insertion function 523> =
+void **
+pavl_probe (struct pavl_table *tree, void *item)
+{
+  struct pavl_node *y;     /* Top node to update balance factor, and parent. */
+  struct pavl_node *p, *q; /* Iterator, and parent. */
+  struct pavl_node *n;     /* Newly inserted node. */
+  struct pavl_node *w;     /* New root of rebalanced subtree. */
+  int dir;                 /* Direction to descend. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search PAVL tree for insertion point:: 524>
+  <*Note Step 2 Insert PAVL node:: 525>
+  <*Note Step 3 Update balance factors after PAVL insertion:: 526>
+  <*Note Step 4 Rebalance after PAVL insertion:: 527>
+}
+
+This code is included in *Note 522: PAVL functions.
+
+* Menu:
+
+* Steps 1 and 2 in PAVL Insertion::
+* Step 3 in PAVL Insertion::
+* Rebalancing PAVL trees::
+* PAVL insertion symmetric case::
+
+
+File: libavl.info,  Node: Steps 1 and 2 in PAVL Insertion,  Next: Step 3 in PAVL Insertion,  Prev: Inserting into a PAVL tree,  Up: Inserting into a PAVL tree
+
+14.4.1 Steps 1 and 2: Search and Insert
+---------------------------------------
+
+   We search much as before.  Despite use of the parent pointers, we
+preserve the use of q as the parent of p because the termination
+condition is a value of NULL for p, and NULL has no parent.  (Thus, q
+is not, strictly speaking, always p's parent, but rather the last node
+examined before p.)
+
+   Because of parent pointers, there is no need for variable z, used in
+earlier implementations of AVL insertion to maintain y's parent.
+
+524. <Step 1: Search PAVL tree for insertion point 524> =
+y = tree->pavl_root;
+for (q = NULL, p = tree->pavl_root; p != NULL; q = p, p = p->pavl_link[dir])
+  {
+    int cmp = tree->pavl_compare (item, p->pavl_data, tree->pavl_param);
+    if (cmp == 0)
+      return &p->pavl_data;
+    dir = cmp > 0;
+
+    if (p->pavl_balance != 0)
+      y = p;
+  }
+
+This code is included in *Note 523: PAVL item insertion function.
+
+   The node to create and insert the new node is based on that for
+PBSTs.  There is a special case for a node inserted into an empty tree:
+
+525. <Step 2: Insert PAVL node 525> =
+<*Note Step 2 Insert PBST node:: 492>
+n->pavl_balance = 0;
+if (tree->pavl_root == n)
+  return &n->pavl_data;
+
+This code is included in *Note 523: PAVL item insertion function.
+
+
+File: libavl.info,  Node: Step 3 in PAVL Insertion,  Next: Rebalancing PAVL trees,  Prev: Steps 1 and 2 in PAVL Insertion,  Up: Inserting into a PAVL tree
+
+14.4.2 Step 3: Update Balance Factors
+-------------------------------------
+
+   Until now, in step 3 of insertion into AVL trees we've always updated
+balance factors from the top down, starting at y and working our way
+down to n (see, e.g., <*Note Step 3 Update balance factors after AVL
+insertion:: 150>).  This approach was somewhat unnatural, but it worked.
+The original reason we did it this way was that it was either
+impossible, as for AVL and RTAVL trees, or slow, as for TAVL trees, to
+efficiently move upward in a tree.  That's not a consideration anymore,
+so we can do it from the bottom up and in the process eliminate the
+cache used before.
+
+   At each step, we need to know the node to update and, for that node,
+on which side of its parent it is a child.  In the code below, q is the
+node and dir is the side.
+
+526. <Step 3: Update balance factors after PAVL insertion 526> =
+for (p = n; p != y; p = q)
+  {
+    q = p->pavl_parent;
+    dir = q->pavl_link[0] != p;
+    if (dir == 0)
+      q->pavl_balance--;
+    else
+      q->pavl_balance++;
+  }
+
+This code is included in *Note 523: PAVL item insertion function.
+
+Exercises:
+
+1. Does this step 3 update the same set of balance factors as would a
+literal adaptation of <*Note Step 3 Update balance factors after AVL
+insertion:: 150>?
+
+2. Would it be acceptable to substitute q->pavl_link[1] == p for
+q->pavl_link[0] != p in the code segment above?
+
+
+File: libavl.info,  Node: Rebalancing PAVL trees,  Next: PAVL insertion symmetric case,  Prev: Step 3 in PAVL Insertion,  Up: Inserting into a PAVL tree
+
+14.4.3 Step 4: Rebalance
+------------------------
+
+   The changes needed to the rebalancing code for parent pointers
+resemble the changes for threads in that we can reuse most of the code
+from plain AVL trees.  We just need to add a few new statements to each
+rebalancing case to adjust the parent pointers of nodes whose parents
+have changed.
+
+   The outline of the rebalancing code should be familiar by now.  The
+code to update the link to the root of the rebalanced subtree is the
+only change.  It needs a special case for the root, because the parent
+pointer of the root node is a null pointer, not the pseudo-root node.
+The other choice would simplify this piece of code, but complicate
+other pieces (*note PBST Data Types::).
+
+527. <Step 4: Rebalance after PAVL insertion 527> =
+if (y->pavl_balance == -2)
+  {
+    <*Note Rebalance PAVL tree after insertion in left subtree:: 528>
+  }
+else if (y->pavl_balance == +2)
+  {
+    <*Note Rebalance PAVL tree after insertion in right subtree:: 531>
+  }
+else
+  return &n->pavl_data;
+if (w->pavl_parent != NULL)
+  w->pavl_parent->pavl_link[y != w->pavl_parent->pavl_link[0]] = w;
+else
+  tree->pavl_root = w;
+
+return &n->pavl_data;
+
+This code is included in *Note 523: PAVL item insertion function.
+
+   As usual, the cases for rebalancing are distinguished based on the
+balance factor of the child of the unbalanced node on its taller side:
+
+528. <Rebalance PAVL tree after insertion in left subtree 528> =
+struct pavl_node *x = y->pavl_link[0];
+if (x->pavl_balance == -1)
+  {
+    <*Note Rebalance for |-| balance factor in PAVL insertion in left subtree:: 529>
+  } 
+else
+  {
+    <*Note Rebalance for |+| balance factor in PAVL insertion in left subtree:: 530>
+  }
+
+This code is included in *Note 527: Step 4 Rebalance after PAVL
+insertion.
+
+Case 1: x has - balance factor
+..............................
+
+   The added code here is exactly the same as that added to BST rotation
+to handle parent pointers (in Exercise 15.2-1), and for good reason
+since this case simply performs a right rotation in the PAVL tree.
+
+529. <Rebalance for - balance factor in PAVL insertion in left subtree 529> =
+<*Note Rotate right at |y| in AVL tree:: 155>
+x->pavl_parent = y->pavl_parent;
+y->pavl_parent = x;
+if (y->pavl_link[0] != NULL)
+  y->pavl_link[0]->pavl_parent = y;
+
+This code is included in *Note 528: Rebalance PAVL tree after insertion
+in left subtree.
+
+Case 2: x has + balance factor
+..............................
+
+   When x has a + balance factor, we need a double rotation, composed
+of a right rotation at x followed by a left rotation at y.  The diagram
+below show the effect of each of the rotations:
+
+                         |               |
+                         y               y           |
+                       <-->            <-->          w
+                  __.-'    \         _'    \        <0>
+                  x         d       w       d =>   /   \
+                 <+>          =>   / \            x     y
+                /   \             x   c           ^     ^
+               a     w            ^              a b   c d
+                     ^           a b
+                    b c
+ 
+ Along with this double rotation comes a small bulk discount in parent
+pointer assignments.  The parent of w changes in both rotations, but we
+only need assign to it its final value once, ignoring the intermediate
+value.
+
+530. <Rebalance for + balance factor in PAVL insertion in left subtree 530> =
+<*Note Rotate left at |x| then right at |y| in AVL tree:: 156>
+w->pavl_parent = y->pavl_parent;
+x->pavl_parent = y->pavl_parent = w;
+if (x->pavl_link[1] != NULL)
+  x->pavl_link[1]->pavl_parent = x;
+if (y->pavl_link[0] != NULL)
+  y->pavl_link[0]->pavl_parent = y;
+
+This code is included in *Note 528: Rebalance PAVL tree after insertion
+in left subtree and *Note 544: Right-side rebalancing case 1 in PAVL
+deletion.
+
+
+File: libavl.info,  Node: PAVL insertion symmetric case,  Prev: Rebalancing PAVL trees,  Up: Inserting into a PAVL tree
+
+14.4.4 Symmetric Case
+---------------------
+
+531. <Rebalance PAVL tree after insertion in right subtree 531> =
+struct pavl_node *x = y->pavl_link[1];
+if (x->pavl_balance == +1)
+  {
+    <*Note Rebalance for |+| balance factor in PAVL insertion in right subtree:: 532>
+  } 
+else
+  {
+    <*Note Rebalance for |-| balance factor in PAVL insertion in right subtree:: 533>
+  }
+
+This code is included in *Note 527: Step 4 Rebalance after PAVL
+insertion.
+
+532. <Rebalance for + balance factor in PAVL insertion in right subtree 532> =
+<*Note Rotate left at |y| in AVL tree:: 158>
+x->pavl_parent = y->pavl_parent;
+y->pavl_parent = x;
+if (y->pavl_link[1] != NULL)
+  y->pavl_link[1]->pavl_parent = y;
+
+This code is included in *Note 531: Rebalance PAVL tree after insertion
+in right subtree.
+
+533. <Rebalance for - balance factor in PAVL insertion in right subtree 533> =
+<*Note Rotate right at |x| then left at |y| in AVL tree:: 159>
+w->pavl_parent = y->pavl_parent;
+x->pavl_parent = y->pavl_parent = w;
+if (x->pavl_link[0] != NULL)
+  x->pavl_link[0]->pavl_parent = x;
+if (y->pavl_link[1] != NULL)
+  y->pavl_link[1]->pavl_parent = y;
+
+This code is included in *Note 531: Rebalance PAVL tree after insertion
+in right subtree and *Note 541: Left-side rebalancing case 1 in PAVL
+deletion.
+
+
+File: libavl.info,  Node: Deleting from a PAVL tree,  Next: Traversing a PAVL Tree,  Prev: Inserting into a PAVL tree,  Up: AVL Trees with Parent Pointers
+
+14.5 Deletion
+=============
+
+   Deletion from a PAVL tree is a natural outgrowth of algorithms we
+have already implemented.  The basic algorithm is the one originally
+used for plain AVL trees.  The search step is taken verbatim from PBST
+deletion.  The deletion step combines PBST and TAVL tree code.
+Finally, the rebalancing strategy is the same as used in TAVL deletion.
+
+   The function outline is below.  As noted above, step 1 is borrowed
+from PBST deletion.  The other steps are implemented in the following
+sections.
+
+534. <PAVL item deletion function 534> =
+void *
+pavl_delete (struct pavl_table *tree, const void *item)
+{
+  struct pavl_node *p; /* Traverses tree to find node to delete. */
+  struct pavl_node *q; /* Parent of p. */
+  int dir;             /* Side of q on which p is linked. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Find PBST node to delete:: 494>
+  <*Note Step 2 Delete item from PAVL tree:: 535>
+  <*Note Steps 3 and 4 Update balance factors and rebalance after PAVL deletion:: 539>
+}
+
+This code is included in *Note 522: PAVL functions.
+
+* Menu:
+
+* Deleting a PAVL node step 2 - Delete::
+* Deleting a PAVL node step 3 - Update::
+* Deleting a PAVL node step 4 - Rebalance::
+* PAVL deletion symmetric case::
+
+
+File: libavl.info,  Node: Deleting a PAVL node step 2 - Delete,  Next: Deleting a PAVL node step 3 - Update,  Prev: Deleting from a PAVL tree,  Up: Deleting from a PAVL tree
+
+14.5.1 Step 2: Delete
+---------------------
+
+   The actual deletion step is derived from that for PBSTs.  We add code
+to modify balance factors and set up for rebalancing.  After the
+deletion, q is the node at which balance factors must be updated and
+possible rebalancing occurs and dir is the side of q from which the
+node was deleted.  This follows the pattern already seen in TAVL
+deletion (*note Deleting a TAVL node step 2 - Delete::).
+
+535. <Step 2: Delete item from PAVL tree 535> =
+if (p->pavl_link[1] == NULL)
+  {
+    <*Note Case 1 in PAVL deletion:: 536>
+  }
+else
+  {
+    struct pavl_node *r = p->pavl_link[1];
+    if (r->pavl_link[0] == NULL)
+      {
+        <*Note Case 2 in PAVL deletion:: 537>
+      }
+    else
+      {
+        <*Note Case 3 in PAVL deletion:: 538>
+      }
+  }
+tree->pavl_alloc->libavl_free (tree->pavl_alloc, p);
+
+This code is included in *Note 534: PAVL item deletion function.
+
+Case 1: p has no right child
+............................
+
+   No changes are needed for case 1.  No balance factors need change and
+q and dir are already set up correctly.
+
+536. <Case 1 in PAVL deletion 536> =
+<*Note Case 1 in PBST deletion:: 497>
+
+This code is included in *Note 535: Step 2 Delete item from PAVL tree.
+
+Case 2: p's right child has no left child
+.........................................
+
+   See the commentary on <*Note Case 3 in TAVL deletion:: 316> for
+details.
+
+537. <Case 2 in PAVL deletion 537> =
+<*Note Case 2 in PBST deletion:: 498>
+r->pavl_balance = p->pavl_balance;
+q = r;
+dir = 1;
+
+This code is included in *Note 535: Step 2 Delete item from PAVL tree.
+
+Case 3: p's right child has a left child
+........................................
+
+   See the commentary on <*Note Case 4 in TAVL deletion:: 317> for
+details.
+
+538. <Case 3 in PAVL deletion 538> =
+<*Note Case 3 in PBST deletion:: 499>
+s->pavl_balance = p->pavl_balance;
+q = r;
+dir = 0;
+
+This code is included in *Note 535: Step 2 Delete item from PAVL tree.
+
+
+File: libavl.info,  Node: Deleting a PAVL node step 3 - Update,  Next: Deleting a PAVL node step 4 - Rebalance,  Prev: Deleting a PAVL node step 2 - Delete,  Up: Deleting from a PAVL tree
+
+14.5.2 Step 3: Update Balance Factors
+-------------------------------------
+
+   Step 3, updating balance factors, is taken straight from TAVL
+deletion (*note Deleting a TAVL node step 3 - Update::), with the call
+to find_parent() replaced by inline code that uses pavl_parent.
+
+539. <Steps 3 and 4: Update balance factors and rebalance after PAVL deletion 539> =
+while (q != (struct pavl_node *) &tree->pavl_root)
+  {
+    struct pavl_node *y = q;
+
+    if (y->pavl_parent != NULL)
+      q = y->pavl_parent;
+    else
+      q = (struct pavl_node *) &tree->pavl_root;
+
+    if (dir == 0)
+      {
+        dir = q->pavl_link[0] != y;
+        y->pavl_balance++;
+        if (y->pavl_balance == +1)
+          break;
+        else if (y->pavl_balance == +2) 
+          {
+            <*Note Step 4 Rebalance after PAVL deletion:: 540>
+          }
+      }
+    else
+      {
+        <*Note Steps 3 and 4 Symmetric case in PAVL deletion:: 543>
+      }
+  }
+
+tree->pavl_count--;
+return (void *) item;
+
+This code is included in *Note 534: PAVL item deletion function.
+
+
+File: libavl.info,  Node: Deleting a PAVL node step 4 - Rebalance,  Next: PAVL deletion symmetric case,  Prev: Deleting a PAVL node step 3 - Update,  Up: Deleting from a PAVL tree
+
+14.5.3 Step 4: Rebalance
+------------------------
+
+   The two cases for PAVL deletion are distinguished based on x's
+balance factor, as always:
+
+540. <Step 4: Rebalance after PAVL deletion 540> =
+struct pavl_node *x = y->pavl_link[1];
+if (x->pavl_balance == -1)
+  {
+    <*Note Left-side rebalancing case 1 in PAVL deletion:: 541>
+  }
+else
+  {
+    <*Note Left-side rebalancing case 2 in PAVL deletion:: 542>
+  }
+
+This code is included in *Note 539: Steps 3 and 4 Update balance
+factors and rebalance after PAVL deletion.
+
+Case 1: x has - balance factor
+..............................
+
+   The same rebalancing is needed here as for a - balance factor in
+PAVL insertion, and the same code is used.
+
+541. <Left-side rebalancing case 1 in PAVL deletion 541> =
+struct pavl_node *w;
+
+<*Note Rebalance for |-| balance factor in PAVL insertion in right subtree:: 533>
+q->pavl_link[dir] = w;
+
+This code is included in *Note 540: Step 4 Rebalance after PAVL
+deletion.
+
+Case 2: x has + or 0 balance factor
+...................................
+
+   If x has a + or 0 balance factor, we rotate left at y and update
+parent pointers as for any left rotation (*note PBST Rotations::).  We
+also update balance factors.  If x started with balance factor 0, then
+we're done.  Otherwise, x becomes the new y for the next loop
+iteration, and rebalancing continues.  *Note avldel2::, for details on
+this rebalancing case.
+
+542. <Left-side rebalancing case 2 in PAVL deletion 542> =
+y->pavl_link[1] = x->pavl_link[0];
+x->pavl_link[0] = y;
+x->pavl_parent = y->pavl_parent;
+y->pavl_parent = x;
+if (y->pavl_link[1] != NULL)
+  y->pavl_link[1]->pavl_parent = y;
+q->pavl_link[dir] = x;
+if (x->pavl_balance == 0)
+  {
+    x->pavl_balance = -1;
+    y->pavl_balance = +1;
+    break;
+  }
+else
+  {
+    x->pavl_balance = y->pavl_balance = 0;
+    y = x;
+  }
+
+This code is included in *Note 540: Step 4 Rebalance after PAVL
+deletion.
+
+
+File: libavl.info,  Node: PAVL deletion symmetric case,  Prev: Deleting a PAVL node step 4 - Rebalance,  Up: Deleting from a PAVL tree
+
+14.5.4 Symmetric Case
+---------------------
+
+543. <Steps 3 and 4: Symmetric case in PAVL deletion 543> =
+dir = q->pavl_link[0] != y;
+y->pavl_balance--;
+if (y->pavl_balance == -1)
+  break;
+else if (y->pavl_balance == -2)
+  {
+    struct pavl_node *x = y->pavl_link[0];
+    if (x->pavl_balance == +1)
+      {
+        <*Note Right-side rebalancing case 1 in PAVL deletion:: 544>
+      }
+    else
+      {
+        <*Note Right-side rebalancing case 2 in PAVL deletion:: 545>
+      }
+  }
+
+This code is included in *Note 539: Steps 3 and 4 Update balance
+factors and rebalance after PAVL deletion.
+
+544. <Right-side rebalancing case 1 in PAVL deletion 544> =
+struct pavl_node *w;
+<*Note Rebalance for |+| balance factor in PAVL insertion in left subtree:: 530>
+q->pavl_link[dir] = w;
+
+This code is included in *Note 543: Steps 3 and 4 Symmetric case in
+PAVL deletion.
+
+545. <Right-side rebalancing case 2 in PAVL deletion 545> =
+y->pavl_link[0] = x->pavl_link[1];
+x->pavl_link[1] = y;
+x->pavl_parent = y->pavl_parent;
+y->pavl_parent = x;
+if (y->pavl_link[0] != NULL)
+  y->pavl_link[0]->pavl_parent = y;
+q->pavl_link[dir] = x;
+if (x->pavl_balance == 0)
+  {
+    x->pavl_balance = +1;
+    y->pavl_balance = -1;
+    break;
+  }
+else
+  {
+    x->pavl_balance = y->pavl_balance = 0;
+    y = x;
+  }
+
+This code is included in *Note 543: Steps 3 and 4 Symmetric case in
+PAVL deletion.
+
+
+File: libavl.info,  Node: Traversing a PAVL Tree,  Next: Copying a PAVL Tree,  Prev: Deleting from a PAVL tree,  Up: AVL Trees with Parent Pointers
+
+14.6 Traversal
+==============
+
+   The only difference between PAVL and PBST traversal functions is the
+insertion initializer.  We use the TBST implementation here, which
+performs a call to pavl_probe(), instead of the PBST implementation,
+which inserts the node directly without handling node colors.
+
+546. <PAVL traversal functions 546> =
+<*Note TBST traverser null initializer:: 269>
+<*Note PBST traverser first initializer:: 503>
+<*Note PBST traverser last initializer:: 504>
+<*Note PBST traverser search initializer:: 505>
+<*Note TBST traverser insertion initializer:: 273>
+<*Note TBST traverser copy initializer:: 274>
+<*Note PBST traverser advance function:: 507>
+<*Note PBST traverser back up function:: 508>
+<*Note BST traverser current item function:: 74>
+<*Note BST traverser replacement function:: 75>
+
+This code is included in *Note 522: PAVL functions and *Note 554: PRB
+functions.
+
+
+File: libavl.info,  Node: Copying a PAVL Tree,  Next: Testing PAVL Trees,  Prev: Traversing a PAVL Tree,  Up: AVL Trees with Parent Pointers
+
+14.7 Copying
+============
+
+   The copy function is the same as <*Note PBST copy function:: 509>,
+except that it copies pavl_balance between copied nodes.
+
+547. <PAVL copy function 547> =
+<*Note PBST copy error helper function:: 510>
+
+struct pavl_table *
+pavl_copy (const struct pavl_table *org, pavl_copy_func *copy,
+           pavl_item_func *destroy, struct libavl_allocator *allocator)
+{
+  struct pavl_table *new;
+  const struct pavl_node *x;
+  struct pavl_node *y;
+
+  assert (org != NULL);
+  new = pavl_create (org->pavl_compare, org->pavl_param,
+                    allocator != NULL ? allocator : org->pavl_alloc);
+  if (new == NULL)
+    return NULL;
+  new->pavl_count = org->pavl_count;
+  if (new->pavl_count == 0)
+    return new;
+
+  x = (const struct pavl_node *) &org->pavl_root;
+  y = (struct pavl_node *) &new->pavl_root;
+  for (;;)
+    {
+      while (x->pavl_link[0] != NULL)
+        {
+          y->pavl_link[0] =
+            new->pavl_alloc->libavl_malloc (new->pavl_alloc,
+                                            sizeof *y->pavl_link[0]);
+          if (y->pavl_link[0] == NULL)
+            {
+              if (y != (struct pavl_node *) &new->pavl_root)
+                {
+                  y->pavl_data = NULL;
+                  y->pavl_link[1] = NULL;
+                }
+
+              copy_error_recovery (y, new, destroy);
+              return NULL;
+            }
+          y->pavl_link[0]->pavl_parent = y;
+
+          x = x->pavl_link[0];
+          y = y->pavl_link[0];
+        }
+      y->pavl_link[0] = NULL;
+
+      for (;;)
+        {
+          y->pavl_balance = x->pavl_balance;
+          if (copy == NULL)
+            y->pavl_data = x->pavl_data;
+          else
+            {
+              y->pavl_data = copy (x->pavl_data, org->pavl_param);
+              if (y->pavl_data == NULL)
+                {
+                  y->pavl_link[1] = NULL;
+                  copy_error_recovery (y, new, destroy);
+                  return NULL;
+                }
+            }
+
+          if (x->pavl_link[1] != NULL)
+            {
+              y->pavl_link[1] =
+                new->pavl_alloc->libavl_malloc (new->pavl_alloc,
+                                               sizeof *y->pavl_link[1]);
+              if (y->pavl_link[1] == NULL)
+                {
+                  copy_error_recovery (y, new, destroy);
+                  return NULL;
+                }
+              y->pavl_link[1]->pavl_parent = y;
+
+              x = x->pavl_link[1];
+              y = y->pavl_link[1];
+              break;
+            }
+          else
+            y->pavl_link[1] = NULL;
+
+          for (;;)
+            {
+              const struct pavl_node *w = x;
+              x = x->pavl_parent;
+              if (x == NULL)
+                {
+                  new->pavl_root->pavl_parent = NULL;
+                  return new;
+                }
+              y = y->pavl_parent;
+
+              if (w == x->pavl_link[0])
+                break;
+            }
+        }
+    }
+}
+
+This code is included in *Note 522: PAVL functions and *Note 554: PRB
+functions.
+
+
+File: libavl.info,  Node: Testing PAVL Trees,  Prev: Copying a PAVL Tree,  Up: AVL Trees with Parent Pointers
+
+14.8 Testing
+============
+
+   The testing code harbors no surprises.
+
+548. <pavl-test.c 548> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "pavl.h"
+#include "test.h"
+
+<*Note BST print function:: 119>
+<*Note BST traverser check function:: 104>
+<*Note Compare two PAVL trees for structure and content:: 549>
+<*Note Recursively verify PAVL tree structure:: 550>
+<*Note AVL tree verify function:: 190>
+<*Note BST test function:: 100>
+<*Note BST overflow test function:: 122>
+
+549. <Compare two PAVL trees for structure and content 549> =
+/* Compares binary trees rooted at a and b,
+   making sure that they are identical. */
+static int
+compare_trees (struct pavl_node *a, struct pavl_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      assert (a == NULL && b == NULL);
+      return 1;
+    }
+
+  if (*(int *) a->pavl_data != *(int *) b->pavl_data
+      || ((a->pavl_link[0] != NULL) != (b->pavl_link[0] != NULL))
+      || ((a->pavl_link[1] != NULL) != (b->pavl_link[1] != NULL))
+      || ((a->pavl_parent != NULL) != (b->pavl_parent != NULL))
+      || (a->pavl_parent != NULL && b->pavl_parent != NULL
+          && a->pavl_parent->pavl_data != b->pavl_parent->pavl_data)
+      || a->pavl_balance != b->pavl_balance)
+    {
+      printf (" Copied nodes differ:\n"
+              "  a: %d, bal %+d, parent %d, %s left child, %s right child\n"
+              "  b: %d, bal %+d, parent %d, %s left child, %s right child\n",
+              *(int *) a->pavl_data, a->pavl_balance,
+              a->pavl_parent != NULL ? *(int *) a->pavl_parent : -1,
+              a->pavl_link[0] != NULL ? "has" : "no",
+              a->pavl_link[1] != NULL ? "has" : "no",
+              *(int *) b->pavl_data, b->pavl_balance,
+              b->pavl_parent != NULL ? *(int *) b->pavl_parent : -1,
+              b->pavl_link[0] != NULL ? "has" : "no",
+              b->pavl_link[1] != NULL ? "has" : "no");
+      return 0;
+    }
+
+  okay = 1;
+  if (a->pavl_link[0] != NULL)
+    okay &= compare_trees (a->pavl_link[0], b->pavl_link[0]);
+  if (a->pavl_link[1] != NULL)
+    okay &= compare_trees (a->pavl_link[1], b->pavl_link[1]);
+  return okay;
+}
+
+This code is included in *Note 548: pavl-testc.
+
+550. <Recursively verify PAVL tree structure 550> =
+static void
+recurse_verify_tree (struct pavl_node *node, int *okay, size_t *count, 
+                     int min, int max, int *height)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+  int subheight[2];     /* Heights of subtrees. */
+  int i;
+
+  if (node == NULL)
+    {
+      *count = 0;
+      *height = 0;
+      return;
+    }
+  d = *(int *) node->pavl_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  recurse_verify_tree (node->pavl_link[0], okay, &subcount[0], 
+                       min, d -  1, &subheight[0]);
+  recurse_verify_tree (node->pavl_link[1], okay, &subcount[1], 
+                       d + 1, max, &subheight[1]);
+  *count = 1 + subcount[0] + subcount[1];
+  *height = 1 + (subheight[0] > subheight[1] ? subheight[0] : subheight[1]);
+
+  <*Note Verify AVL node balance factor:: 189>
+
+  <*Note Verify PBST node parent pointers:: 518>
+}
+
+This code is included in *Note 548: pavl-testc.
+
+
+File: libavl.info,  Node: Red-Black Trees with Parent Pointers,  Next: References,  Prev: AVL Trees with Parent Pointers,  Up: Top
+
+15 Red-Black Trees with Parent Pointers
+***************************************
+
+   As our twelfth and final example of a table data structure, this
+chapter will implement a table as a red-black tree with parent
+pointers, or "PRB" tree for short.  We use prb_ as the prefix for
+identifiers.  Here's the outline:
+
+551. <prb.h 551> =
+<*Note License:: 1>
+#ifndef PRB_H
+#define PRB_H 1
+
+#include <stddef.h>
+
+<*Note Table types:: 14>
+<*Note RB maximum height:: 195>
+<*Note TBST table structure:: 250>
+<*Note PRB node structure:: 553>
+<*Note TBST traverser structure:: 267>
+<*Note Table function prototypes:: 15>
+
+#endif /* prb.h */
+
+552. <prb.c 552> =
+<*Note License:: 1>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "prb.h"
+
+<*Note PRB functions:: 554>
+
+* Menu:
+
+* PRB Data Types::
+* PRB Operations::
+* Inserting into a PRB tree::
+* Deleting from a PRB Tree::
+* Testing PRB Trees::
+
+
+File: libavl.info,  Node: PRB Data Types,  Next: PRB Operations,  Prev: Red-Black Trees with Parent Pointers,  Up: Red-Black Trees with Parent Pointers
+
+15.1 Data Types
+===============
+
+   The PRB node structure adds a color and a parent pointer to the basic
+binary tree data structure.  The other PRB data structures are the same
+as the ones used for TBSTs.
+
+553. <PRB node structure 553> =
+/* Color of a red-black node. */
+enum prb_color
+  {
+    PRB_BLACK,   /* Black. */
+    PRB_RED      /* Red. */
+  };
+
+/* A red-black tree with parent pointers node. */
+struct prb_node
+  {
+    struct prb_node *prb_link[2];  /* Subtrees. */
+    struct prb_node *prb_parent;   /* Parent. */
+    void *prb_data;                /* Pointer to data. */
+    unsigned char prb_color;       /* Color. */
+  };
+
+This code is included in *Note 551: prbh.
+
+See also:  *Note Cormen 1990::, section 14.1.
+

@@ -1,7 +1,3 @@
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <err.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -69,17 +65,15 @@ ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
 void *alloc_m(size_t size)
 {
     if (!ALLOC_memory) {
-        ALLOC_memory = mmap(NULL, MAX(4096, sizeof(ALLOC_mhead_t)),
-                PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
+        ALLOC_memory = sbrk(sizeof(ALLOC_mhead_t));
         ALLOC_memory->blockc = 0;
         ALLOC_memory->start = NULL;
         ALLOC_memory->end = NULL;
     }
+    ALLOC_membloc_t *allocator = sbrk(sizeof(ALLOC_membloc_t));
+    if (allocator == (void *) -1) abort();
     void *ptr = sbrk(size);
     if (ptr == (void *) -1) abort();
-    ALLOC_membloc_t *allocator = mmap(NULL, MAX(4096, sizeof(ALLOC_membloc_t)),
-            PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
-    if (allocator == MAP_FAILED) abort();
     allocator->ptr = ptr;
     allocator->size = size;
     allocator->free = false;

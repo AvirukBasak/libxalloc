@@ -1,0 +1,1614 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Inserting into a TBST,  Next: Deleting from a TBST,  Prev: Searching a TBST,  Up: Threaded Binary Search Trees
+
+7.6 Insertion
+=============
+
+   It take a little more effort to insert a new node into a threaded BST
+than into an unthreaded one, but not much more.  The only difference is
+that we now have to set up the new node's left and right threads to
+point to its predecessor and successor, respectively.
+
+   Fortunately, these are easy to figure out.  Suppose that new node n
+is the right child of its parent p (the other case is symmetric).  This
+means that p is n's predecessor, because n is the least node in p's
+right subtree.  Moreover, n's successor is the node that was p's
+successor before n was inserted, that is to say, it is the same as p's
+former right thread.
+
+   Here's an example that may help to clear up the description.  When
+new node 3 is inserted as right child of 2, its left thread points to 2
+and its right thread points where 3's right thread formerly did, to 4:
+
+                           6                                    6
+                   ___..--' \                           ___..--' \
+                  4          []                        4          []
+            __..-' `._                     ____....---' `._
+           2,p        5         =>        2,p              5
+       _.-'   \     _' \              _.-'   `._         _' \
+      1        [4] [4]  [6]          1          3,n     [4]  [6]
+     / \                            / \       _'   \
+    []  [2]                        []  [2]   [2]    [4]
+ 
+ The following code unifies the left-side and right-side cases using
+dir, which takes the value 1 for a right-side insertion, 0 for a
+left-side insertion.  The side opposite dir can then be expressed
+simply as !dir.
+
+254. <TBST item insertion function 254> =
+void **
+tbst_probe (struct tbst_table *tree, void *item)
+{
+  struct tbst_node *p; /* Traverses tree to find insertion point. */
+  struct tbst_node *n; /* New node. */
+  int dir;             /* Side of p on which n is inserted. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Search TBST for insertion point:: 255>
+  <*Note Step 2 Insert TBST node:: 256>
+
+  return &n->tbst_data;
+}
+
+This code is included in *Note 251: TBST functions.
+
+255. <Step 1: Search TBST for insertion point 255> =
+if (tree->tbst_root != NULL)
+  for (p = tree->tbst_root; ; p = p->tbst_link[dir])
+    {
+      int cmp = tree->tbst_compare (item, p->tbst_data, tree->tbst_param);
+      if (cmp == 0)
+        return &p->tbst_data;
+      dir = cmp > 0;
+
+      if (p->tbst_tag[dir] == TBST_THREAD)
+        break;
+    }
+else
+  {
+    p = (struct tbst_node *) &tree->tbst_root;
+    dir = 0;
+  }
+
+This code is included in *Note 254: TBST item insertion function and
+*Note 668: TRB item insertion function without stack.
+
+256. <Step 2: Insert TBST node 256> =
+n = tree->tbst_alloc->libavl_malloc (tree->tbst_alloc, sizeof *n);
+if (n == NULL)
+  return NULL;
+
+tree->tbst_count++;
+n->tbst_data = item;
+n->tbst_tag[0] = n->tbst_tag[1] = TBST_THREAD;
+n->tbst_link[dir] = p->tbst_link[dir];
+if (tree->tbst_root != NULL)
+  {
+    p->tbst_tag[dir] = TBST_CHILD;
+    n->tbst_link[!dir] = p;
+  }
+else
+  n->tbst_link[1] = NULL;
+p->tbst_link[dir] = n;
+
+This code is included in *Note 254: TBST item insertion function, *Note
+303: Step 2 Insert TAVL node, and *Note 339: Step 2 Insert TRB node.
+
+See also:  *Note Knuth 1997::, algorithm 2.3.1I.
+
+Exercises:
+
+1. What happens if we reverse the order of the final if statement above
+and the following assignment?
+
+
+File: libavl.info,  Node: Deleting from a TBST,  Next: Traversing a TBST,  Prev: Inserting into a TBST,  Up: Threaded Binary Search Trees
+
+7.7 Deletion
+============
+
+   When we delete a node from a threaded tree, we have to update one or
+two more pointers than if it were an unthreaded BST.  What's more, we
+sometimes have to go to a bit of effort to track down what pointers
+these are, because they are in the predecessor and successor of the node
+being deleted.
+
+   The outline is the same as for deleting a BST node:
+
+257. <TBST item deletion function 257> =
+void *
+tbst_delete (struct tbst_table *tree, const void *item)
+{
+  struct tbst_node *p;	/* Node to delete. */
+  struct tbst_node *q;	/* Parent of p. */
+  int dir;              /* Index into q->tbst_link[] that leads to p. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Find TBST node to delete:: 258>
+  <*Note Delete TBST node:: 259>
+  <*Note Finish up after deleting TBST node:: 266>
+}
+
+This code is included in *Note 251: TBST functions.
+
+   We search down the tree to find the item to delete, p.  As we do it
+we keep track of its parent q and the direction dir that we descended
+from it.  The initial value of q and dir use the trick seen originally
+in copying a BST (*note Copying a BST Iteratively::).
+
+   There are nicer ways to do the same thing, though they are not
+necessarily as efficient.  See the exercises for one possibility.
+
+258. <Find TBST node to delete 258> =
+if (tree->tbst_root == NULL)
+  return NULL;
+
+p = tree->tbst_root;
+q = (struct tbst_node *) &tree->tbst_root;
+dir = 0;
+for (;;)
+  {
+    int cmp = tree->tbst_compare (item, p->tbst_data, tree->tbst_param);
+    if (cmp == 0) 
+      break;
+
+    dir = cmp > 0;
+    if (p->tbst_tag[dir] == TBST_THREAD)
+      return NULL;
+
+    q = p;
+    p = p->tbst_link[dir];
+  }
+item = p->tbst_data;
+
+This code is included in *Note 257: TBST item deletion function.
+
+   The cases for deletion from a threaded tree are a bit different from
+those for an unthreaded tree.  The key point to keep in mind is that a
+node with n children has n threads pointing to it that must be updated
+when it is deleted.  Let's look at the cases in detail now.
+
+   Here's the outline:
+
+259. <Delete TBST node 259> =
+if (p->tbst_tag[1] == TBST_THREAD)
+  {
+    if (p->tbst_tag[0] == TBST_CHILD)
+      {
+        <*Note Case 1 in TBST deletion:: 260>
+      }
+    else
+      {
+        <*Note Case 2 in TBST deletion:: 261>
+      }
+  }
+else
+  {
+    struct tbst_node *r = p->tbst_link[1];
+    if (r->tbst_tag[0] == TBST_THREAD)
+      {
+        <*Note Case 3 in TBST deletion:: 262>
+      }
+    else
+      {
+        <*Note Case 4 in TBST deletion:: 263>
+      }
+  }
+
+This code is included in *Note 257: TBST item deletion function.
+
+Case 1: p has a right thread and a left child
+.............................................
+
+   If p has a right thread and a left child, then we replace it by its
+left child.  We also replace its predecessor t's right thread by p's
+right thread.  In the most general subcase, the whole operation looks
+something like this:
+
+                                 |
+                                 q                    |
+                             _.-' \                   q
+                            p      []       ___...---' \
+                  ___...---' \             s            []
+                 s            [q]         / `_
+                / `_                  => r    u
+               r    u                        / `_
+                   / `_                     t    x
+                  t    x                        / \
+                      / \                      v   [q]
+                     v   [p]
+
+On the other hand, it can be as simple as this:
+
+                                 |
+                                 q              |
+                             _.-' \             q
+                            p      []       _.-' \
+                        _.-' \        =>   x      []
+                       x      [q]         / \
+                      / \                []  [q]
+                     []  [p]
+
+Both of these subcases, and subcases in between them in complication,
+are handled by the same code:
+
+260. <Case 1 in TBST deletion 260> =
+struct tbst_node *t = p->tbst_link[0];
+while (t->tbst_tag[1] == TBST_CHILD)
+  t = t->tbst_link[1];
+t->tbst_link[1] = p->tbst_link[1];
+q->tbst_link[dir] = p->tbst_link[0];
+
+This code is included in *Note 259: Delete TBST node and *Note 314:
+Case 1 in TAVL deletion.
+
+Case 2: p has a right thread and a left thread
+..............................................
+
+   If p is a leaf, then no threads point to it, but we must change its
+parent q's pointer to p to a thread, pointing to the same place that
+the corresponding thread of p pointed.  This is easy, and typically
+looks something like this:
+
+                            |
+                            q             |
+                           / `._          q
+                          []    p    =>  / \
+                              _' \      []  []
+                             [q]  []
+
+There is one special case, which comes up when q is the pseudo-node
+used for the parent of the root.  We can't access tbst_tag[] in this
+"node".  Here's the code:
+
+261. <Case 2 in TBST deletion 261> =
+q->tbst_link[dir] = p->tbst_link[dir];
+if (q != (struct tbst_node *) &tree->tbst_root)
+  q->tbst_tag[dir] = TBST_THREAD;
+
+This code is included in *Note 259: Delete TBST node and *Note 315:
+Case 2 in TAVL deletion.
+
+Case 3: p's right child has a left thread
+.........................................
+
+   If p has a right child r, and r itself has a left thread, then we
+delete p by moving r into its place.  Here's an example where the root
+node is deleted:
+
+            2,p
+        _.-'   `._                              3,r
+       1          3,r                       _.-'   `--..___
+      / \       _'   `--..___              1               5
+     []  [2]   [2]           5        =>  / \          _.-' `._
+                         _.-' `._        []  [3]      4        6
+                        4        6                  _' \     _' \
+                      _' \     _' \                [3]  [5] [5]  []
+                     [3]  [5] [5]  []
+ 
+ This just involves changing q's right link to point to r, copying p's
+left link and tag into r, and fixing any thread that pointed to p so
+that it now points to r.  The code is straightforward:
+
+262. <Case 3 in TBST deletion 262> =
+r->tbst_link[0] = p->tbst_link[0];
+r->tbst_tag[0] = p->tbst_tag[0];
+if (r->tbst_tag[0] == TBST_CHILD)
+  {
+    struct tbst_node *t = r->tbst_link[0];
+    while (t->tbst_tag[1] == TBST_CHILD)
+      t = t->tbst_link[1];
+    t->tbst_link[1] = r;
+  }
+q->tbst_link[dir] = r;
+
+This code is included in *Note 259: Delete TBST node and *Note 316:
+Case 3 in TAVL deletion.
+
+Case 4: p's right child has a left child
+........................................
+
+   If p has a right child, which in turn has a left child, we arrive at
+the most complicated case.  It corresponds to case 3 in deletion from
+an unthreaded BST.  The solution is to find p's successor s and move it
+in place of p.  In this case, r is s's parent node, not necessarily p's
+right child.
+
+   There are two subcases here.  In the first, s has a right child.  In
+that subcase, s's own successor's left thread already points to s, so
+we need not adjust any threads.  Here's an example of this subcase.
+Notice how the left thread of node 3, s's successor, already points to
+s.
+
+         1,p
+     _.-'   `------......._______               2,s
+    0                            5          _.-'   `----....._____
+   / \                     __..-' \        0                      5
+  []  [1]                 4,r      []     / \               __..-' \
+                ___...---'   \        => []  [2]           4,r      []
+               2,s            [5]                      _.-'   \
+             _'   `._                                 3        [5]
+            [1]      3                              _' \
+                   _' \                            [2]  [4]
+                  [2]  [4]
+ 
+ The second subcase comes up when s has a right thread.  Because s also
+has a left thread, this means that s is a leaf.  This subcase requires
+us to change r's left link to a thread to its predecessor, which is now
+s.  Here's a continuation of the previous example, showing deletion of
+the new root, node 2:
+
+              2,p
+          _.-'   `-----.....______               3,s
+         0                        5          _.-'   `---...___
+        / \                 __..-' \        0                 5
+       []  [2]             4,r      [] =>  / \          __..-' \
+                     __..-'   \           []  [3]      4,r      []
+                    3,s        [5]                   _'   \
+                  _'   \                            [3]    [5]
+                 [2]    [4]
+ 
+ The first part of the code handles finding r and s:
+
+263. <Case 4 in TBST deletion 263> =
+struct tbst_node *s;
+
+for (;;)
+  {
+    s = r->tbst_link[0];
+    if (s->tbst_tag[0] == TBST_THREAD)
+      break;
+
+    r = s;
+  }
+
+See also *Note 264: Case 4 in TBST deletion-2 and *Note 265: Case 4 in
+TBST deletion-3.
+This code is included in *Note 259: Delete TBST node and *Note 317:
+Case 4 in TAVL deletion.
+
+   Next, we update r, handling each of the subcases:
+
+264. <Case 4 in TBST deletion 263> +=
+if (s->tbst_tag[1] == TBST_CHILD)
+  r->tbst_link[0] = s->tbst_link[1];
+else
+  {
+    r->tbst_link[0] = s;
+    r->tbst_tag[0] = TBST_THREAD;
+  }
+
+   Finally, we copy p's links and tags into s and chase down and update
+any right thread in s's left subtree, then replace the pointer from q
+down to s:
+
+265. <Case 4 in TBST deletion 263> +=
+s->tbst_link[0] = p->tbst_link[0];
+if (p->tbst_tag[0] == TBST_CHILD)
+  {
+    struct tbst_node *t = p->tbst_link[0];
+    while (t->tbst_tag[1] == TBST_CHILD)
+      t = t->tbst_link[1];
+    t->tbst_link[1] = s;
+
+    s->tbst_tag[0] = TBST_CHILD;
+  }
+
+s->tbst_link[1] = p->tbst_link[1];
+s->tbst_tag[1] = TBST_CHILD;
+
+q->tbst_link[dir] = s;
+
+   We finish up by deallocating the node, decrementing the tree's item
+count, and returning the deleted item's data:
+
+266. <Finish up after deleting TBST node 266> =
+tree->tbst_alloc->libavl_free (tree->tbst_alloc, p);
+tree->tbst_count--;
+return (void *) item;
+
+This code is included in *Note 257: TBST item deletion function.
+
+Exercises:
+
+*1. In a threaded BST, there is an efficient algorithm to find the
+parent of a given node.  Use this algorithm to reimplement <*Note Find
+TBST node to delete:: 258>.
+
+2. In case 2, we must handle q as the pseudo-root as a special case.
+Can we rearrange the TBST data structures to avoid this?
+
+3. Rewrite case 4 to replace the deleted node's tbst_data by its
+successor and actually delete the successor, instead of moving around
+pointers.  (Refer back to Exercise 5.8-3 for an explanation of why this
+approach cannot be used in `libavl'.)
+
+*4. Many of the cases in deletion from a TBST require searching down the
+tree for the nodes with threads to the deleted node.  Show that this
+adds only a constant number of operations to the deletion of a randomly
+selected node, compared to a similar deletion in an unthreaded tree.
+
+
+File: libavl.info,  Node: Traversing a TBST,  Next: Copying a TBST,  Prev: Deleting from a TBST,  Up: Threaded Binary Search Trees
+
+7.8 Traversal
+=============
+
+   Traversal in a threaded BST is much simpler than in an unthreaded
+one.  This is, indeed, much of the point to threading our trees.  This
+section implements all of the `libavl' traverser functions for threaded
+trees.
+
+   Suppose we wish to find the successor of an arbitrary node in a
+threaded tree.  If the node has a right child, then the successor is
+the smallest item in the node's right subtree.  Otherwise, the node has
+a right thread, and its sucessor is simply the node to which the right
+thread points.  If the right thread is a null pointer, then the node is
+the largest in the tree.  We can find the node's predecessor in a
+similar manner.
+
+   We don't ever need to know the parent of a node to traverse the
+threaded tree, so there's no need to keep a stack.  Moreover, because a
+traverser has no stack to be corrupted by changes to its tree, there is
+no need to keep or compare generation numbers.  Therefore, this is all
+we need for a TBST traverser structure:
+
+267. <TBST traverser structure 267> =
+/* TBST traverser structure. */
+struct tbst_traverser
+  {
+    struct tbst_table *tbst_table;        /* Tree being traversed. */
+    struct tbst_node *tbst_node;          /* Current node in tree. */
+  };
+
+This code is included in *Note 247: tbsth, *Note 297: tavlh, *Note 333:
+trbh, *Note 372: rtbsth, *Note 415: rtavlh, *Note 452: rtrbh, *Note
+486: pbsth, *Note 519: pavlh, and *Note 551: prbh.
+
+   The traversal functions are collected together here.  A few of the
+functions are implemented directly in terms of their unthreaded BST
+counterparts, but most must be reimplemented:
+
+268. <TBST traversal functions 268> =
+<*Note TBST traverser null initializer:: 269>
+<*Note TBST traverser first initializer:: 270>
+<*Note TBST traverser last initializer:: 271>
+<*Note TBST traverser search initializer:: 272>
+<*Note TBST traverser insertion initializer:: 273>
+<*Note TBST traverser copy initializer:: 274>
+<*Note TBST traverser advance function:: 275>
+<*Note TBST traverser back up function:: 276>
+<*Note BST traverser current item function:: 74>
+<*Note BST traverser replacement function:: 75>
+
+This code is included in *Note 251: TBST functions, *Note 300: TAVL
+functions, and *Note 336: TRB functions.
+
+See also:  *Note Knuth 1997::, algorithm 2.3.1S.
+
+* Menu:
+
+* TBST Traverser Null Initialization::
+* TBST Traverser First Initialization::
+* TBST Traverser Last Initialization::
+* TBST Traverser Find Initialization::
+* TBST Traverser Insert Initialization::
+* TBST Traverser Copying::
+* TBST Traverser Advancing::
+* TBST Traverser Retreating::
+
+
+File: libavl.info,  Node: TBST Traverser Null Initialization,  Next: TBST Traverser First Initialization,  Prev: Traversing a TBST,  Up: Traversing a TBST
+
+7.8.1 Starting at the Null Node
+-------------------------------
+
+269. <TBST traverser null initializer 269> =
+void
+tbst_t_init (struct tbst_traverser *trav, struct tbst_table *tree)
+{
+  trav->tbst_table = tree;
+  trav->tbst_node = NULL;
+}
+
+This code is included in *Note 268: TBST traversal functions, *Note
+395: RTBST traversal functions, *Note 502: PBST traversal functions,
+and *Note 546: PAVL traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser First Initialization,  Next: TBST Traverser Last Initialization,  Prev: TBST Traverser Null Initialization,  Up: Traversing a TBST
+
+7.8.2 Starting at the First Node
+--------------------------------
+
+270. <TBST traverser first initializer 270> =
+void *
+tbst_t_first (struct tbst_traverser *trav, struct tbst_table *tree)
+{
+  assert (tree != NULL && trav != NULL);
+
+  trav->tbst_table = tree;
+  trav->tbst_node = tree->tbst_root;
+  if (trav->tbst_node != NULL)
+    {
+      while (trav->tbst_node->tbst_tag[0] == TBST_CHILD)
+        trav->tbst_node = trav->tbst_node->tbst_link[0];
+      return trav->tbst_node->tbst_data;
+    }
+  else
+    return NULL;
+}
+
+This code is included in *Note 268: TBST traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser Last Initialization,  Next: TBST Traverser Find Initialization,  Prev: TBST Traverser First Initialization,  Up: Traversing a TBST
+
+7.8.3 Starting at the Last Node
+-------------------------------
+
+271. <TBST traverser last initializer 271> =
+void *
+tbst_t_last (struct tbst_traverser *trav, struct tbst_table *tree)
+{
+  assert (tree != NULL && trav != NULL);
+
+  trav->tbst_table = tree;
+  trav->tbst_node = tree->tbst_root;
+  if (trav->tbst_node != NULL)
+    {
+      while (trav->tbst_node->tbst_tag[1] == TBST_CHILD)
+        trav->tbst_node = trav->tbst_node->tbst_link[1];
+      return trav->tbst_node->tbst_data;
+    }
+  else
+    return NULL;
+}
+
+This code is included in *Note 268: TBST traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser Find Initialization,  Next: TBST Traverser Insert Initialization,  Prev: TBST Traverser Last Initialization,  Up: Traversing a TBST
+
+7.8.4 Starting at a Found Node
+------------------------------
+
+   The code for this function is derived with few changes from <*Note
+TBST search function:: 253>.
+
+272. <TBST traverser search initializer 272> =
+void *
+tbst_t_find (struct tbst_traverser *trav, struct tbst_table *tree, void *item)
+{
+  struct tbst_node *p;
+
+  assert (trav != NULL && tree != NULL && item != NULL);
+
+  trav->tbst_table = tree;
+  trav->tbst_node = NULL;
+
+  p = tree->tbst_root;
+  if (p == NULL)
+    return NULL;
+
+  for (;;)
+    {
+      int cmp, dir;
+
+      cmp = tree->tbst_compare (item, p->tbst_data, tree->tbst_param);
+      if (cmp == 0)
+        {
+          trav->tbst_node = p;
+          return p->tbst_data;
+        }
+
+      dir = cmp > 0;
+      if (p->tbst_tag[dir] == TBST_CHILD)
+        p = p->tbst_link[dir];
+      else
+        return NULL;
+    }
+}
+
+This code is included in *Note 268: TBST traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser Insert Initialization,  Next: TBST Traverser Copying,  Prev: TBST Traverser Find Initialization,  Up: Traversing a TBST
+
+7.8.5 Starting at an Inserted Node
+----------------------------------
+
+   This implementation is a trivial adaptation of <*Note AVL traverser
+insertion initializer:: 179>.  In particular, management of generation
+numbers has been removed.
+
+273. <TBST traverser insertion initializer 273> =
+void *
+tbst_t_insert (struct tbst_traverser *trav,
+               struct tbst_table *tree, void *item)
+{
+  void **p;
+
+  assert (trav != NULL && tree != NULL && item != NULL);
+
+  p = tbst_probe (tree, item);
+  if (p != NULL)
+    {
+      trav->tbst_table = tree;
+      trav->tbst_node =
+        ((struct tbst_node *)
+         ((char *) p - offsetof (struct tbst_node, tbst_data)));
+      return *p;
+    }
+  else
+    {
+      tbst_t_init (trav, tree);
+      return NULL;
+    }
+}
+
+This code is included in *Note 268: TBST traversal functions, *Note
+395: RTBST traversal functions, and *Note 546: PAVL traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser Copying,  Next: TBST Traverser Advancing,  Prev: TBST Traverser Insert Initialization,  Up: Traversing a TBST
+
+7.8.6 Initialization by Copying
+-------------------------------
+
+274. <TBST traverser copy initializer 274> =
+void *
+tbst_t_copy (struct tbst_traverser *trav, const struct tbst_traverser *src)
+{
+  assert (trav != NULL && src != NULL);
+
+  trav->tbst_table = src->tbst_table;
+  trav->tbst_node = src->tbst_node;
+
+  return trav->tbst_node != NULL ? trav->tbst_node->tbst_data : NULL;
+}
+
+This code is included in *Note 268: TBST traversal functions, *Note
+395: RTBST traversal functions, *Note 502: PBST traversal functions,
+and *Note 546: PAVL traversal functions.
+
+
+File: libavl.info,  Node: TBST Traverser Advancing,  Next: TBST Traverser Retreating,  Prev: TBST Traverser Copying,  Up: Traversing a TBST
+
+7.8.7 Advancing to the Next Node
+--------------------------------
+
+   Despite the earlier discussion (*note Traversing a TBST::), there are
+actually three cases, not two, in advancing within a threaded binary
+tree.  The extra case turns up when the current node is the null item.
+We deal with that case by calling out to tbst_t_first().
+
+   Notice also that, below, in the case of following a thread we must
+check for a null node, but not in the case of following a child pointer.
+
+275. <TBST traverser advance function 275> =
+void *
+tbst_t_next (struct tbst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  if (trav->tbst_node == NULL)
+    return tbst_t_first (trav, trav->tbst_table);
+  else if (trav->tbst_node->tbst_tag[1] == TBST_THREAD)
+    {
+      trav->tbst_node = trav->tbst_node->tbst_link[1];
+      return trav->tbst_node != NULL ? trav->tbst_node->tbst_data : NULL;
+    }
+  else
+    {
+      trav->tbst_node = trav->tbst_node->tbst_link[1];
+      while (trav->tbst_node->tbst_tag[0] == TBST_CHILD)
+        trav->tbst_node = trav->tbst_node->tbst_link[0];
+      return trav->tbst_node->tbst_data;
+    }
+}
+
+This code is included in *Note 268: TBST traversal functions.
+
+See also:  *Note Knuth 1997::, algorithm 2.3.1S.
+
+
+File: libavl.info,  Node: TBST Traverser Retreating,  Prev: TBST Traverser Advancing,  Up: Traversing a TBST
+
+7.8.8 Backing Up to the Previous Node
+-------------------------------------
+
+276. <TBST traverser back up function 276> =
+void *
+tbst_t_prev (struct tbst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  if (trav->tbst_node == NULL)
+    return tbst_t_last (trav, trav->tbst_table);
+  else if (trav->tbst_node->tbst_tag[0] == TBST_THREAD)
+    {
+      trav->tbst_node = trav->tbst_node->tbst_link[0];
+      return trav->tbst_node != NULL ? trav->tbst_node->tbst_data : NULL;
+    }
+  else
+    {
+      trav->tbst_node = trav->tbst_node->tbst_link[0];
+      while (trav->tbst_node->tbst_tag[1] == TBST_CHILD)
+        trav->tbst_node = trav->tbst_node->tbst_link[1];
+      return trav->tbst_node->tbst_data;
+    }
+}
+
+This code is included in *Note 268: TBST traversal functions.
+
+
+File: libavl.info,  Node: Copying a TBST,  Next: Destroying a TBST,  Prev: Traversing a TBST,  Up: Threaded Binary Search Trees
+
+7.9 Copying
+===========
+
+   We can use essentially the same algorithm to copy threaded BSTs as
+unthreaded (see <*Note BST copy function:: 83>).  Some modifications are
+necessary, of course.  The most obvious change is that the threads must
+be set up.  This is not hard.  We can do it the same way that
+tbst_probe() does.
+
+   Less obvious is the way to get rid of the stack.  In bst_copy(), the
+stack was used to keep track of as yet incompletely processed parents of
+the current node.  When we came back to one of these nodes, we did the
+actual copy of the node data, then visited the node's right subtree, if
+non-empty.
+
+   In a threaded tree, we can replace the use of the stack by the use of
+threads.  Instead of popping an item off the stack when we can't move
+down in the tree any further, we follow the node's right thread.  This
+brings us up to an ancestor (parent, grandparent, ...) of the node,
+which we can then deal with in the same way as before.
+
+   This diagram shows the threads that would be followed to find
+parents in copying a couple of different threaded binary trees.  Of
+course, the TBSTs would have complete sets of threads, but only the
+ones that are followed are shown:
+
+                                                      5
+                 4                          ___...---' `--..__
+           __..-' `-.__                    2                  8
+          2            6               _.-' `-.__       __..-' \
+      _.-' \       _.-' \             1          4     6        9
+     1      3     5      7        _.-' \     _.-' \     \        \
+      \      \     \      \      0      [2] 3      [5]   7        []
+       [2]    [4]   [6]    []     \          \            \
+                                   [1]        [4]          [8]
+ 
+ Why does following the right thread from a node bring us to one of the
+node's ancestors?  Consider the algorithm for finding the successor of
+a node with no right child, described earlier (*note Better Iterative
+Traversal::).  This algorithm just moves up the tree from a node to its
+parent, grandparent, etc., guaranteeing that the successor will be a
+ancestor of the original node.
+
+How do we know that following the right thread won't take us too far up
+the tree and skip copying some subtree?  Because we only move up to the
+right one time using that same algorithm.  When we move up to the left,
+we're going back to some binary tree whose right subtree we've already
+dealt with (we are currently in the right subtree of that binary tree,
+so of course we've dealt with it).
+
+   In conclusion, following the right thread always takes us to just the
+node whose right subtree we want to copy next.  Of course, if that node
+happens to have an empty right subtree, then there is nothing to do, so
+we just continue along the next right thread, and so on.
+
+   The first step is to build a function to copy a single node.  The
+following function copy_node() does this, creating a new node as the
+child of an existing node:
+
+277. <TBST node copy function 277> =
+/* Creates a new node as a child of dst on side dir.
+   Copies data from src into the new node, applying copy(), if non-null.
+   Returns nonzero only if fully successful.
+   Regardless of success, integrity of the tree structure is assured,
+   though failure may leave a null pointer in a tbst_data member. */
+static int
+copy_node (struct tbst_table *tree,
+           struct tbst_node *dst, int dir,
+           const struct tbst_node *src, tbst_copy_func *copy)
+{
+  struct tbst_node *new =
+    tree->tbst_alloc->libavl_malloc (tree->tbst_alloc, sizeof *new);
+  if (new == NULL)
+    return 0;
+
+  new->tbst_link[dir] = dst->tbst_link[dir];
+  new->tbst_tag[dir] = TBST_THREAD;
+  new->tbst_link[!dir] = dst;
+  new->tbst_tag[!dir] = TBST_THREAD;
+  dst->tbst_link[dir] = new;
+  dst->tbst_tag[dir] = TBST_CHILD;
+
+  if (copy == NULL)
+    new->tbst_data = src->tbst_data;
+  else
+    {
+      new->tbst_data = copy (src->tbst_data, tree->tbst_param);
+      if (new->tbst_data == NULL)
+        return 0;
+    }
+
+  return 1;
+}
+
+This code is included in *Note 278: TBST copy function.
+
+   Using the node copy function above, constructing the tree copy
+function is easy.  In fact, the code is considerably easier to read
+than our original function to iteratively copy an unthreaded binary tree
+(*note Handling errors during iterative BST copying::), because this
+function is not as heavily optimized.
+
+   One tricky part is getting the copy started.  We can't use the dirty
+trick from bst_copy() of casting the address of a bst_root to a node
+pointer, because we need access to the first tag as well as the first
+link (see Exercise 2 for a way to sidestep this problem).  So instead
+we use a couple of "pseudo-root" nodes rp and rq, allocated locally.
+
+278. <TBST copy function 278> =
+<*Note TBST node copy function:: 277>
+<*Note TBST copy error helper function:: 280>
+<*Note TBST main copy function:: 279>
+
+This code is included in *Note 251: TBST functions.
+
+279. <TBST main copy function 279> =
+struct tbst_table *
+tbst_copy (const struct tbst_table *org, tbst_copy_func *copy,
+          tbst_item_func *destroy, struct libavl_allocator *allocator)
+{
+  struct tbst_table *new;
+
+  const struct tbst_node *p;
+  struct tbst_node *q;
+  struct tbst_node rp, rq;
+
+  assert (org != NULL);
+  new = tbst_create (org->tbst_compare, org->tbst_param,
+                     allocator != NULL ? allocator : org->tbst_alloc);
+  if (new == NULL)
+    return NULL;
+
+  new->tbst_count = org->tbst_count;
+  if (new->tbst_count == 0)
+    return new;
+
+  p = &rp;
+  rp.tbst_link[0] = org->tbst_root;
+  rp.tbst_tag[0] = TBST_CHILD;
+
+  q = &rq;
+  rq.tbst_link[0] = NULL;
+  rq.tbst_tag[0] = TBST_THREAD;
+
+  for (;;)
+    {
+      if (p->tbst_tag[0] == TBST_CHILD)
+        {
+          if (!copy_node (new, q, 0, p->tbst_link[0], copy))
+            {
+              copy_error_recovery (rq.tbst_link[0], new, destroy);
+              return NULL;
+            }
+
+          p = p->tbst_link[0];
+          q = q->tbst_link[0];
+        }
+      else
+        {
+          while (p->tbst_tag[1] == TBST_THREAD)
+            {
+              p = p->tbst_link[1];
+              if (p == NULL)
+                {
+                  q->tbst_link[1] = NULL;
+                  new->tbst_root = rq.tbst_link[0];
+                  return new;
+                }
+
+              q = q->tbst_link[1];
+            }
+
+          p = p->tbst_link[1];
+          q = q->tbst_link[1];
+        }
+
+      if (p->tbst_tag[1] == TBST_CHILD)
+        if (!copy_node (new, q, 1, p->tbst_link[1], copy))
+          {
+            copy_error_recovery (rq.tbst_link[0], new, destroy);
+            return NULL;
+          }
+    }
+}
+
+This code is included in *Note 278: TBST copy function and *Note 329:
+TAVL copy function.
+
+   A sensitive issue in the code above is treatment of the final thread.
+The initial call to copy_node() causes a right thread to point to rq,
+but it needs to be a null pointer.  We need to perform this kind of
+transformation:
+
+                                 rq                            rq
+               ______......-----'              _____.....-----'
+              2                               2
+          _.-' `--..___                   _.-' `--..___
+         1             4            =>   1             4
+        / \        _.-' `._             / \        _.-' `._
+       []  [2]    3        5           []  [2]    3        5
+                _' \     _' \                   _' \     _' \
+               [2]  [4] [4]  [rq]              [2]  [4] [4]  []
+ 
+ When the copy is successful, this is just a matter of setting the final
+q's right child pointer to NULL, but when it is unsuccessful we have to
+find the pointer in question, which is in the greatest node in the tree
+so far (to see this, try constructing a few threaded BSTs by hand on
+paper).  Function copy_error_recovery() does this, as well as
+destroying the tree.  It also handles the case of failure when no nodes
+have yet been added to the tree:
+
+280. <TBST copy error helper function 280> =
+static void
+copy_error_recovery (struct tbst_node *p,
+                     struct tbst_table *new, tbst_item_func *destroy)
+{
+  new->tbst_root = p;
+  if (p != NULL)
+    {
+      while (p->tbst_tag[1] == TBST_CHILD)
+        p = p->tbst_link[1];
+      p->tbst_link[1] = NULL;
+    }
+  tbst_destroy (new, destroy);
+}
+
+This code is included in *Note 278: TBST copy function and *Note 329:
+TAVL copy function.
+
+Exercises:
+
+1. In the diagram above that shows examples of threads followed while
+copying a TBST, all right threads in the TBSTs are shown.  Explain how
+this is not just a coincidence.
+
+2. Suggest some optimization possibilities for tbst_copy().
+
+
+File: libavl.info,  Node: Destroying a TBST,  Next: Balancing a TBST,  Prev: Copying a TBST,  Up: Threaded Binary Search Trees
+
+7.10 Destruction
+================
+
+   Destroying a threaded binary tree is easy.  We can simply traverse
+the tree in inorder in the usual way.  We always have a way to get to
+the next node without having to go back up to any of the nodes we've
+already destroyed.  (We do, however, have to make sure to go find the
+next node before destroying the current one, in order to avoid reading
+data from freed memory.)  Here's all it takes:
+
+281. <TBST destruction function 281> =
+void
+tbst_destroy (struct tbst_table *tree, tbst_item_func *destroy)
+{
+  struct tbst_node *p; /* Current node. */
+  struct tbst_node *n; /* Next node. */
+
+  p = tree->tbst_root;
+  if (p != NULL)
+    while (p->tbst_tag[0] == TBST_CHILD)
+      p = p->tbst_link[0];
+
+  while (p != NULL)
+    {
+      n = p->tbst_link[1];
+      if (p->tbst_tag[1] == TBST_CHILD)
+        while (n->tbst_tag[0] == TBST_CHILD)
+          n = n->tbst_link[0];
+
+      if (destroy != NULL && p->tbst_data != NULL) 
+        destroy (p->tbst_data, tree->tbst_param);
+      tree->tbst_alloc->libavl_free (tree->tbst_alloc, p);
+
+      p = n;
+    }
+
+  tree->tbst_alloc->libavl_free (tree->tbst_alloc, tree);
+}
+
+This code is included in *Note 251: TBST functions, *Note 300: TAVL
+functions, and *Note 336: TRB functions.
+
+
+File: libavl.info,  Node: Balancing a TBST,  Next: Testing TBSTs,  Prev: Destroying a TBST,  Up: Threaded Binary Search Trees
+
+7.11 Balance
+============
+
+   Just like their unthreaded cousins, threaded binary trees can become
+degenerate, leaving their good performance characteristics behind.  When
+this happened in a unthreaded BST, stack overflow often made it
+necessary to rebalance the tree.  This doesn't happen in our
+implementation of threaded BSTs, because none of the routines uses a
+stack.  It is still useful to have a rebalance routine for performance
+reasons, so we will implement one, in this section, anyway.
+
+   There is no need to change the basic algorithm.  As before, we
+convert the tree to a linear "vine", then the vine to a balanced binary
+search tree.  *Note Balancing a BST::, for a review of the balancing
+algorithm.
+
+   Here is the outline and prototype for tbst_balance().
+
+282. <TBST balance function 282> =
+<*Note TBST tree-to-vine function:: 284>
+<*Note TBST vine compression function:: 286>
+<*Note TBST vine-to-tree function:: 285>
+<*Note TBST main balance function:: 283>
+
+This code is included in *Note 251: TBST functions.
+
+283. <TBST main balance function 283> =
+/* Balances tree. */
+void
+tbst_balance (struct tbst_table *tree)
+{
+  assert (tree != NULL);
+
+  tree_to_vine (tree);
+  vine_to_tree (tree);
+}
+
+This code is included in *Note 282: TBST balance function and *Note
+408: RTBST balance function.
+
+* Menu:
+
+* Transforming a TBST into a Vine::
+* Transforming a Vine into a Balanced TBST::
+
+
+File: libavl.info,  Node: Transforming a TBST into a Vine,  Next: Transforming a Vine into a Balanced TBST,  Prev: Balancing a TBST,  Up: Balancing a TBST
+
+7.11.1 From Tree to Vine
+------------------------
+
+   We could transform a threaded binary tree into a vine in the same
+way we did for unthreaded binary trees, by use of rotations (*note
+Transforming a BST into a Vine::).  But one of the reasons we did it
+that way was to avoid use of a stack, which is no longer a problem.
+It's now simpler to rearrange nodes by inorder traversal.
+
+   We start by finding the minimum node in the tree as p, which will
+step through the tree in inorder.  During each trip through the main
+loop, we find p's successor as q and make p the left child of q.  We
+also have to make sure that p's right thread points to q.  That's all
+there is to it.
+
+284. <TBST tree-to-vine function 284> =
+static void
+tree_to_vine (struct tbst_table *tree)
+{
+  struct tbst_node *p;
+
+  if (tree->tbst_root == NULL)
+    return;
+
+  p = tree->tbst_root;
+  while (p->tbst_tag[0] == TBST_CHILD)
+    p = p->tbst_link[0];
+
+  for (;;)
+    {
+      struct tbst_node *q = p->tbst_link[1];
+      if (p->tbst_tag[1] == TBST_CHILD)
+        {
+          while (q->tbst_tag[0] == TBST_CHILD)
+            q = q->tbst_link[0];
+          p->tbst_tag[1] = TBST_THREAD;
+          p->tbst_link[1] = q;
+        }
+
+      if (q == NULL)
+        break;
+
+      q->tbst_tag[0] = TBST_CHILD;
+      q->tbst_link[0] = p;
+      p = q;
+    }
+
+  tree->tbst_root = p;
+}
+
+This code is included in *Note 282: TBST balance function.
+
+   Sometimes one trip through the main loop above will put the TBST into
+an inconsistent state, where two different nodes are the parent of a
+third node.  Such an inconsistency is always corrected in the next trip
+through the loop.  An example is warranted.  Suppose the original
+threaded binary tree looks like this, with nodes p and q for the
+initial iteration of the loop as marked:
+
+                                          3
+                              ____....---' \
+                             1,p            []
+                            /   `._
+                           []      2,q
+                                 _'   \
+                                [1]    [3]
+
+The first trip through the loop makes p, 1, the child of q, 2, but p's
+former parent's left child pointer still points to p.  We now have a
+situation where node 1 has two parents: both 2 and 3.  This diagram
+tries to show the situation by omitting the line that would otherwise
+lead down from 3 to 2:
+
+                                          3
+                                           \
+                                   2,q      []
+                             __..-'   \
+                            1,p        [3]
+                           /   \
+                          []    [2]
+
+On the other hand, node 2's right thread still points to 3, so on the
+next trip through the loop there is no trouble finding the new p's
+successor.  Node 3 is made the parent of 2 and all is well.  This
+diagram shows the new p and q, then the fixed-up vine.  The only
+difference is that node 3 now, correctly, has 2 as its left child:
+
+                            3,q                     3,q
+                               \              __..-'   \
+                     2,p        []           2,p        []
+                 _.-'   \          =>    _.-'   \
+                1        [3]            1        [3]
+               / \                     / \
+              []  [2]                 []  [2]
+
+
+File: libavl.info,  Node: Transforming a Vine into a Balanced TBST,  Prev: Transforming a TBST into a Vine,  Up: Balancing a TBST
+
+7.11.2 From Vine to Balanced Tree
+---------------------------------
+
+Transforming a vine into a balanced threaded BST is similar to the same
+operation on an unthreaded BST.  We can use the same algorithm,
+adjusting it for presence of the threads.  The following outline is
+similar to <*Note BST balance function:: 87>.  In fact, we entirely
+reuse <*Note Calculate |leaves|:: 91>, just changing bst to tbst.  We
+omit the final check on the tree's height, because none of the TBST
+functions are height-limited.
+
+285. <TBST vine-to-tree function 285> =
+static void
+vine_to_tree (struct tbst_table *tree)
+{
+  unsigned long vine;   /* Number of nodes in main vine. */
+  unsigned long leaves; /* Nodes in incomplete bottom level, if any. */
+  int height;           /* Height of produced balanced tree. */
+
+  <*Note Calculate |leaves|:: 91>
+  <*Note Reduce TBST vine general case to special case:: 287>
+  <*Note Make special case TBST vine into balanced tree and count height:: 288>
+}
+
+This code is included in *Note 282: TBST balance function and *Note
+408: RTBST balance function.
+
+   Not many changes are needed to adapt the algorithm to handle threads.
+Consider the basic right rotation transformation used during a
+compression:
+
+                              |          |
+                              R          B
+                             <r>        <b>
+                         _.-'   \      /   `_
+                         B       c => a       R
+                        <b>                  <r>
+                       /   \                /   \
+                      a     b              b     c
+ 
+ The rotation does not disturb a or c, so the only node that can cause
+trouble is b.  If b is a real child node, then there's no need to do
+anything differently.  But if b is a thread, then we have to swap
+around the direction of the thread, like this:
+
+                               |          |
+                               R          B
+                              <r>        <b>
+                        __..-'   \      /   `._
+                        B         c => a        R
+                       <b>                     <r>
+                      /   \                  _'   \
+                     a     [R]              [B]    c
+
+After a rotation that involves a thread, the next rotation on B will
+not involve a thread.  So after we perform a rotation that adjusts a
+thread in one place, the next one in the same place will not require a
+thread adjustment.
+
+   Every node in the vine we start with has a thread as its right link.
+This means that during the first pass along the main vine we must
+perform thread adjustments at every node, but subsequent passes along
+the vine must not perform any adjustments.
+
+   This simple idea is complicated by the initial partial compression
+pass in trees that do not have exactly one fewer than a power of two
+nodes.  After a partial compression pass, the nodes at the top of the
+main vine no longer have right threads, but the ones farther down still
+do.
+
+   We deal with this complication by defining the compress() function so
+it can handle a mixture of rotations with and without right threads.
+The rotations that need thread adjustments will always be below the ones
+that do not, so this function simply takes a pair of parameters, the
+first specifying how many rotations without thread adjustment to
+perform, the next how many with thread adjustment.  Compare this code
+to that for unthreaded BSTs:
+
+286. <TBST vine compression function 286> =
+/* Performs a nonthreaded compression operation nonthread times,
+   then a threaded compression operation thread times,
+   starting at root. */
+static void
+compress (struct tbst_node *root,
+          unsigned long nonthread, unsigned long thread)
+{
+  assert (root != NULL);
+
+  while (nonthread--)
+    {
+      struct tbst_node *red = root->tbst_link[0];
+      struct tbst_node *black = red->tbst_link[0];
+
+      root->tbst_link[0] = black;
+      red->tbst_link[0] = black->tbst_link[1];
+      black->tbst_link[1] = red;
+      root = black;
+    }
+
+  while (thread--)
+    {
+      struct tbst_node *red = root->tbst_link[0];
+      struct tbst_node *black = red->tbst_link[0];
+
+      root->tbst_link[0] = black;
+      red->tbst_link[0] = black;
+      red->tbst_tag[0] = TBST_THREAD;
+      black->tbst_tag[1] = TBST_CHILD;
+      root = black;
+    }
+}
+
+This code is included in *Note 282: TBST balance function.
+
+   When we reduce the general case to the 2**n - 1 special case, all of
+the rotations adjust threads:
+
+287. <Reduce TBST vine general case to special case 287> =
+compress ((struct tbst_node *) &tree->tbst_root, 0, leaves);
+
+This code is included in *Note 285: TBST vine-to-tree function.
+
+   We deal with the first compression specially, in order to clean up
+any remaining unadjusted threads:
+
+288. <Make special case TBST vine into balanced tree and count height 288> =
+vine = tree->tbst_count - leaves;
+height = 1 + (leaves > 0);
+if (vine > 1)
+  {
+    unsigned long nonleaves = vine / 2;
+    leaves /= 2;
+    if (leaves > nonleaves)
+      {
+        leaves = nonleaves;
+        nonleaves = 0;
+      }
+    else
+      nonleaves -= leaves;
+
+    compress ((struct tbst_node *) &tree->tbst_root, leaves, nonleaves);
+    vine /= 2;
+    height++;
+  }
+
+See also *Note 289: Make special case TBST vine into balanced tree and
+count height-2.
+This code is included in *Note 285: TBST vine-to-tree function.
+
+   After this, all the remaining compressions use only rotations without
+thread adjustment, and we're done:
+
+289. <Make special case TBST vine into balanced tree and count height 288> +=
+while (vine > 1)
+  {
+    compress ((struct tbst_node *) &tree->tbst_root, vine / 2, 0);
+    vine /= 2;
+    height++;
+  }
+
+
+File: libavl.info,  Node: Testing TBSTs,  Prev: Balancing a TBST,  Up: Threaded Binary Search Trees
+
+7.12 Testing
+============
+
+   There's little new in the testing code.  We do add an test for
+tbst_balance(), because none of the existing tests exercise it.  This
+test doesn't check that tbst_balance() actually balances the tree, it
+just verifies that afterwards the tree contains the items it should, so
+to be certain that balancing is correct, turn up the verbosity and look
+at the trees printed.
+
+   Function print_tree_structure() prints thread node numbers preceded
+by `>', with null threads indicated by `>>'.  This notation is
+compatible with the plain text output format of the `texitree' program
+used to draw the binary trees in this book.  (It will cause errors for
+PostScript output because it omits node names.)
+
+290. <tbst-test.c 290> =
+<*Note License:: 1>
+#include <assert.h>
+#include <limits.h>
+#include <stdio.h>
+#include "tbst.h"
+#include "test.h"
+
+<*Note TBST print function:: 291>
+<*Note BST traverser check function:: 104>
+<*Note Compare two TBSTs for structure and content:: 292>
+<*Note Recursively verify TBST structure:: 293>
+<*Note TBST verify function:: 294>
+<*Note TBST test function:: 295>
+<*Note BST overflow test function:: 122>
+
+291. <TBST print function 291> =
+void
+print_tree_structure (struct tbst_node *node, int level)
+{
+  int i;
+
+  if (level > 16)
+    {
+      printf ("[...]");
+      return;
+    }
+
+  if (node == NULL)
+    {
+      printf ("<nil>");
+      return;
+    }
+
+  printf ("%d(", node->tbst_data ? *(int *) node->tbst_data : -1);
+
+  for (i = 0; i <= 1; i++)
+    {
+      if (node->tbst_tag[i] == TBST_CHILD)
+        {
+          if (node->tbst_link[i] == node)
+            printf ("loop");
+          else
+            print_tree_structure (node->tbst_link[i], level + 1);
+        }
+      else if (node->tbst_link[i] != NULL)
+        printf (">%d",
+                (node->tbst_link[i]->tbst_data
+                ? *(int *) node->tbst_link[i]->tbst_data : -1));
+      else
+        printf (">>");
+
+      if (i == 0)
+        fputs (", ", stdout);
+    }
+
+  putchar (')');
+}
+
+void
+print_whole_tree (const struct tbst_table *tree, const char *title)
+{
+  printf ("%s: ", title);
+  print_tree_structure (tree->tbst_root, 0);
+  putchar ('\n');
+}
+
+This code is included in *Note 290: tbst-testc, *Note 330: tavl-testc,
+and *Note 368: trb-testc.
+
+292. <Compare two TBSTs for structure and content 292> =
+static int
+compare_trees (struct tbst_node *a, struct tbst_node *b)
+{
+  int okay;
+
+  if (a == NULL || b == NULL)
+    {
+      if (a != NULL || b != NULL)
+        {
+          printf (" a=%d b=%d\n",
+                  a ? *(int *) a->tbst_data : -1,
+                  b ? *(int *) b->tbst_data : -1);
+          assert (0);
+        }
+      return 1;
+    }
+  assert (a != b);
+
+  if (*(int *) a->tbst_data != *(int *) b->tbst_data
+      || a->tbst_tag[0] != b->tbst_tag[0]
+      || a->tbst_tag[1] != b->tbst_tag[1])
+    {
+      printf (" Copied nodes differ: a=%d b=%d a:",
+              *(int *) a->tbst_data, *(int *) b->tbst_data);
+
+      if (a->tbst_tag[0] == TBST_CHILD)
+        printf ("l");
+      if (a->tbst_tag[1] == TBST_CHILD)
+        printf ("r");
+
+      printf (" b:");
+      if (b->tbst_tag[0] == TBST_CHILD)
+        printf ("l");
+      if (b->tbst_tag[1] == TBST_CHILD)
+        printf ("r");
+
+      printf ("\n");
+      return 0;
+    }
+
+  if (a->tbst_tag[0] == TBST_THREAD)
+    assert ((a->tbst_link[0] == NULL) != (a->tbst_link[0] != b->tbst_link[0]));
+  if (a->tbst_tag[1] == TBST_THREAD)
+    assert ((a->tbst_link[1] == NULL) != (a->tbst_link[1] != b->tbst_link[1]));
+
+  okay = 1;
+  if (a->tbst_tag[0] == TBST_CHILD)
+    okay &= compare_trees (a->tbst_link[0], b->tbst_link[0]);
+  if (a->tbst_tag[1] == TBST_CHILD)
+    okay &= compare_trees (a->tbst_link[1], b->tbst_link[1]);
+  return okay;
+}
+
+This code is included in *Note 290: tbst-testc.
+
+293. <Recursively verify TBST structure 293> =
+static void
+recurse_verify_tree (struct tbst_node *node, int *okay, size_t *count, 
+                     int min, int max)
+{
+  int d;                /* Value of this node's data. */
+  size_t subcount[2];   /* Number of nodes in subtrees. */
+
+  if (node == NULL)
+    {
+      *count = 0;
+      return;
+    }
+  d = *(int *) node->tbst_data;
+
+  <*Note Verify binary search tree ordering:: 114>
+
+  subcount[0] = subcount[1] = 0;
+  if (node->tbst_tag[0] == TBST_CHILD)
+    recurse_verify_tree (node->tbst_link[0], okay, &subcount[0], min, d - 1);
+  if (node->tbst_tag[1] == TBST_CHILD)
+    recurse_verify_tree (node->tbst_link[1], okay, &subcount[1], d + 1, max);
+  *count = 1 + subcount[0] + subcount[1];
+}
+
+This code is included in *Note 290: tbst-testc.
+
+294. <TBST verify function 294> =
+static int
+verify_tree (struct tbst_table *tree, int array[], size_t n)
+{
+  int okay = 1;
+
+  <*Note Check |tree->bst_count| is correct:: 110>
+
+  if (okay)
+    {
+      <*Note Check BST structure:: 111>
+    }
+
+  if (okay)
+    {
+      <*Note Check that the tree contains all the elements it should:: 115>
+    }
+
+  if (okay)
+    {
+      <*Note Check that forward traversal works:: 116>
+    }
+
+  if (okay)
+    {
+      <*Note Check that backward traversal works:: 117>
+    }
+
+  if (okay)
+    {
+      <*Note Check that traversal from the null element works:: 118>
+    }
+
+  return okay;
+}
+
+This code is included in *Note 290: tbst-testc.
+
+295. <TBST test function 295> =
+int
+test_correctness (struct libavl_allocator *allocator,
+                 int insert[], int delete[], int n, int verbosity)
+{
+  struct tbst_table *tree;
+  int okay = 1;
+  int i;
+
+  <*Note Test creating a BST and inserting into it:: 102>
+  <*Note Test BST traversal during modifications:: 103>
+  <*Note Test deleting nodes from the BST and making copies of it:: 105>
+  <*Note Test destroying the tree:: 108>
+
+  <*Note Test TBST balancing:: 296>
+
+  return okay;
+}
+
+This code is included in *Note 290: tbst-testc, *Note 411: rtbst-testc,
+and *Note 515: pbst-testc.
+
+296. <Test TBST balancing 296> =
+/* Test tbst_balance(). */
+if (verbosity >= 2)
+  printf ("  Testing balancing...\n");
+
+tree = tbst_create (compare_ints, NULL, allocator);
+if (tree == NULL)
+  {
+    if (verbosity >= 0)
+      printf ("  Out of memory creating tree.\n");
+    return 1;
+  }
+
+for (i = 0; i < n; i++)
+  {
+    void **p = tbst_probe (tree, &insert[i]);
+    if (p == NULL)
+      {
+        if (verbosity >= 0)
+          printf ("    Out of memory in insertion.\n");
+        tbst_destroy (tree, NULL);
+        return 1;
+      }
+    if (*p != &insert[i])
+      printf ("    Duplicate item in tree!\n");
+  }
+
+if (verbosity >= 4)
+  print_whole_tree (tree, "    Pre-balance");
+tbst_balance (tree);
+if (verbosity >= 4)
+  print_whole_tree (tree, "    Post-balance");
+
+if (!verify_tree (tree, insert, n))
+  return 0;
+
+tbst_destroy (tree, NULL);
+
+This code is included in *Note 295: TBST test function.
+

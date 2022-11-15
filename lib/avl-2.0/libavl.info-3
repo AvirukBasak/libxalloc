@@ -1,0 +1,1407 @@
+This is libavl.info, produced by makeinfo version 4.0b from libavl.texi.
+
+
+File: libavl.info,  Node: Root Insertion in a BST,  Prev: Inserting into a BST,  Up: Inserting into a BST
+
+4.7.1 Aside: Root Insertion
+---------------------------
+
+   One side effect of the usual method for BST insertion, implemented in
+the previous section, is that items inserted more recently tend to be
+farther from the root, and therefore it takes longer to find them than
+items inserted longer ago.  If all items are equally likely to be
+requested in a search, this is unimportant, but this is regrettable for
+some common usage patterns, where recently inserted items tend to be
+searched for more often than older items.
+
+   In this section, we examine an alternative scheme for insertion that
+addresses this problem, called "insertion at the root" or "root
+insertion".  An insertion with this algorithm always places the new
+node at the root of the tree.  Following a series of such insertions,
+nodes inserted more recently tend to be nearer the root than other
+nodes.
+
+   As a first attempt at implementing this idea, we might try simply
+making the new node the root and assigning the old root as one of its
+children.  Unfortunately, this and similar approaches will not work
+because there is no guarantee that nodes in the existing tree have
+values all less than or all greater than the new node.
+
+   An approach that will work is to perform a conventional insertion as
+a leaf node, then use a series of rotations to move the new node to the
+root.  For example, the diagram below illustrates rotations to move
+node 4 to the root.  A left rotation on 3 changes the first tree into
+the second, a right rotation on 5 changes the second into the third,
+and finally a left rotation on 1 moves 4 into the root position:
+
+            1          1             1                 4
+             `._        `-..__        `-._          _.' \
+                5             5           4        1     5
+               / \           / \         / \    =>  `_    \
+              3   6 =>      4   6 =>    3   5         3    6
+              ^            /           /     \       /
+             2 4          3           2       6     2
+                         /
+                        2
+ 
+ The general rule follows the pattern above.  If we moved down to the
+left from a node x during the insertion search, we rotate right at x.
+If we moved down to the right, we rotate left.
+
+The implementation is straightforward.  As we search for the insertion
+point we keep track of the nodes we've passed through, then after the
+insertion we return to each of them in reverse order and perform a
+rotation:
+
+33. <BST item insertion function, root insertion version 33> =
+void **
+bst_probe (struct bst_table *tree, void *item)
+{
+  <*Note |rb_probe()| local variables:: 198>
+
+  <*Note Step 1 Search BST for insertion point root insertion version:: 34>
+  <*Note Step 2 Insert new BST node root insertion version:: 35>
+  <*Note Step 3 Move BST node to root:: 36>
+
+  return &n->bst_data;
+}
+
+34. <Step 1: Search BST for insertion point, root insertion version 34> =
+pa[0] = (struct bst_node *) &tree->bst_root;
+da[0] = 0;
+k = 1;
+for (p = tree->bst_root; p != NULL; p = p->bst_link[da[k - 1]])
+  {
+    int cmp = tree->bst_compare (item, p->bst_data, tree->bst_param);
+    if (cmp == 0)
+      return &p->bst_data;
+
+    if (k >= BST_MAX_HEIGHT)
+      {
+        bst_balance (tree);
+        return bst_probe (tree, item);
+      }
+
+    pa[k] = p;
+    da[k++] = cmp > 0;
+  }
+
+This code is included in *Note 33: BST item insertion function root
+insertion version.
+
+35. <Step 2: Insert new BST node, root insertion version 35> =
+n = pa[k - 1]->bst_link[da[k - 1]] =
+  tree->bst_alloc->libavl_malloc (tree->bst_alloc, sizeof *n);
+if (n == NULL)
+  return NULL;
+
+n->bst_link[0] = n->bst_link[1] = NULL;
+n->bst_data = item;
+tree->bst_count++;
+tree->bst_generation++;
+
+This code is included in *Note 33: BST item insertion function root
+insertion version.
+
+36. <Step 3: Move BST node to root 36> =
+for (; k > 1; k--)
+  {
+    struct bst_node *q = pa[k - 1];
+
+    if (da[k - 1] == 0)
+      {
+        q->bst_link[0] = n->bst_link[1];
+        n->bst_link[1] = q;
+      }
+    else /* da[k - 1] == 1 */
+      {
+        q->bst_link[1] = n->bst_link[0];
+        n->bst_link[0] = q;
+      }
+    pa[k - 2]->bst_link[da[k - 2]] = n;
+  }
+
+This code is included in *Note 33: BST item insertion function root
+insertion version, *Note 622: Root insertion of existing node in
+arbitrary subtree, and *Note 627: Step 3 Robustly move BST node to root.
+
+See also:  *Note Sedgewick 1998::, section 12.8.
+
+Exercises:
+
+1. Root insertion will prove useful later when we write a function to
+join a pair of disjoint BSTs (*note Joining BSTs::).  For that purpose,
+we need to be able to insert a preallocated node as the root of an
+arbitrary tree that may be a subtree of some other tree.  Write a
+function to do this matching the following prototype:
+
+static int root_insert (struct bst_table *tree, struct bst_node **root,
+                        struct bst_node *new_node);
+
+Your function should insert new_node at *root using root insertion,
+storing new_node into *root, and return nonzero only if successful.
+The subtree at *root is in tree.  You may assume that no node matching
+new_node exists within subtree root.
+
+2. Now implement a root insertion as in Exercise 1, except that the
+function is not allowed to fail, and rebalancing the tree is not
+acceptable either.  Use the same prototype with the return type changed
+to void.
+
+*3. Suppose that we perform a series of root insertions in an initially
+empty BST.  What kinds of insertion orders require a large amount of
+stack?
+
+
+File: libavl.info,  Node: Deleting from a BST,  Next: Traversing a BST,  Prev: Inserting into a BST,  Up: Binary Search Trees
+
+4.8 Deletion
+============
+
+   Deleting an item from a binary search tree is a little harder than
+inserting one.  Before we write any code, let's consider how to delete
+nodes from a binary search tree in an abstract fashion.  Here's a BST
+from which we can draw examples during the discussion:
+
+                                    5
+                                _.-' `-.__
+                               2          9
+                              / \        /
+                             1   3      8
+                                  \   _'
+                                   4 6
+                                      \
+                                       7
+ 
+ It is more difficult to remove some nodes from this tree than to remove
+others.  Here, we recognize three distinct cases (Exercise 5.8-1 offers
+a fourth), described in detail below in terms of the deletion of a node
+designated p.
+
+Case 1: p has no right child
+............................
+
+It is trivial to delete a node with no right child, such as node 1, 4,
+7, or 8 above.  We replace the pointer leading to p by p's left child,
+if it has one, or by a null pointer, if not.  In other words, we
+replace the deleted node by its left child.  For example, the process
+of deleting node 8 looks like this:
+
+                            5
+                        _.-' `-..__            5
+                       2           9       _.-' `._
+                      / \        _'       2        9
+                     1   3      8,p  =>  / \     _'
+                          \   _'        1   3   6
+                           4 6               \   \
+                              \               4   7
+                               7
+ 
+ This diagram shows the convention of separating multiple labels on a
+single node by a comma: node 8 is also node p.
+
+Case 2: p's right child has no left child
+.........................................
+
+This case deletes any node p with a right child r that itself has no
+left child.  Nodes 2, 3, and 6 in the tree above are examples.  In this
+case, we move r into p's place, attaching p's former left subtree, if
+any, as the new left subtree of r.  For instance, to delete node 2 in
+the tree above, we can replace it by its right child 3, giving node 2's
+left child 1 to node 3 as its new left child.  The process looks like
+this:
+
+                             5                 5
+                     ___..--' `-.__        _.-' `-.__
+                    2,p            9      3,r        9
+                   /   \          /      /   \      /
+                  1     3,r      8   => 1     4    8
+                           \   _'                _'
+                            4 6                 6
+                               \                 \
+                                7                 7
+
+Case 3: p's right child has a left child
+........................................
+
+This is the "hard" case, where p's right child r has a left child.  but
+if we approach it properly we can make it make sense.  Let p's "inorder
+successor" (*note inorder successor::), that is, the node with the
+smallest value greater than p, be s.  Then, our strategy is to detach s
+from its position in the tree, which is always an easy thing to do, and
+put it into the spot formerly occupied by p, which disappears from the
+tree.  In our example, to delete node 5, we move inorder successor node
+6 into its place, like this:
+
+                         5,p
+                     _.-'   `--..__            6,s
+                    2              9       _.-'   `-._
+                   / \            /       2           9
+                  1   3          8   =>  / \         /
+                       \     _.-'       1   3       8
+                        4   6,s              \     /
+                               \              4   7
+                                7
+
+But how do we know that node s exists and that we can delete it easily?
+We know that it exists because otherwise this would be case 1 or case
+2 (consider their conditions).  We can easily detach from its position
+for a more subtle reason: s is the inorder successor of p and is
+therefore has the smallest value in p's right subtree, so s cannot have
+a left child.  (If it did, then this left child would have a smaller
+value than s, so it, rather than s, would be p's inorder successor.)
+Because s doesn't have a left child, we can simply replace it by its
+right child, if any.  This is the mirror image of case 1.
+
+Implementation
+..............
+
+   The code for BST deletion closely follows the above discussion.
+Let's start with an outline of the function:
+
+37. <BST item deletion function 37> =
+void *
+bst_delete (struct bst_table *tree, const void *item)
+{
+  struct bst_node *p, *q; /* Node to delete and its parent. */
+  int cmp;                /* Comparison between p->bst_data and item. */
+  int dir;                /* Side of q on which p is located. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Find BST node to delete:: 38>
+  <*Note Step 2 Delete BST node:: 39>
+  <*Note Step 3 Finish up after deleting BST node:: 44>
+}
+
+This code is included in *Note 29: BST operations.
+
+   We begin by finding the node to delete, in much the same way that
+bst_find() did.  But, in every case above, we replace the link leading
+to the node being deleted by another node or a null pointer.  To do so,
+we have to keep track of the pointer that led to the node to be deleted.
+This is the purpose of q and dir in the code below.
+
+38. <Step 1: Find BST node to delete 38> =
+p = (struct bst_node *) &tree->bst_root;
+for (cmp = -1; cmp != 0;
+     cmp = tree->bst_compare (item, p->bst_data, tree->bst_param))
+  {
+    dir = cmp > 0;
+    q = p;
+    p = p->bst_link[dir];
+    if (p == NULL)
+      return NULL;
+  }
+item = p->bst_data;
+
+This code is included in *Note 37: BST item deletion function.
+
+   Now we can actually delete the node.  Here is the code to distinguish
+between the three cases:
+
+39. <Step 2: Delete BST node 39> =
+if (p->bst_link[1] == NULL) { <*Note Case 1 in BST deletion:: 40> }
+else
+  {
+    struct bst_node *r = p->bst_link[1];
+    if (r->bst_link[0] == NULL)
+      {
+        <*Note Case 2 in BST deletion:: 41>
+      }
+    else
+      {
+        <*Note Case 3 in BST deletion:: 42>
+      }
+  }
+
+This code is included in *Note 37: BST item deletion function.
+
+   In case 1, we simply replace the node by its left subtree:
+
+40. <Case 1 in BST deletion 40> =
+q->bst_link[dir] = p->bst_link[0];
+
+This code is included in *Note 39: Step 2 Delete BST node.
+
+   In case 2, we attach the node's left subtree as its right child r's
+left subtree, then replace the node by r:
+
+41. <Case 2 in BST deletion 41> =
+r->bst_link[0] = p->bst_link[0];
+q->bst_link[dir] = r;
+
+This code is included in *Note 39: Step 2 Delete BST node.
+
+   We begin case 3 by finding p's inorder successor as s, and the
+parent of s as r.  Node p's inorder successor is the smallest value in
+p's right subtree and that the smallest value in a tree can be found by
+descending to the left until a node with no left child is found:
+
+42. <Case 3 in BST deletion 42> =
+struct bst_node *s;
+for (;;)
+  {
+    s = r->bst_link[0];
+    if (s->bst_link[0] == NULL)
+      break;
+
+    r = s;
+  }
+
+See also *Note 43: Case 3 in BST deletion-2.
+This code is included in *Note 39: Step 2 Delete BST node.
+
+   Case 3 wraps up by adjusting pointers so that s moves into p's place:
+
+43. <Case 3 in BST deletion 42> +=
+r->bst_link[0] = s->bst_link[1];
+s->bst_link[0] = p->bst_link[0];
+s->bst_link[1] = p->bst_link[1];
+q->bst_link[dir] = s;
+
+   As the final step, we decrement the number of nodes in the tree, free
+the node, and return its data:
+
+44. <Step 3: Finish up after deleting BST node 44> =
+tree->bst_alloc->libavl_free (tree->bst_alloc, p);
+tree->bst_count--;
+tree->bst_generation++;
+return (void *) item;
+
+This code is included in *Note 37: BST item deletion function.
+
+See also:  *Note Knuth 1998b::, algorithm 6.2.2D; *Note Cormen 1990::,
+section 13.3.
+
+Exercises:
+
+1. Write code for a case 1.5 which handles deletion of nodes with no
+left child.
+
+2. In the code presented above for case 3, we update pointers to move s
+into p's position, then free p.  An alternate approach is to replace
+p's data by s's and delete s.  Write code to use this approach.  Can a
+similar modification be made to either of the other cases?
+
+*3. The code in the previous exercise is a few lines shorter than that
+in the main text, so it would seem to be preferable.  Explain why the
+revised code, and other code based on the same idea, cannot be used in
+`libavl'.  (Hint: consider the semantics of `libavl' traversers.)
+
+* Menu:
+
+* Deletion by Merging::
+
+
+File: libavl.info,  Node: Deletion by Merging,  Prev: Deleting from a BST,  Up: Deleting from a BST
+
+4.8.1 Aside: Deletion by Merging
+--------------------------------
+
+   The `libavl' algorithm for deletion is commonly used, but it is also
+seemingly ad-hoc and arbitrary in its approach.  In this section we'll
+take a look at another algorithm that may seem a little more uniform.
+Unfortunately, though it is conceptually simpler in some ways, in
+practice this algorithm is both slower and more difficult to properly
+implement.
+
+   The idea behind this algorithm is to consider deletion as breaking
+the links between the deleted node and its parent and children.  In the
+most general case, we end up with three disconnected BSTs, one that
+contains the deleted node's parent and two corresponding to the deleted
+node's former subtrees.  The diagram below shows how this idea works
+out for the deletion of node 5 from the tree on the left:
+
+                          2              2
+                         / `._          /
+                        1     5        1
+                            _' `._
+                           3      9 =>    3     9
+                            \    /         \   /
+                             4  7           4 7
+                                ^             ^
+                               6 8           6 8
+ 
+ Of course, the problem then becomes to reassemble the pieces into a
+single binary search tree.  We can do this by merging the two former
+subtrees of the deleted node and attaching them as the right child of
+the parent subtree.  As the first step in merging the subtrees, we take
+the minimum node r in the former right subtree and repeatedly perform a
+right rotation on its parent, until it is the root of its subtree.  The
+process up to this point looks like this for our example, showing only
+the subtree containing r:
+
+                                       9    6,r
+                           9     __..-'        `._
+                         _'     6,r               9
+                        7    =>    \     =>     _'
+                      _' \          7          7
+                     6,r  8          \          \
+                                      8          8
+ 
+ Now, because r is the root and the minimum node in its subtree, r has
+no left child.  Also, all the nodes in the opposite subtree are smaller
+than r.  So to merge these subtrees, we simply link the opposite
+subtree as r's left child and connect r in place of the deleted node:
+
+                       2
+                      /                  2
+                     1                  / `._
+                                       1     6,r
+                        3   6,r            _'   `._
+                         \     `._  =>    3        9
+                          4       9        \     _'
+                                _'          4   7
+                               7                 \
+                                \                 8
+                                 8
+ 
+ The function outline is straightforward:
+
+45. <BST item deletion function, by merging 45> =
+void *
+bst_delete (struct bst_table *tree, const void *item)
+{
+  struct bst_node *p;   /* The node to delete, or a node part way to it. */
+  struct bst_node *q;	/* Parent of p. */
+  int cmp, dir;         /* Result of comparison between item and p. */
+
+  assert (tree != NULL && item != NULL);
+
+  <*Note Step 1 Find BST node to delete by merging:: 46>
+  <*Note Step 2 Delete BST node by merging:: 47>
+  <*Note Step 3 Finish up after BST deletion by merging:: 48>  
+
+  return (void *) item;
+}
+
+   First we search for the node to delete, storing it as p and its
+parent as q:
+
+46. <Step 1: Find BST node to delete by merging 46> =
+p = (struct bst_node *) &tree->bst_root;
+for (cmp = -1; cmp != 0;
+     cmp = tree->bst_compare (item, p->bst_data, tree->bst_param))
+  {
+    dir = cmp > 0;
+    q = p;
+    p = p->bst_link[dir];
+    if (p == NULL)
+      return NULL;
+  }
+
+This code is included in *Note 45: BST item deletion function by
+merging.
+
+   The actual deletion process is not as simple.  We handle specially
+the case where p has no right child.  This is unfortunate for
+uniformity, but simplifies the rest of the code considerably.  The main
+case starts off with a loop on variable r to build a stack of the nodes
+in the right subtree of p that will need to be rotated.  After the
+loop, r is the minimum value in p's right subtree.  This will be the
+new root of the merged subtrees after the rotations, so we set r as q's
+child on the appropriate side and r's left child as p's former left
+child.  After that the only remaining task is the rotations themselves,
+so we perform them and we're done:
+
+47. <Step 2: Delete BST node by merging 47> =
+if (p->bst_link[1] != NULL)
+  {
+    struct bst_node *pa[BST_MAX_HEIGHT]; /* Nodes on stack. */
+    unsigned char da[BST_MAX_HEIGHT];    /* Directions moved from stack nodes. */
+    int k = 0;                           /* Stack height. */
+
+    struct bst_node *r; /* Iterator; final value is minimum node in subtree. */
+
+    for (r = p->bst_link[1]; r->bst_link[0] != NULL; r = r->bst_link[0])
+      {
+        if (k >= BST_MAX_HEIGHT)
+          {
+            bst_balance (tree);
+            return bst_delete (tree, item);
+          }
+
+        pa[k] = r;
+        da[k++] = 0;
+      }
+    q->bst_link[dir] = r;
+    r->bst_link[0] = p->bst_link[0];
+
+    for (; k > 0; k--)
+      {
+        struct bst_node *y = pa[k - 1];
+        struct bst_node *x = y->bst_link[0];
+        y->bst_link[0] = x->bst_link[1];
+        x->bst_link[1] = y;
+        if (k > 1)
+          pa[k - 2]->bst_link[da[k - 2]] = x;
+      }
+  }
+else
+  q->bst_link[dir] = p->bst_link[0];
+
+This code is included in *Note 45: BST item deletion function by
+merging.
+
+   Finally, there's a bit of obligatory bookkeeping:
+
+48. <Step 3: Finish up after BST deletion by merging 48> =
+item = p->bst_data;
+tree->bst_alloc->libavl_free (tree->bst_alloc, p);
+tree->bst_count--;
+tree->bst_generation++;
+
+This code is included in *Note 45: BST item deletion function by
+merging.
+
+See also:  *Note Sedgewick 1998::, section 12.9.
+
+
+File: libavl.info,  Node: Traversing a BST,  Next: Copying a BST,  Prev: Deleting from a BST,  Up: Binary Search Trees
+
+4.9 Traversal
+=============
+
+   After we've been manipulating a binary search tree for a while, we
+will want to know what items are in it.  The process of enumerating the
+items in a binary search tree is called "traversal" (*note
+traversal::).  `libavl' provides the bst_t_* functions for a particular
+kind of traversal called "inorder traversal" (*note inorder
+traversal::), so-called because items are enumerated in sorted order.
+
+   In this section we'll implement three algorithms for traversal.
+Each of these algorithms is based on and in some way improves upon the
+previous algorithm.  The final implementation is the one used in
+`libavl', so we will implement all of the bst_t_* functions for it.
+
+   Before we start looking at particular algorithms, let's consider some
+criteria for evaluating traversal algorithms.  The following are not the
+only criteria that could be used, but they are indeed important:(1)
+
+complexity
+     Is it difficult to describe or to correctly implement the
+     algorithm?  Complex algorithms also tend to take more code than
+     simple ones.
+
+efficiency
+     Does the algorithm make good use of time and memory?  The ideal
+     traversal algorithm would require time proportional to the number
+     of nodes traversed and a constant amount of space.  In this
+     chapter we will meet this ideal time criterion and come close on
+     the space criterion for the average case.  In future chapters we
+     will be able to do better even in the worst case.
+
+convenience
+     Is it easy to integrate the traversal functions into other code?
+     Callback functions are not as easy to use as other methods that
+     can be used from for loops (*note Improving Convenience::).
+
+reliability
+     Are there pathological cases where the algorithm breaks down?  If
+     so, is it possible to fix these problems using additional time or
+     space?
+
+generality
+     Does the algorithm only allow iteration in a single direction?
+     Can we begin traversal at an arbitrary node, or just at the least
+     or greatest node?
+
+resilience
+     If the tree is modified during a traversal, is it possible to
+     continue traversal, or does the modification invalidate the
+     traverser?
+
+   The first algorithm we will consider uses recursion.  This algorithm
+is worthwhile primarily for its simplicity.  In C, such an algorithm
+cannot be made as efficient, convenient, or general as other algorithms
+without unacceptable compromises.  It is possible to make it both
+reliable and resilient, but we won't bother because of its other
+drawbacks.
+
+   We arrive at our second algorithm through a literal transformation of
+the recursion in the first algorithm into iteration.  The use of
+iteration lets us improve the algorithm's memory efficiency, and, on
+many machines, its time efficiency as well.  The iterative algorithm
+also lets us improve the convenience of using the traverser.  We could
+also add reliability and resilience to an implementation of this
+algorithm, but we'll save that for later.  The only problem with this
+algorithm, in fact, lies in its generality: it works best for moving
+only in one direction and starting from the least or greatest node.
+
+   The importance of generality is what draws us to the third algorithm.
+This algorithm is based on ideas from the previous iterative algorithm
+along with some simple observations.  This algorithm is no more complex
+than the previous one, but it is more general, allowing easily for
+iteration in either direction starting anywhere in the tree.  This is
+the algorithm used in `libavl', so we build an efficient, convenient,
+reliable, general, resilient implementation.
+
+* Menu:
+
+* Recursive Traversal of a BST::
+* Iterative Traversal of a BST::
+* Better Iterative Traversal::
+
+   ---------- Footnotes ----------
+
+   (1) Some of these terms are not generic BST vocabulary.  Rather,
+they have been adopted for these particular uses in this text.  You can
+consider the above to be our working definitions of these terms.
+
+
+File: libavl.info,  Node: Recursive Traversal of a BST,  Next: Iterative Traversal of a BST,  Prev: Traversing a BST,  Up: Traversing a BST
+
+4.9.1 Traversal by Recursion
+----------------------------
+
+   To figure out how to traverse a binary search tree in inorder, think
+about a BST's structure.  A BST consists of a root, a left subtree, and
+right subtree.  All the items in the left subtree have smaller values
+than the root and all the items in the right subtree have larger values
+than the root.
+
+   That's good enough right there: we can traverse a BST in inorder by
+dealing with its left subtree, then doing with the root whatever it is
+we want to do with each node in the tree (generically, "visit" (*note
+visit::) the root node), then dealing with its right subtree.  But how
+do we deal with the subtrees?  Well, they're BSTs too, so we can do the
+same thing: traverse its left subtree, then visit its root, then
+traverse its right subtree, and so on.  Eventually the process
+terminates because at some point the subtrees are null pointers, and
+nothing needs to be done to traverse an empty tree.
+
+   Writing the traversal function is almost trivial.  We use
+bst_item_func to visit a node (*note Item and Copy Functions::):
+
+49. <Recursive traversal of BST 49> =
+static void
+traverse_recursive (struct bst_node *node, bst_item_func *action, void *param)
+{
+  if (node != NULL)
+    {
+      traverse_recursive (node->bst_link[0], action, param);
+      action (node->bst_data, param);
+      traverse_recursive (node->bst_link[1], action, param);
+    }
+}
+
+See also *Note 50: Recursive traversal of BST-2.
+
+   We also want a wrapper function to insulate callers from the
+existence of individual tree nodes:
+
+50. <Recursive traversal of BST 49> +=
+void
+walk (struct bst_table *tree, bst_item_func *action, void *param)
+{
+  assert (tree != NULL && action != NULL);
+  traverse_recursive (tree->bst_root, action, param);
+}
+
+See also:  *Note Knuth 1997::, section 2.3.1; *Note Cormen 1990::,
+section 13.1; *Note Sedgewick 1998::, program 12.8.
+
+Exercises:
+
+1. Instead of checking for a null node at the top of
+traverse_recursive(), would it be better to check before calling in
+each place that the function is called?  Why or why not?
+
+2. Some languages, such as Pascal, support the concept of "nested
+functions", that is, functions within functions, but C does not.  Some
+algorithms, including recursive tree traversal, can be expressed much
+more naturally with this feature.  Rewrite walk(), in a hypothetical
+C-like language that supports nested functions, as a function that calls
+an inner, recursively defined function.  The nested function should only
+take a single parameter.  (The GNU C compiler supports nested functions
+as a language extension, so you may want to use it to check your code.)
+
+
+File: libavl.info,  Node: Iterative Traversal of a BST,  Next: Better Iterative Traversal,  Prev: Recursive Traversal of a BST,  Up: Traversing a BST
+
+4.9.2 Traversal by Iteration
+----------------------------
+
+   The recursive approach of the previous section is one valid way to
+traverse a binary search tree in sorted order.  This method has the
+advantages of being simple and "obviously correct".  But it does have
+problems with efficiency, because each call to traverse_recursive()
+receives its own duplicate copies of arguments action and param, and
+with convenience, because writing a new callback function for each
+traversal is unpleasant.  It has other problems, too, as already
+discussed, but these are the ones to be addressed immediately.
+
+   Unfortunately, neither problem can be solved acceptably in C using a
+recursive method, the first because the traversal function has to
+somehow know the action function and the parameter to pass to it, and
+the second because there is simply no way to jump out of and then back
+into recursive calls in C.(1)  Our only option is to use an algorithm
+that does not involve recursion.
+
+   The simplest way to eliminate recursion is by a literal conversion of
+the recursion to iteration.  This is the topic of this section.  Later,
+we will consider a slightly different, and in some ways superior,
+iterative solution.
+
+   Converting recursion into iteration is an interesting problem.
+There are two main ways to do it:
+
+tail recursion elimination
+     If a recursive call is the last action taken in a function, then
+     it is equivalent to a goto back to the beginning of the function,
+     possibly after modifying argument values.  (If the function has a
+     return value then the recursive call must be a return statement
+     returning the value received from the nested call.)  This form of
+     recursion is called "tail recursion" (*note tail recursion::).
+
+save-and-restore recursion elimination
+     In effect, a recursive function call saves a copy of argument
+     values and local variables, modifies the arguments, then executes
+     a goto to the beginning of the function.  Accordingly, the return
+     from the nested call is equivalent to restoring the saved
+     arguments and local variables, then executing a goto back to the
+     point where the call was made.
+
+   We can make use of both of these rules in converting
+traverse_recursive() to iterative form.  First, does
+traverse_recursive() ever call itself as its last action?  The answer
+is yes, so we can convert that to an assignment plus a goto statement:
+
+51. <Iterative traversal of BST, take 1 51> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+start:
+  if (node != NULL)
+    {
+      traverse_iterative (node->bst_link[0], action, param);
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+      goto start;
+    }
+}
+
+   Sensible programmers are not fond of goto.  Fortunately, it is easy
+to eliminate by rephrasing in terms of a while loop:
+
+52. <Iterative traversal of BST, take 2 52> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+  while (node != NULL)
+    {
+      traverse_iterative (node->bst_link[0], action, param);
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+    }
+}
+
+   This still leaves another recursive call, one that is not tail
+recursive.  This one must be eliminated by saving and restoring values.
+A stack is ideal for this purpose.  For now, we use a stack of fixed
+size BST_MAX_HEIGHT and deal with stack overflow by aborting.  Later,
+we'll handle overflow more gracefully.  Here's the code:
+
+53. <Iterative traversal of BST, take 3 53> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+  struct bst_node *stack[BST_MAX_HEIGHT];
+  size_t height = 0;
+
+start:
+  while (node != NULL)
+    {
+      if (height >= BST_MAX_HEIGHT)
+        {
+          fprintf (stderr, "tree too deep\n");
+          exit (EXIT_FAILURE);
+        }
+      stack[height++] = node;
+      node = node->bst_link[0];
+      goto start;
+
+    resume:
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+    }
+
+  if (height > 0)
+    {
+      node = stack[--height];
+      goto resume;
+    }
+}
+
+   This code, an ugly mash of statements, is a prime example of why goto
+statements are discouraged, but its relationship with the earlier code
+is clear.  To make it acceptable for real use, we must rephrase it.
+First, we can eliminate label resume by recognizing that it can only be
+reached from the corresponding goto statement, then moving its code
+appropriately:
+
+54. <Iterative traversal of BST, take 4 54> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+  struct bst_node *stack[BST_MAX_HEIGHT];
+  size_t height = 0;
+
+start:
+  while (node != NULL)
+    {
+      if (height >= BST_MAX_HEIGHT)
+        {
+          fprintf (stderr, "tree too deep\n");
+          exit (EXIT_FAILURE);
+        }
+      stack[height++] = node;
+      node = node->bst_link[0];
+      goto start;
+    }
+
+  if (height > 0)
+    {
+      node = stack[--height];
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+      goto start;
+    }
+}
+
+   The first remaining goto statement can be eliminated without any
+other change, because it is redundant; the second, by enclosing the
+whole function body in an "infinite loop":
+
+55. <Iterative traversal of BST, take 5 55> =
+static void
+traverse_iterative (struct bst_node *node, bst_item_func *action, void *param)
+{
+  struct bst_node *stack[BST_MAX_HEIGHT];
+  size_t height = 0;
+
+  for (;;)
+    {
+      while (node != NULL)
+        {
+          if (height >= BST_MAX_HEIGHT)
+            {
+              fprintf (stderr, "tree too deep\n");
+              exit (EXIT_FAILURE);
+            }
+          stack[height++] = node;
+          node = node->bst_link[0];
+        }
+
+      if (height == 0)
+        break;
+
+      node = stack[--height];
+      action (node->bst_data, param);
+      node = node->bst_link[1];
+    }
+}
+
+   This initial iterative version takes care of the efficiency problem.
+
+Exercises:
+
+1. Function traverse_iterative() relies on stack[], a stack of nodes
+yet to be visited, which as allocated can hold up to BST_MAX_HEIGHT
+nodes.  Consider the following questions concerning stack[]:
+
+  a. What is the maximum height this stack will attain in traversing a
+     binary search tree containing n nodes, if the binary tree has
+     minimum possible height?
+
+  b. What is the maximum height this stack can attain in traversing any
+     binary tree of n nodes?  The minimum height?
+
+  c. Under what circumstances is it acceptable to use a fixed-size
+     stack as in the example code?
+
+  d. Rewrite traverse_iterative() to dynamically expand stack[] in case
+     of overflow.
+
+  e. Does traverse_recursive() also have potential for running out of
+     "stack" or "memory"?  If so, more or less than
+     traverse_iterative() as modified by the previous part?
+
+* Menu:
+
+* Improving Convenience::
+
+   ---------- Footnotes ----------
+
+   (1) This is possible in some other languages, such as Scheme, that
+support "coroutines" as well as subroutines.
+
+
+File: libavl.info,  Node: Improving Convenience,  Prev: Iterative Traversal of a BST,  Up: Iterative Traversal of a BST
+
+4.9.2.1 Improving Convenience
+.............................
+
+   Now we can work on improving the convenience of our traversal
+function.  But, first, perhaps it's worthwhile to demonstrate how
+inconvenient it really can be to use walk(), regardless of how it's
+implemented internally.
+
+   Suppose that we have a BST of character strings and, for whatever
+reason, want to know the total length of all the strings in it.  We
+could do it like this using walk():
+
+56. <Summing string lengths with walk() 56> =
+static void
+process_node (void *data, void *param)
+{
+  const char *string = data;
+  size_t *total = param;
+
+  *total += strlen (string);
+}
+
+size_t
+total_length (struct bst_table *tree)
+{
+  size_t total = 0;
+  walk (tree, process_node, &total);
+  return total;
+}
+
+With the functions first_item() and next_item() that we'll write in
+this section, we can rewrite these functions as the single function
+below:
+
+57. <Summing string lengths with next_item() 57> =
+size_t
+total_length (struct bst_table *tree)
+{
+  struct traverser t;
+  const char *string;
+  size_t total = 0;
+
+  for (string = first_item (tree, &t); string != NULL; string = next_item (&t))
+    total += strlen (string);
+  return total;
+}
+
+   You're free to make your own assessment, of course, but many
+programmers prefer the latter because of its greater brevity and fewer
+"unsafe" conversions to and from void pointers.
+
+   Now to actually write the code.  Our task is to modify
+traverse_iterative() so that, instead of calling action, it returns
+node->bst_data.  But first, some infrastructure.  We define a structure
+to contain the state of the traversal, equivalent to the relevant
+argument and local variables in traverse_iterative().  To emphasize
+that this is not our final version of this structure or the related
+code, we will call it struct traverser, without any name prefix:
+
+58. <Iterative traversal of BST, take 6 58> =
+struct traverser
+  {
+    struct bst_table *table;                  /* Tree being traversed. */
+    struct bst_node *node;                    /* Current node in tree. */
+    struct bst_node *stack[BST_MAX_HEIGHT];   /* Parent nodes to revisit. */
+    size_t height;                            /* Number of nodes in stack. */
+  };
+
+See also *Note 59: Iterative traversal of BST take 6-2 and *Note 60:
+Iterative traversal of BST take 6-3.
+
+   Function first_item() just initializes a struct traverser and
+returns the first item in the tree, deferring most of its work to
+next_item():
+
+59. <Iterative traversal of BST, take 6 58> +=
+/* Initializes trav for tree.
+   Returns data item in tree with the smallest value,
+   or NULL if tree is empty.
+   In the former case, next_item() may be called with trav
+   to retrieve additional data items. */
+void *
+first_item (struct bst_table *tree, struct traverser *trav)
+{
+  assert (tree != NULL && trav != NULL);
+  trav->table = tree;
+  trav->node = tree->bst_root;
+  trav->height = 0;
+  return next_item (trav);
+}
+
+   Function next_item() is, for the most part, a simple modification of
+traverse_iterative():
+
+60. <Iterative traversal of BST, take 6 58> +=
+/* Returns the next data item in inorder
+   within the tree being traversed with trav,
+   or if there are no more data items returns NULL. 
+   In the former case next_item() may be called again
+   to retrieve the next item. */
+void *
+next_item (struct traverser *trav)
+{
+  struct bst_node *node;
+
+  assert (trav != NULL);
+  node = trav->node;
+  while (node != NULL)
+    {
+      if (trav->height >= BST_MAX_HEIGHT)
+        {
+          fprintf (stderr, "tree too deep\n");
+          exit (EXIT_FAILURE);
+        }
+
+      trav->stack[trav->height++] = node;
+      node = node->bst_link[0];
+    }
+
+  if (trav->height == 0)
+    return NULL;
+
+  node = trav->stack[--trav->height];
+  trav->node = node->bst_link[1];
+  return node->bst_data;
+}
+
+See also:  *Note Knuth 1997::, algorithm 2.3.1T; *Note Knuth 1992::, p.
+50-54, section "Recursion Elimination" within article "Structured
+Programming with go to statements".
+
+Exercises:
+
+1. Make next_item() reliable by providing alternate code to execute on
+stack overflow.  This code will work by calling bst_balance() to
+"balance" the tree, reducing its height such that it can be traversed
+with the small stack that we use.  We will develop bst_balance() later.
+For now, consider it a "black box" that simply needs to be invoked
+with the tree to balance as an argument.  Don't forget to adjust the
+traverser structure so that later calls will work properly, too.
+
+2. Without modifying next_item() or first_item(), can a function
+prev_item() be written that will move to and return the previous item
+in the tree in inorder?
+
+
+File: libavl.info,  Node: Better Iterative Traversal,  Prev: Iterative Traversal of a BST,  Up: Traversing a BST
+
+4.9.3 Better Iterative Traversal
+--------------------------------
+
+   We have developed an efficient, convenient function for traversing a
+binary tree.  In the exercises, we made it reliable, and it is possible
+to make it resilient as well.  But its algorithm makes it difficult to
+add generality.  In order to do that in a practical way, we will have to
+use a new algorithm.
+
+   Let us start by considering how to understand how to find the
+successor or predecessor of any node in general, as opposed to just
+blindly transforming code as we did in the previous section.  Back when
+we wrote bst_delete(), we already solved half of the problem, by
+figuring out how to find the successor of a node that has a right
+child: take the least-valued node in the right subtree of the node
+(*note Deletion Case 3: successor.).
+
+   The other half is the successor of a node that doesn't have a right
+child.  Take a look at the code for one of the previous traversal
+functions--recursive or iterative, whichever you better understand--and
+mentally work out the relationship between the current node and its
+successor for a node without a right child.  What happens is that we
+move up the tree, from a node to its parent, one node at a time, until
+it turns out that we moved up to the right (as opposed to up to the
+left) and that is the successor node.  Think of it this way: if we move
+up to the left, then the node we started at has a lesser value than
+where we ended up, so we've already visited it, but if we move up to
+the right, then we're moving to a node with a greater value, so we've
+found the successor.
+
+   Using these instructions, we can find the predecessor of a node, too,
+just by exchanging "left" and "right".  This suggests that all we have
+to do in order to generalize our traversal function is to keep track of
+all the nodes above the current node, not just the ones that are up and
+to the left.  This in turn suggests our final implementation of struct
+bst_traverser, with appropriate comments:
+
+61. <BST traverser structure 61> =
+/* BST traverser structure. */
+struct bst_traverser
+  {
+    struct bst_table *bst_table;        /* Tree being traversed. */
+    struct bst_node *bst_node;          /* Current node in tree. */
+    struct bst_node *bst_stack[BST_MAX_HEIGHT];
+                                        /* All the nodes above bst_node. */
+    size_t bst_height;                  /* Number of nodes in bst_parent. */
+    unsigned long bst_generation;       /* Generation number. */
+  };
+
+This code is included in *Note 24: bsth, *Note 142: avlh, and *Note
+192: rbh.
+
+   Because user code is expected to declare actual instances of struct
+bst_traverser, struct bst_traverser must be defined in <*Note bsth::
+24> and therefore all of its member names are prefixed by bst_ for
+safety.
+
+   The only surprise in struct bst_traverser is member bst_generation,
+the traverser's generation number.  This member is set equal to its
+namesake in struct bst_table when a traverser is initialized.  After
+that, the two values are compared whenever the stack of parent pointers
+must be accessed.  Any change in the tree that could disturb the action
+of a traverser will cause their generation numbers to differ, which in
+turn triggers an update to the stack.  This is what allows this final
+implementation to be resilient.
+
+   We need a utility function to actually update the stack of parent
+pointers when differing generation numbers are detected.  This is easy
+to write:
+
+62. <BST traverser refresher 62> =
+/* Refreshes the stack of parent pointers in trav
+   and updates its generation number. */
+static void
+trav_refresh (struct bst_traverser *trav)
+{
+  assert (trav != NULL);
+
+  trav->bst_generation = trav->bst_table->bst_generation;
+
+  if (trav->bst_node != NULL)
+    {
+      bst_comparison_func *cmp = trav->bst_table->bst_compare;
+      void *param = trav->bst_table->bst_param;
+      struct bst_node *node = trav->bst_node;
+      struct bst_node *i;
+
+      trav->bst_height = 0;
+      for (i = trav->bst_table->bst_root; i != node; )
+        {
+          assert (trav->bst_height < BST_MAX_HEIGHT);
+          assert (i != NULL);
+
+          trav->bst_stack[trav->bst_height++] = i;
+          i = i->bst_link[cmp (node->bst_data, i->bst_data, param) > 0];
+        }
+    }
+}
+
+This code is included in *Note 63: BST traversal functions and *Note
+178: AVL traversal functions.
+
+   The following sections will implement all of the traverser functions
+bst_t_*().  *Note Traversers::, for descriptions of the purpose of each
+of these functions.
+
+   The traversal functions are collected together into <*Note BST
+traversal functions:: 63>:
+
+63. <BST traversal functions 63> =
+<*Note BST traverser refresher:: 62>
+<*Note BST traverser null initializer:: 64>
+<*Note BST traverser least-item initializer:: 65>
+<*Note BST traverser greatest-item initializer:: 66>
+<*Note BST traverser search initializer:: 67>
+<*Note BST traverser insertion initializer:: 68>
+<*Note BST traverser copy initializer:: 69>
+<*Note BST traverser advance function:: 70>
+<*Note BST traverser back up function:: 73>
+<*Note BST traverser current item function:: 74>
+<*Note BST traverser replacement function:: 75>
+
+This code is included in *Note 29: BST operations.
+
+Exercises:
+
+1. The bst_probe() function doesn't change the tree's generation number.
+Why not?
+
+*2. The main loop in trav_refresh() contains the assertion
+
+      assert (trav->bst_height < BST_MAX_HEIGHT);
+
+Prove that this assertion is always true.
+
+3. In trav_refresh(), it is tempting to avoid calls to the user-supplied
+comparison function by comparing the nodes on the stack to the current
+state of the tree; e.g., move up the stack, starting from the bottom,
+and for each node verify that it is a child of the previous one on the
+stack, falling back to the general algorithm at the first mismatch.  Why
+won't this work?
+
+* Menu:
+
+* BST Traverser Null Initialization::
+* BST Traverser First Initialization::
+* BST Traverser Last Initialization::
+* BST Traverser Find Initialization::
+* BST Traverser Insert Initialization::
+* BST Traverser Copying::
+* BST Traverser Advancing::
+* BST Traverser Retreating::
+* BST Traversal Current Item::
+* BST Traversal Replacing the Current Item::
+
+
+File: libavl.info,  Node: BST Traverser Null Initialization,  Next: BST Traverser First Initialization,  Prev: Better Iterative Traversal,  Up: Better Iterative Traversal
+
+4.9.3.1 Starting at the Null Node
+.................................
+
+   The trav_t_init() function just initializes a traverser to the null
+item, indicated by a null pointer for bst_node.
+
+64. <BST traverser null initializer 64> =
+void
+bst_t_init (struct bst_traverser *trav, struct bst_table *tree)
+{
+  trav->bst_table = tree;
+  trav->bst_node = NULL;
+  trav->bst_height = 0;
+  trav->bst_generation = tree->bst_generation;
+}
+
+This code is included in *Note 63: BST traversal functions and *Note
+178: AVL traversal functions.
+
+
+File: libavl.info,  Node: BST Traverser First Initialization,  Next: BST Traverser Last Initialization,  Prev: BST Traverser Null Initialization,  Up: Better Iterative Traversal
+
+4.9.3.2 Starting at the First Node
+..................................
+
+   To initialize a traverser to start at the least valued node, we
+simply descend from the root as far down and left as possible,
+recording the parent pointers on the stack as we go.  If the stack
+overflows, then we balance the tree and start over.
+
+65. <BST traverser least-item initializer 65> =
+void *
+bst_t_first (struct bst_traverser *trav, struct bst_table *tree)
+{
+  struct bst_node *x;
+
+  assert (tree != NULL && trav != NULL);
+
+  trav->bst_table = tree;
+  trav->bst_height = 0;
+  trav->bst_generation = tree->bst_generation;
+
+  x = tree->bst_root;
+  if (x != NULL)
+    while (x->bst_link[0] != NULL)
+      {
+        if (trav->bst_height >= BST_MAX_HEIGHT)
+          {
+            bst_balance (tree);
+            return bst_t_first (trav, tree);
+          }
+
+        trav->bst_stack[trav->bst_height++] = x;
+        x = x->bst_link[0];
+      }
+  trav->bst_node = x;
+
+  return x != NULL ? x->bst_data : NULL;
+}
+
+This code is included in *Note 63: BST traversal functions.
+
+Exercises:
+
+*1. Show that bst_t_first() will never make more than one recursive call
+to itself at a time.
+
+
+File: libavl.info,  Node: BST Traverser Last Initialization,  Next: BST Traverser Find Initialization,  Prev: BST Traverser First Initialization,  Up: Better Iterative Traversal
+
+4.9.3.3 Starting at the Last Node
+.................................
+
+   The code to start from the greatest node in the tree is analogous to
+that for starting from the least node.  The only difference is that we
+descend to the right instead:
+
+66. <BST traverser greatest-item initializer 66> =
+void *
+bst_t_last (struct bst_traverser *trav, struct bst_table *tree)
+{
+  struct bst_node *x;
+
+  assert (tree != NULL && trav != NULL);
+
+  trav->bst_table = tree;
+  trav->bst_height = 0;
+  trav->bst_generation = tree->bst_generation;
+
+  x = tree->bst_root;
+  if (x != NULL)
+    while (x->bst_link[1] != NULL)
+      {
+        if (trav->bst_height >= BST_MAX_HEIGHT)
+          {
+            bst_balance (tree);
+            return bst_t_last (trav, tree);
+          }
+
+        trav->bst_stack[trav->bst_height++] = x;
+        x = x->bst_link[1];
+      }
+  trav->bst_node = x;
+
+  return x != NULL ? x->bst_data : NULL;
+}
+
+This code is included in *Note 63: BST traversal functions.
+
+
+File: libavl.info,  Node: BST Traverser Find Initialization,  Next: BST Traverser Insert Initialization,  Prev: BST Traverser Last Initialization,  Up: Better Iterative Traversal
+
+4.9.3.4 Starting at a Found Node
+................................
+
+   Sometimes it is convenient to begin a traversal at a particular item
+in a tree.  This function works in the same was as bst_find(), but
+records parent pointers in the traverser structure as it descends the
+tree.
+
+67. <BST traverser search initializer 67> =
+void *
+bst_t_find (struct bst_traverser *trav, struct bst_table *tree, void *item)
+{
+  struct bst_node *p, *q;
+
+  assert (trav != NULL && tree != NULL && item != NULL);
+  trav->bst_table = tree;
+  trav->bst_height = 0;
+  trav->bst_generation = tree->bst_generation;
+  for (p = tree->bst_root; p != NULL; p = q)
+    {
+      int cmp = tree->bst_compare (item, p->bst_data, tree->bst_param);
+
+      if (cmp < 0)
+        q = p->bst_link[0];
+      else if (cmp > 0)
+        q = p->bst_link[1];
+      else /* cmp == 0 */
+        {
+          trav->bst_node = p;
+          return p->bst_data;
+        }
+
+      if (trav->bst_height >= BST_MAX_HEIGHT)
+        {
+          bst_balance (trav->bst_table);
+          return bst_t_find (trav, tree, item);
+        }
+      trav->bst_stack[trav->bst_height++] = p;
+    }
+
+  trav->bst_height = 0;
+  trav->bst_node = NULL;
+  return NULL;
+}
+
+This code is included in *Note 63: BST traversal functions.
+

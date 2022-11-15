@@ -12,6 +12,14 @@
 #define MAX(a,b) (a>b?a:b)
 #define MIN(a,b) (a<b?a:b)
 
+#define ALLOC_NULLCHECK(ptr) {              \
+    typeof(ptr) p = ptr;                    \
+    if (p == (void *) -1 || p == NULL) {    \
+        fprintf(stderr, "null pointer\n");  \
+        abort();                            \
+    }                                       \
+}
+
 typedef struct ALLOC_mhead_st ALLOC_mhead_t;
 typedef struct ALLOC_membloc_st ALLOC_membloc_t;
 
@@ -67,14 +75,15 @@ void *alloc_m(size_t size)
 {
     if (!ALLOC_memory) {
         ALLOC_memory = sbrk(sizeof(ALLOC_mhead_t));
+        ALLOC_NULLCHECK(ALLOC_memory);
         ALLOC_memory->blockc = 0;
         ALLOC_memory->start = NULL;
         ALLOC_memory->end = NULL;
     }
     ALLOC_membloc_t *allocator = sbrk(sizeof(ALLOC_membloc_t));
-    if (allocator == (void *) -1) abort();
+    ALLOC_NULLCHECK(allocator);
     void *ptr = sbrk(size);
-    if (ptr == (void *) -1) abort();
+    ALLOC_NULLCHECK(ptr);
     allocator->ptr = ptr;
     allocator->size = size;
     allocator->free = false;
@@ -95,7 +104,7 @@ void *alloc_re(void *ptr, size_t size)
 void alloc_free(void *ptr)
 {
     if (!ptr) return;
-    if (ptr == (void *) -1) abort();
+    ALLOC_NULLCHECK(ptr);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     block->free = true;
     ALLOC_triggerc--;

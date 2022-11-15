@@ -24,5 +24,6 @@ $(LIB_DIR)/libavl.a: avl.$(SRCEXT)
 
 clean:
 	@rm -f $(LIB_DIR)/libavl.a
+	@rm -f avl.o
 
 cleaner: clean

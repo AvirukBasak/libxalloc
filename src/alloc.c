@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#include "libavl/avl.h"
 #include "alloc.h"
 
 #ifndef ALLOC_CLEANUP_TRIGGERC

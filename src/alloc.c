@@ -8,55 +8,56 @@
 
 #include "alloc.h"
 
-#ifndef __ALLOC_H__CLEANUP_TRIGGER_COUNT__
-#define __ALLOC_H__CLEANUP_TRIGGER_COUNT__ (32)
+#ifndef ALLOC_CLEANUP_TRIGGERC
+#define ALLOC_CLEANUP_TRIGGERC (32)
 #endif
 
 #define MAX(a,b) (a>b?a:b)
+#define MIN(a,b) (a<b?a:b)
 
-typedef struct __ALLOC_H__mhead_st __ALLOC_H__mhead_t;
-typedef struct __ALLOC_H__membloc_st __ALLOC_H__membloc_t;
+typedef struct ALLOC_mhead_st ALLOC_mhead_t;
+typedef struct ALLOC_membloc_st ALLOC_membloc_t;
 
 /* functions */
-void __ALLOC_H__clean();
-__ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr);
+void ALLOC_clean();
+ALLOC_membloc_t *ALLOC_mblock_find(void *ptr);
 
 /** head of linked list */
-struct __ALLOC_H__mhead_st
+struct ALLOC_mhead_st
 {
-    __ALLOC_H__membloc_t *start;
-    __ALLOC_H__membloc_t *end;
+    ALLOC_membloc_t *start;
+    ALLOC_membloc_t *end;
     size_t blockc;
 };
 
 /** data of a memory block */
-struct __ALLOC_H__membloc_st
+struct ALLOC_membloc_st
 {
-    __ALLOC_H__membloc_t *prv;
+    ALLOC_membloc_t *prv;
     void *ptr;
     size_t size;
     bool free;
-    __ALLOC_H__membloc_t *nxt;
+    ALLOC_membloc_t *nxt;
 };
 
 /** linked list of block data */
-__ALLOC_H__mhead_t *__ALLOC_H__memory = NULL;
+ALLOC_mhead_t *ALLOC_memory = NULL;
 
 /** cleanup trigger count; when count reaches 0, cleanup function is called; count is then reset
     by default, cleanup is triggered after a total of 32 alloc_* calls */
-size_t __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
+size_t ALLOC_triggerc = ALLOC_CLEANUP_TRIGGERC;
 
 /** cleans up heap and if possible reduces heap break point */
-void __ALLOC_H__clean()
+void ALLOC_clean()
 {
-    __ALLOC_H__triggerc = __ALLOC_H__CLEANUP_TRIGGER_COUNT__;
+    ALLOC_triggerc = ALLOC_CLEANUP_TRIGGERC;
 }
 
 /** searches for a specific block data based on its address */
-__ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr)
+ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
 {
-    typedef __ALLOC_H__membloc_t *node;
-    node p = __ALLOC_H__memory->start;
+    typedef ALLOC_membloc_t *node;
+    node p = ALLOC_memory->start;
     while (p) {
         if (p->ptr == ptr) return p;
         p = p->nxt;
@@ -67,25 +68,25 @@ __ALLOC_H__membloc_t *__ALLOC_H__mblock_find(void *ptr)
 /** alloctes specified size */
 void *alloc_m(size_t size)
 {
-    if (!__ALLOC_H__memory) {
-        __ALLOC_H__memory = mmap(NULL, MAX(4096, sizeof(__ALLOC_H__mhead_t)),
+    if (!ALLOC_memory) {
+        ALLOC_memory = mmap(NULL, MAX(4096, sizeof(ALLOC_mhead_t)),
                 PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
-        __ALLOC_H__memory->blockc = 0;
-        __ALLOC_H__memory->start = NULL;
-        __ALLOC_H__memory->end = NULL;
+        ALLOC_memory->blockc = 0;
+        ALLOC_memory->start = NULL;
+        ALLOC_memory->end = NULL;
     }
     void *ptr = sbrk(size);
     if (ptr == (void *) -1) abort();
-    __ALLOC_H__membloc_t *allocator = mmap(NULL, MAX(4096, sizeof(__ALLOC_H__membloc_t)),
+    ALLOC_membloc_t *allocator = mmap(NULL, MAX(4096, sizeof(ALLOC_membloc_t)),
             PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
     if (allocator == MAP_FAILED) abort();
     allocator->ptr = ptr;
     allocator->size = size;
     allocator->free = false;
-    allocator->nxt = __ALLOC_H__memory->start;
+    allocator->nxt = ALLOC_memory->start;
     allocator->prv = NULL;
-    __ALLOC_H__memory->start = allocator;
-    __ALLOC_H__memory->blockc++;
+    ALLOC_memory->start = allocator;
+    ALLOC_memory->blockc++;
     return ptr;
 }
 
@@ -100,14 +101,14 @@ void alloc_free(void *ptr)
 {
     if (!ptr) return;
     if (ptr == (void *) -1) abort();
-    __ALLOC_H__membloc_t *block = __ALLOC_H__mblock_find(ptr);
+    ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     block->free = true;
-    __ALLOC_H__triggerc--;
-    if (!__ALLOC_H__triggerc) __ALLOC_H__clean();
+    ALLOC_triggerc--;
+    if (!ALLOC_triggerc) ALLOC_clean();
 }
 
 /** explicitly runs cleanup */
 void alloc_cleanf()
 {
-    __ALLOC_H__clean();
+    ALLOC_clean();
 }

@@ -17,10 +17,10 @@ CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
 DBG         := gdb -q
 
 all:
-	@cd libavl && $(MAKE)
+	@cd libdummy && $(MAKE)
 
 clean:
-	@cd libavl && $(MAKE) clean
+	@cd libdummy && $(MAKE) clean
 
 cleaner:
-	@cd libavl && $(MAKE) cleaner
+	@cd libdummy && $(MAKE) cleaner

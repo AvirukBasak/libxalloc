@@ -21,7 +21,7 @@ CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
 DBG         := gdb -q
 
 INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)
-LIB         := -L$(LIB_DIR) -lavl -lm
+LIB         := -L$(LIB_DIR) -ldummy -lm
 
 # targets
 
@@ -33,7 +33,7 @@ SOURCES     := $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT))
 TESTSRC     := $(shell find $(TEST_DIR)/ -name "*."$(SRCEXT))
 HEADERS     := $(shell find $(INCLUDE_DIR)/ -name "*."$(HEADEREXT))
 
-LIBRARIES   := $(LIB_DIR)/libavl/avl.o
+LIBRARIES   := $(LIB_DIR)/libdummy/dummy.o
 
 ## release build
 

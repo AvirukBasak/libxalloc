@@ -12,7 +12,4 @@ void *alloc_re(void *ptr, size_t size);
 /** marks pointer to block for cleanup */
 void alloc_free(void *ptr);
 
-/** explicitly runs cleanup; damages performance */
-void alloc_cleanf();
-
 #endif

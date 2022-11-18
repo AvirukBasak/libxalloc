@@ -2,12 +2,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include "libavl/avl.h"
 #include "alloc.h"
-
-#ifndef ALLOC_CLEANUP_TRIGGERC
-#define ALLOC_CLEANUP_TRIGGERC (32)
-#endif
 
 #define MAX(a,b) (a>b?a:b)
 #define MIN(a,b) (a<b?a:b)
@@ -47,16 +42,6 @@ struct ALLOC_membloc_st
 
 /** linked list of block data */
 ALLOC_mhead_t *ALLOC_memory = NULL;
-
-/** cleanup trigger count; when count reaches 0, cleanup function is called; count is then reset
-    by default, cleanup is triggered after a total of 32 alloc_* calls */
-size_t ALLOC_triggerc = ALLOC_CLEANUP_TRIGGERC;
-
-/** cleans up heap and if possible reduces heap break point */
-void ALLOC_clean()
-{
-    ALLOC_triggerc = ALLOC_CLEANUP_TRIGGERC;
-}
 
 /** searches for a specific block data based on its address */
 ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
@@ -107,12 +92,4 @@ void alloc_free(void *ptr)
     ALLOC_NULLCHECK(ptr);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     block->free = true;
-    ALLOC_triggerc--;
-    if (!ALLOC_triggerc) ALLOC_clean();
-}
-
-/** explicitly runs cleanup */
-void alloc_cleanf()
-{
-    ALLOC_clean();
 }

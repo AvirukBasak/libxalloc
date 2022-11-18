@@ -10,6 +10,5 @@ int main(int argc, char *argv[])
     }
     printf("%s\n", s);
     alloc_free(s);
-    alloc_cleanf();
     return 0;
 }

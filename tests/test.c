@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    char *s = alloc_m(33);
+    char *s = allocm(33);
     for (int i = 0; i < 26; i++) {
         s[i] = i + 0x61;
     }

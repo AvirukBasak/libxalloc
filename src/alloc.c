@@ -7,12 +7,12 @@
 #define MAX(a,b) (a>b?a:b)
 #define MIN(a,b) (a<b?a:b)
 
-#define ALLOC_NULLCHECK(ptr) {              \
-    typeof(ptr) p = ptr;                    \
-    if (p == (void *) -1 || p == NULL) {    \
-        fprintf(stderr, "null pointer\n");  \
-        abort();                            \
-    }                                       \
+#define ALLOC_NULLCHECK(ptr) {                       \
+    typeof(ptr) p = ptr;                             \
+    if (p == (void *) -1 || p == NULL) {             \
+        fprintf(stderr, "liballoc: null pointer\n"); \
+        abort();                                     \
+    }                                                \
 }
 
 typedef struct ALLOC_mhead_st ALLOC_mhead_t;
@@ -33,21 +33,21 @@ struct ALLOC_mhead_st
 /** data of a memory block */
 struct ALLOC_membloc_st
 {
-    ALLOC_membloc_t *prv;
+    bool free;
     void *ptr;
     size_t size;
-    bool free;
+    ALLOC_membloc_t *prv;
     ALLOC_membloc_t *nxt;
 };
 
 /** linked list of block data */
-ALLOC_mhead_t *ALLOC_memory = NULL;
+ALLOC_mhead_t *ALLOC_memhead = NULL;
 
 /** searches for a specific block data based on its address */
 ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
 {
     typedef ALLOC_membloc_t *node;
-    node p = ALLOC_memory->start;
+    node p = ALLOC_memhead->start;
     while (p) {
         if (p->ptr == ptr) return p;
         p = p->nxt;
@@ -55,32 +55,45 @@ ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
     return NULL;
 }
 
-/** alloctes specified size */
-void *alloc_m(size_t size)
+void *ALLOC_allocate_m(size_t size, void *ptr)
 {
-    if (!ALLOC_memory) {
-        ALLOC_memory = sbrk(sizeof(ALLOC_mhead_t));
-        ALLOC_NULLCHECK(ALLOC_memory);
-        ALLOC_memory->blockc = 0;
-        ALLOC_memory->start = NULL;
-        ALLOC_memory->end = NULL;
-    }
+    ALLOC_NULLCHECK(ptr);
     ALLOC_membloc_t *allocator = sbrk(sizeof(ALLOC_membloc_t));
     ALLOC_NULLCHECK(allocator);
-    void *ptr = sbrk(size);
-    ALLOC_NULLCHECK(ptr);
     allocator->ptr = ptr;
     allocator->size = size;
     allocator->free = false;
-    allocator->nxt = ALLOC_memory->start;
-    allocator->prv = NULL;
-    ALLOC_memory->start = allocator;
-    ALLOC_memory->blockc++;
+    return allocator;
+}
+
+/** alloctes specified size */
+void *allocm(size_t size)
+{
+    if (!ALLOC_memhead) {
+        ALLOC_memhead = sbrk(sizeof(ALLOC_mhead_t));
+        ALLOC_NULLCHECK(ALLOC_memhead);
+        ALLOC_memhead->blockc = 0;
+        ALLOC_memhead->start = NULL;
+        ALLOC_memhead->end = NULL;
+    }
+    void *ptr = sbrk(size);
+    ALLOC_membloc_t *allocator = ALLOC_allocate_m(size, ptr);
+    // setting last node links
+    if (ALLOC_memhead->end)
+        ALLOC_memhead->end->nxt = allocator;
+    // setting new node links
+    allocator->prv = ALLOC_memhead->end;
+    allocator->nxt = NULL;
+    // updating meta data at head
+    if (!ALLOC_memhead->start)
+        ALLOC_memhead->start = allocator;
+    ALLOC_memhead->end = allocator;
+    ALLOC_memhead->blockc++;
     return ptr;
 }
 
 /** resizes allocated block if possible, or copies data around */
-void *alloc_re(void *ptr, size_t size)
+void *allocre(void *ptr, size_t size)
 {
     return NULL;
 }

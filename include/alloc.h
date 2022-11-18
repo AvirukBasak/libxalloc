@@ -4,10 +4,10 @@
 #include <stdlib.h>
 
 /** alloctes specified size */
-void *alloc_m(size_t size);
+void *allocm(size_t size);
 
 /** resizes allocated block if possible, or copies data around */
-void *alloc_re(void *ptr, size_t size);
+void *allocre(void *ptr, size_t size);
 
 /** marks pointer to block for cleanup */
 void alloc_free(void *ptr);

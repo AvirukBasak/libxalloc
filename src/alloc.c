@@ -21,13 +21,15 @@ typedef struct ALLOC_membloc_st ALLOC_membloc_t;
 /* functions */
 void ALLOC_clean();
 ALLOC_membloc_t *ALLOC_mblock_find(void *ptr);
+ALLOC_membloc_t *ALLOC_allocate_m(size_t size, void *ptr);
+void ALLOC_linkup(ALLOC_membloc_t *node);
 
 /** head of linked list */
 struct ALLOC_mhead_st
 {
+    size_t blockc;
     ALLOC_membloc_t *start;
     ALLOC_membloc_t *end;
-    size_t blockc;
 };
 
 /** data of a memory block */
@@ -55,15 +57,30 @@ ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
     return NULL;
 }
 
-void *ALLOC_allocate_m(size_t size, void *ptr)
+ALLOC_membloc_t *ALLOC_allocate_m(size_t size, void *ptr)
 {
     ALLOC_NULLCHECK(ptr);
-    ALLOC_membloc_t *allocator = sbrk(sizeof(ALLOC_membloc_t));
-    ALLOC_NULLCHECK(allocator);
-    allocator->ptr = ptr;
-    allocator->size = size;
-    allocator->free = false;
-    return allocator;
+    ALLOC_membloc_t *node = sbrk(sizeof(ALLOC_membloc_t));
+    ALLOC_NULLCHECK(node);
+    node->ptr = ptr;
+    node->size = size;
+    node->free = false;
+    return node;
+}
+
+void ALLOC_linkup(ALLOC_membloc_t *node)
+{
+    // setting last node links
+    if (ALLOC_memhead->end)
+        ALLOC_memhead->end->nxt = node;
+    // setting new node links
+    node->prv = ALLOC_memhead->end;
+    node->nxt = NULL;
+    // updating meta data at head
+    if (!ALLOC_memhead->start)
+        ALLOC_memhead->start = node;
+    ALLOC_memhead->end = node;
+    ALLOC_memhead->blockc++;
 }
 
 /** alloctes specified size */
@@ -77,18 +94,7 @@ void *allocm(size_t size)
         ALLOC_memhead->end = NULL;
     }
     void *ptr = sbrk(size);
-    ALLOC_membloc_t *allocator = ALLOC_allocate_m(size, ptr);
-    // setting last node links
-    if (ALLOC_memhead->end)
-        ALLOC_memhead->end->nxt = allocator;
-    // setting new node links
-    allocator->prv = ALLOC_memhead->end;
-    allocator->nxt = NULL;
-    // updating meta data at head
-    if (!ALLOC_memhead->start)
-        ALLOC_memhead->start = allocator;
-    ALLOC_memhead->end = allocator;
-    ALLOC_memhead->blockc++;
+    ALLOC_linkup(ALLOC_allocate_m(size, ptr));
     return ptr;
 }
 
@@ -104,5 +110,6 @@ void alloc_free(void *ptr)
     if (!ptr) return;
     ALLOC_NULLCHECK(ptr);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
+    ALLOC_NULLCHECK(block);
     block->free = true;
 }

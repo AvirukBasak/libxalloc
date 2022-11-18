@@ -17,7 +17,7 @@ LIB_NAME    := alloc
 
 CC          := gcc
 CFLAGS      := -Wall -Ofast
-CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
+CDBGFLAGS   := -Wall -Ofast -g -D DEBUG
 DBG         := gdb -q
 
 INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)

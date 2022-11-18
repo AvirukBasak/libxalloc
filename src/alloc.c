@@ -7,6 +7,8 @@
 #define MAX(a,b) (a>b?a:b)
 #define MIN(a,b) (a<b?a:b)
 
+#define ALLOC_ALLOCRE_COPY_THRESHOLD (4096)
+
 #define ALLOC_NULLCHECK(ptr) {                       \
     typeof(ptr) p = ptr;                             \
     if (p == (void *) -1 || p == NULL) {             \
@@ -41,8 +43,6 @@ struct ALLOC_membloc_st
     ALLOC_membloc_t *prv;
     ALLOC_membloc_t *nxt;
 };
-
-#define ALLOC_ALLOCRE_COPY_THRESHOLD (4096)
 
 /** linked list of block data */
 ALLOC_mhead_t *ALLOC_memhead = NULL;
@@ -108,7 +108,7 @@ void *allocm(size_t size)
     if (ALLOC_memhead->start) {
         node_t reusable = ALLOC_memhead->start;
         while (reusable)
-            if (reusable->size >= size) break;
+            if (reusable->size >= size && reusable->free) break;
             else reusable = reusable->nxt;
         if (reusable) {
             reusable->free = false;
@@ -136,17 +136,16 @@ void *allocre(void *ptr, size_t size)
     if (!ptr) allocm(size);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     ALLOC_NULLCHECK(block);
-    // if (block->size > ALLOC_ALLOCRE_COPY_THRESHOLD)
-        if (!block->nxt) {
-            sbrk(size - block->size);
-            block->size = size;
-            return ptr;
-        } else {
-            void *newptr = allocm(size);
-            memcpy(newptr, block->ptr, MIN(block->size, size));
-            block->free = true;
-            return newptr;
-        }
+    if (block->size > ALLOC_ALLOCRE_COPY_THRESHOLD && !block->nxt) {
+        sbrk(size - block->size);
+        block->size = size;
+        return ptr;
+    } else {
+        void *newptr = allocm(size);
+        memcpy(newptr, block->ptr, MIN(block->size, size));
+        block->free = true;
+        return newptr;
+    }
     return NULL;
 }
 
@@ -158,13 +157,15 @@ void alloc_free(void *ptr)
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     ALLOC_NULLCHECK(block);
     block->free = true;
-    if (!block->nxt) {
-        if (block->prv) block->prv->nxt = NULL;
+    while (block && !block->nxt && block->free == true) {
+        ALLOC_membloc_t *tofree = block;
+        block = block->prv;
+        if (tofree->prv) tofree->prv->nxt = NULL;
         else {
             ALLOC_memhead->start = NULL;
             ALLOC_memhead->end = NULL;
         }
         ALLOC_memhead->blockc--;
-        brk(block);
+        brk(tofree);
     }
 }

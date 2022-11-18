@@ -17,7 +17,7 @@ LIB_NAME    := alloc
 
 CC          := gcc
 CFLAGS      := -Wall -Ofast
-CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
+CDBGFLAGS   := -Wall -Ofast -g -D DEBUG
 DBG         := gdb -q
 
 INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)
@@ -70,12 +70,12 @@ $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 test: mkdirp $(TARGET) $(TESTSRC)
 	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test -L$(BIN_DIR) -lalloc
 	./$(BIN_DIR)/test
-	@rm ./$(BIN_DIR)/test
+	@#rm ./$(BIN_DIR)/test
 
 testdbg: mkdirp $(LIBRARIES) $(DBG_OBJECTS) $(TESTSRC)
 	@$(CC) $(CDBGFLAGS) $(INCLUDE) $(DBG_OBJECTS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
 	$(DBG) $(BIN_DIR)/test-dbg
-	@rm ./$(BIN_DIR)/test-dbg
+	@#rm ./$(BIN_DIR)/test-dbg
 
 ## mkdirp
 

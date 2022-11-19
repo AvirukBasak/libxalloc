@@ -12,7 +12,7 @@
 
 #define ALLOC_NULLCHECK(ptr) {                    \
     typeof(ptr) _p = ptr;                         \
-    if (_p == (void*) -1 || _p == NULL) {        \
+    if (_p == (void*) -1 || _p == NULL) {         \
         write(2, "liballoc: null pointer\n", 23); \
         abort();                                  \
     }                                             \

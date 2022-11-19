@@ -31,31 +31,29 @@ Breakpoints at lines `12`, `29` and `32`.
 
 ### 0th iteration:
  - at line 12: `sbrk(0)` = `0x555555a000`
- - at line 29: `sbrk(0)` = `0x559555a0b8`
- - at line 32: `sbrk(0)` = `0x559555a0b8`
+ - at line 29: `sbrk(0)` = `0x559555a0e0`
+ - at line 32: `sbrk(0)` = `0x559555a0e0`
 
 ### 1st iteration:
- - at line 12: `sbrk(0)` = `0x555555a018`
- - at line 29: `sbrk(0)` = `0x559555a0b8`
- - at line 32: `sbrk(0)` = `0x559555a0b8`
+ - at line 12: `sbrk(0)` = `0x555555a000`
+ - at line 29: `sbrk(0)` = `0x559555a0e0`
+ - at line 32: `sbrk(0)` = `0x559555a0e0`
 
 ### Subsequent iterations:
 Similar to 1st iteration
 
 ### Observations:
 
-Difference in `sbrk(0)` in same iteration b/w lines 29 and 12 = `0x559555a0b8` - `0x555555a018` = `1GB`.
+Difference in `sbrk(0)` in same iteration b/w lines 29 and 12 = `0x559555a0e0` - `0x555555a000` = `1GB`.
 This indicates the allocator is properly allocating blocks.
 
-Difference in `sbrk(0)` in same iteration b/w lines 32 and 29 = `0x559555a0b8` - `0x559555a0b8` = `0B`.
+Difference in `sbrk(0)` in same iteration b/w lines 32 and 29 = `0x559555a0e0` - `0x559555a0e0` = `0B`.
 This indicates allocator is not updating `brk` unless the last allocated block is freed.
 
-Difference in `sbrk(0)` b/w two iterations at line 12 of each iteration = `0x555555a018` - `0x555555a000` = `24B` or `0x555555a018` - `0x555555a018` = `0B`.
+Difference in `sbrk(0)` b/w two iterations at line 12 of each iteration = `0x555555a000` - `0x555555a000` = `0B`.
 This indicates the allocator is properly deallocating blocks.
 
-The extra `24B` is likely the `XALLOC_mhead` struct (see [definition](src/xalloc.c#L32)).
-
 ### Conclusion
-Difference in `sbrk(0)` before and after run = `24B`.
+Difference in `sbrk(0)` before and after run = `0B`.
 
 Hence, allocator is functioning as expected.

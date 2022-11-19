@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -10,13 +11,7 @@
 #define ALLOC_COPY_THRESHOLD (4096)
 #define ALLOC_MBLOCK_PADDING (16)
 
-#define ALLOC_NULLCHECK(ptr) {                    \
-    typeof(ptr) _p = ptr;                         \
-    if (_p == (void*) -1 || _p == NULL) {         \
-        write(2, "liballoc: null pointer\n", 23); \
-        abort();                                  \
-    }                                             \
-}
+#define ALLOC_NULLCHECK(ptr) if (!ptr || ptr == (void*) -1) ALLOC_abortln("null pointer")
 
 typedef struct ALLOC_mhead_t ALLOC_mhead_t;
 typedef struct ALLOC_mblock_t ALLOC_mblock_t;
@@ -26,6 +21,7 @@ typedef ALLOC_mblock_t *node_t;
 ALLOC_mhead_t *ALLOC_mhead = NULL;
 
 /* functions */
+void ALLOC_abortln(const char *s);
 void ALLOC_mhead_allocate();
 pointer_t ALLOC_mblock_new(size_t size);
 void ALLOC_mblock_linkup(ALLOC_mblock_t *node);
@@ -51,6 +47,16 @@ struct ALLOC_mblock_t
     ALLOC_mblock_t *prv;
     ALLOC_mblock_t *nxt;
 };
+
+/** Abort with error message */
+void ALLOC_abortln(const char *s)
+{
+    size_t len = strlen(s);
+    write(2, "liballoc: aborted: ", 19);
+    write(2, s, len);
+    write(2, "\n", 1);
+    abort();
+}
 
 void ALLOC_mhead_allocate()
 {
@@ -98,7 +104,7 @@ ALLOC_mblock_t *ALLOC_mblock_find(pointer_t ptr)
         if (p->ptr == ptr) return p;
         p = p->nxt;
     }
-    ALLOC_NULLCHECK(NULL);
+    ALLOC_abortln("invalid pointer");
     return NULL;
 }
 
@@ -106,7 +112,7 @@ ALLOC_mblock_t *ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz)
 {
     ALLOC_NULLCHECK(block);
     if (required_sz == block->size) return block;
-    if (required_sz > block->size) return NULL;
+    if (required_sz > block->size) ALLOC_abortln("size post split exceeds available size");
     size_t leftover_sz = block->size - required_sz - sizeof(ALLOC_mblock_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made

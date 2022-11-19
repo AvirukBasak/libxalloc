@@ -9,22 +9,25 @@
 
 #define ALLOC_ALLOCRE_COPY_THRESHOLD (4096)
 
-#define ALLOC_NULLCHECK(ptr) {                       \
-    typeof(ptr) p = ptr;                             \
-    if (p == (void *) -1 || p == NULL) {             \
-        fprintf(stderr, "liballoc: null pointer\n"); \
-        abort();                                     \
-    }                                                \
+#define ALLOC_NULLCHECK(ptr) {                    \
+    typeof(ptr) p = ptr;                          \
+    if (p == (void *) -1 || p == NULL) {          \
+        write(2, "liballoc: null pointer\n", 23); \
+        abort();                                  \
+    }                                             \
 }
 
 typedef struct ALLOC_mhead_st ALLOC_mhead_t;
 typedef struct ALLOC_membloc_st ALLOC_membloc_t;
 
+/** linked list of block data */
+ALLOC_mhead_t *ALLOC_memhead = NULL;
+
 /* functions */
-void ALLOC_clean();
-ALLOC_membloc_t *ALLOC_mblock_find(void *ptr);
-ALLOC_membloc_t *ALLOC_allocate_m(size_t size, void *ptr);
+void ALLOC_allocate_head();
+void *ALLOC_allocate_new(size_t size);
 void ALLOC_linkup(ALLOC_membloc_t *node);
+ALLOC_membloc_t *ALLOC_mblock_find(void *ptr);
 
 /** head of linked list */
 struct ALLOC_mhead_st
@@ -44,21 +47,6 @@ struct ALLOC_membloc_st
     ALLOC_membloc_t *nxt;
 };
 
-/** linked list of block data */
-ALLOC_mhead_t *ALLOC_memhead = NULL;
-
-/** searches for a specific block data based on its address */
-ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
-{
-    typedef ALLOC_membloc_t *node_t;
-    node_t p = ALLOC_memhead->start;
-    while (p) {
-        if (p->ptr == ptr) return p;
-        p = p->nxt;
-    }
-    return NULL;
-}
-
 void ALLOC_allocate_head()
 {
     if (!ALLOC_memhead) {
@@ -70,15 +58,17 @@ void ALLOC_allocate_head()
     }
 }
 
-ALLOC_membloc_t *ALLOC_allocate_m(size_t size, void *ptr)
+void *ALLOC_allocate_new(size_t size)
 {
-    ALLOC_NULLCHECK(ptr);
     ALLOC_membloc_t *node = sbrk(sizeof(ALLOC_membloc_t));
     ALLOC_NULLCHECK(node);
+    void *ptr = sbrk(size);
+    ALLOC_NULLCHECK(ptr);
     node->ptr = ptr;
     node->size = size;
     node->free = false;
-    return node;
+    ALLOC_linkup(node);
+    return ptr;
 }
 
 void ALLOC_linkup(ALLOC_membloc_t *node)
@@ -94,6 +84,18 @@ void ALLOC_linkup(ALLOC_membloc_t *node)
         ALLOC_memhead->start = node;
     ALLOC_memhead->end = node;
     ALLOC_memhead->blockc++;
+}
+
+/** searches for a specific block data based on its address */
+ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
+{
+    typedef ALLOC_membloc_t *node_t;
+    node_t p = ALLOC_memhead->start;
+    while (p) {
+        if (p->ptr == ptr) return p;
+        p = p->nxt;
+    }
+    return NULL;
 }
 
 /** alloctes specified size */
@@ -116,7 +118,7 @@ void *allocm(size_t size)
             node_t leftover = (node_t) (reusable->ptr + size);
             leftover->free = true;
             leftover->ptr = (void *) (leftover + sizeof(ALLOC_membloc_t));
-            leftover->size = reusable->size - size;
+            leftover->size = reusable->size - size - sizeof(ALLOC_membloc_t);
             leftover->prv = reusable;
             leftover->nxt = reusable->nxt;
             reusable->nxt = leftover;
@@ -125,9 +127,7 @@ void *allocm(size_t size)
     }
 
     // allocating new block
-    void *ptr = sbrk(size);
-    ALLOC_linkup(ALLOC_allocate_m(size, ptr));
-    return ptr;
+    return ALLOC_allocate_new(size);
 }
 
 /** resizes allocated block if possible, or copies data around */

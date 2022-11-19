@@ -107,6 +107,7 @@ ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz)
     typedef ALLOC_membloc_t *node_t;
 
     ALLOC_NULLCHECK(block);
+    if (required_sz >= block->size) return NULL;
     size_t leftover_sz = block->size - required_sz - sizeof(ALLOC_membloc_t);
     /* if remaining memory is less than double the size of a memory head,
      * then no changes are made
@@ -125,7 +126,25 @@ ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz)
 
 ALLOC_membloc_t *ALLOC_mblock_merge(ALLOC_membloc_t *block, size_t required_sz)
 {
-    
+    typedef ALLOC_membloc_t *node_t;
+
+    ALLOC_NULLCHECK(block);
+    if (required_sz <= block->size) return block;
+    size_t available_sz = block->size;
+    node_t node = block->nxt;
+    while (available_sz < required_sz && node && node->free) {
+        available_sz += node->size;
+        node = node->nxt;
+    }
+    if (available_sz < required_sz)
+        return NULL;
+    if (available_sz > required_sz) {
+        node = ALLOC_mblock_split(node, node->size - (available_sz - required_sz));
+        node->nxt->prv = block;
+    }
+    block->nxt = node->nxt;
+    block->size = required_sz;
+    return block;
 }
 
 /** alloctes specified size */
@@ -161,6 +180,7 @@ void *allocre(void *ptr, size_t size)
     if (!ptr) allocm(size);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     ALLOC_NULLCHECK(block);
+    if (block->size == size) return ptr;
 
     // splitting blocks if new size is smaller
     if (size < block->size)

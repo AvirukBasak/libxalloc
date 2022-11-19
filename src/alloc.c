@@ -50,6 +50,7 @@ struct ALLOC_mbloc_t
 /** Abort with error message */
 void _alloc_abort(const char *s)
 {
+    ALLOC_NULLCHECK(s);
     size_t len = strlen(s);
     write(2, "liballoc: aborted: ", 19);
     write(2, s, len);
@@ -69,6 +70,7 @@ void _alloc_mhead_allocate()
 
 void _alloc_mbloc_link(ALLOC_mbloc_t *node)
 {
+    ALLOC_NULLCHECK(node);
     // setting last node links
     if (ALLOC_mhead->end)
         ALLOC_mhead->end->nxt = node;
@@ -98,6 +100,7 @@ ALLOC_mbloc_t *_alloc_mbloc_new(size_t size)
 /** searches for a specific bloc data based on its address */
 ALLOC_mbloc_t *_alloc_mbloc_find(ptr_t ptr)
 {
+    ALLOC_NULLCHECK(ptr);
     ALLOC_mbloc_t *p = ALLOC_mhead->start;
     while (p) {
         if (p->ptr == ptr) return p;
@@ -111,7 +114,7 @@ ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *bloc, size_t req_sz)
 {
     ALLOC_NULLCHECK(bloc);
     if (req_sz == bloc->size) return bloc;
-    if (req_sz > bloc->size) _alloc_abort("size post split exceeds available size");
+    if (req_sz > bloc->size) _alloc_abort("post split size exceeds bloc size");
     size_t leftover_sz = bloc->size - req_sz - sizeof(ALLOC_mbloc_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made
@@ -131,19 +134,20 @@ ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *bloc, size_t req_sz)
 ALLOC_mbloc_t *_alloc_mbloc_merge(ALLOC_mbloc_t *bloc, size_t req_sz)
 {
     ALLOC_NULLCHECK(bloc);
-    if (req_sz <= bloc->size) return bloc;
+    if (req_sz == bloc->size) return bloc;
+    if (bloc->size > req_sz) _alloc_abort("bloc size exceeds post merge size");
     size_t avlb_sz = bloc->size;
     ALLOC_mbloc_t *node = bloc->nxt;
     while (avlb_sz < req_sz && node && node->isfree) {
-        avlb_sz += node->size;
-        node = node->nxt;
+        avlb_sz += node->size + sizeof(ALLOC_mbloc_t);
+        if (avlb_sz < req_sz) node = node->nxt;
+        else break;
     }
     if (avlb_sz < req_sz)
         return NULL;
-    if (avlb_sz > req_sz) {
+    if (avlb_sz > req_sz)
         node = _alloc_mbloc_split(node, node->size - (avlb_sz - req_sz));
-        node->nxt->prv = bloc;
-    }
+    if (node->nxt) node->nxt->prv = bloc;
     bloc->nxt = node->nxt;
     bloc->size = req_sz;
     return bloc;

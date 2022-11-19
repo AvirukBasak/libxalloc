@@ -11,7 +11,7 @@
 #define ALLOC_COPY_THRESHOLD (4096)
 #define ALLOC_MBLOCK_PADDING (16)
 
-#define ALLOC_NULLCHECK(ptr) if (!ptr || ptr == (void*) -1) ALLOC_abortln("null pointer")
+#define ALLOC_NULLCHECK(ptr) if (!ptr || ptr == (void*) -1) _ALLOC_abortln("null pointer")
 
 typedef struct ALLOC_mhead_t ALLOC_mhead_t;
 typedef struct ALLOC_mblock_t ALLOC_mblock_t;
@@ -21,13 +21,13 @@ typedef ALLOC_mblock_t *node_t;
 ALLOC_mhead_t *ALLOC_mhead = NULL;
 
 /* functions */
-void ALLOC_abortln(const char *s);
-void ALLOC_mhead_allocate();
-pointer_t ALLOC_mblock_new(size_t size);
-void ALLOC_mblock_linkup(ALLOC_mblock_t *node);
-ALLOC_mblock_t *ALLOC_mblock_find(pointer_t ptr);
-ALLOC_mblock_t *ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz);
-ALLOC_mblock_t *ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz);
+void _ALLOC_abortln(const char *s);
+void _ALLOC_mhead_allocate();
+pointer_t _ALLOC_mblock_new(size_t size);
+void _ALLOC_mblock_link(ALLOC_mblock_t *node);
+ALLOC_mblock_t *_ALLOC_mblock_find(pointer_t ptr);
+ALLOC_mblock_t *_ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz);
+ALLOC_mblock_t *_ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz);
 
 /** head of linked list */
 struct ALLOC_mhead_t
@@ -49,7 +49,7 @@ struct ALLOC_mblock_t
 };
 
 /** Abort with error message */
-void ALLOC_abortln(const char *s)
+void _ALLOC_abortln(const char *s)
 {
     size_t len = strlen(s);
     write(2, "liballoc: aborted: ", 19);
@@ -58,7 +58,7 @@ void ALLOC_abortln(const char *s)
     abort();
 }
 
-void ALLOC_mhead_allocate()
+void _ALLOC_mhead_allocate()
 {
     if (ALLOC_mhead) return;
     ALLOC_mhead = sbrk(sizeof(ALLOC_mhead_t));
@@ -68,7 +68,7 @@ void ALLOC_mhead_allocate()
     ALLOC_mhead->end = NULL;
 }
 
-pointer_t ALLOC_mblock_new(size_t size)
+pointer_t _ALLOC_mblock_new(size_t size)
 {
     ALLOC_mblock_t *node = sbrk(sizeof(ALLOC_mblock_t));
     ALLOC_NULLCHECK(node);
@@ -77,11 +77,11 @@ pointer_t ALLOC_mblock_new(size_t size)
     node->ptr = ptr;
     node->size = size;
     node->isfree = false;
-    ALLOC_mblock_linkup(node);
+    _ALLOC_mblock_link(node);
     return ptr;
 }
 
-void ALLOC_mblock_linkup(ALLOC_mblock_t *node)
+void _ALLOC_mblock_link(ALLOC_mblock_t *node)
 {
     // setting last node links
     if (ALLOC_mhead->end)
@@ -97,22 +97,22 @@ void ALLOC_mblock_linkup(ALLOC_mblock_t *node)
 }
 
 /** searches for a specific block data based on its address */
-ALLOC_mblock_t *ALLOC_mblock_find(pointer_t ptr)
+ALLOC_mblock_t *_ALLOC_mblock_find(pointer_t ptr)
 {
     node_t p = ALLOC_mhead->start;
     while (p) {
         if (p->ptr == ptr) return p;
         p = p->nxt;
     }
-    ALLOC_abortln("invalid pointer");
+    _ALLOC_abortln("invalid pointer");
     return NULL;
 }
 
-ALLOC_mblock_t *ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz)
+ALLOC_mblock_t *_ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz)
 {
     ALLOC_NULLCHECK(block);
     if (required_sz == block->size) return block;
-    if (required_sz > block->size) ALLOC_abortln("size post split exceeds available size");
+    if (required_sz > block->size) _ALLOC_abortln("size post split exceeds available size");
     size_t leftover_sz = block->size - required_sz - sizeof(ALLOC_mblock_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made
@@ -129,7 +129,7 @@ ALLOC_mblock_t *ALLOC_mblock_split(ALLOC_mblock_t *block, size_t required_sz)
     return block;
 }
 
-ALLOC_mblock_t *ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz)
+ALLOC_mblock_t *_ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz)
 {
     ALLOC_NULLCHECK(block);
     if (required_sz <= block->size) return block;
@@ -142,7 +142,7 @@ ALLOC_mblock_t *ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz)
     if (available_sz < required_sz)
         return NULL;
     if (available_sz > required_sz) {
-        node = ALLOC_mblock_split(node, node->size - (available_sz - required_sz));
+        node = _ALLOC_mblock_split(node, node->size - (available_sz - required_sz));
         node->nxt->prv = block;
     }
     block->nxt = node->nxt;
@@ -154,7 +154,7 @@ ALLOC_mblock_t *ALLOC_mblock_merge(ALLOC_mblock_t *block, size_t required_sz)
 pointer_t allocm(size_t size)
 {
     if (!ALLOC_mhead)
-        ALLOC_mhead_allocate();
+        _ALLOC_mhead_allocate();
 
     // attempting to recycle old empty block
     if (ALLOC_mhead->start) {
@@ -165,24 +165,24 @@ pointer_t allocm(size_t size)
         if (reusable) {
             reusable->isfree = false;
             if (reusable->size == size) return reusable->ptr;
-            return ALLOC_mblock_split(reusable, size)->ptr;
+            return _ALLOC_mblock_split(reusable, size)->ptr;
         }
     }
 
     // fallback: allocating new block
-    return ALLOC_mblock_new(size);
+    return _ALLOC_mblock_new(size);
 }
 
 /** resizes allocated block if possible, or copies data around */
 pointer_t allocre(pointer_t ptr, size_t size)
 {
     if (!ptr) allocm(size);
-    ALLOC_mblock_t *block = ALLOC_mblock_find(ptr);
+    ALLOC_mblock_t *block = _ALLOC_mblock_find(ptr);
     if (block->size == size) return ptr;
 
     // splitting blocks if new size is smaller
     if (size < block->size)
-        return ALLOC_mblock_split(block, size)->ptr;
+        return _ALLOC_mblock_split(block, size)->ptr;
 
     // if block is too large
     if (block->size > ALLOC_COPY_THRESHOLD) {
@@ -194,7 +194,7 @@ pointer_t allocre(pointer_t ptr, size_t size)
         }
         // consecutive empty blocks
         else if (block->nxt->isfree) {
-            node_t merged = ALLOC_mblock_merge(block, size);
+            node_t merged = _ALLOC_mblock_merge(block, size);
             if (merged) return merged->ptr;
         }
     }
@@ -210,7 +210,7 @@ pointer_t allocre(pointer_t ptr, size_t size)
 void alloc_free(pointer_t ptr)
 {
     if (!ptr) return;
-    ALLOC_mblock_t *block = ALLOC_mblock_find(ptr);
+    ALLOC_mblock_t *block = _ALLOC_mblock_find(ptr);
     block->isfree = true;
 
     // cleaning up free blocks from the end of list

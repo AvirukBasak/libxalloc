@@ -53,7 +53,7 @@ This indicates allocator is not updating `brk` unless the last allocated block i
 Difference in `sbrk(0)` b/w two iterations at line 12 of each iteration = `0x555555a018` - `0x555555a000` = `24B` or `0x555555a018` - `0x555555a018` = `0B`.
 This indicates the allocator is properly deallocating blocks.
 
-The extra `24B` is likely the `ALLOC_mhead` struct (see [definition](src/xalloc.c#L32)).
+The extra `24B` is likely the `XALLOC_mhead` struct (see [definition](src/xalloc.c#L32)).
 
 ### Conclusion
 Difference in `sbrk(0)` before and after run = `24B`.

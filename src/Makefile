@@ -13,7 +13,7 @@ INCLUDE_DIR := ../include
 
 # compiler options
 
-LIB_NAME    := alloc
+LIB_NAME    := xalloc
 
 CC          := gcc
 CFLAGS      := -Wall -Ofast

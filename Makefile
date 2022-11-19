@@ -13,7 +13,7 @@ INCLUDE_DIR := include
 
 # compiler options
 
-LIB_NAME    := alloc
+LIB_NAME    := xalloc
 
 CC          := gcc
 CFLAGS      := -Wall -Ofast
@@ -73,7 +73,7 @@ $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 ## execution
 
 test: all $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test $(LIB) -L$(BIN_DIR) -lalloc
+	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test $(LIB) -L$(BIN_DIR) -lxalloc
 	./$(BIN_DIR)/test
 	@#rm ./$(BIN_DIR)/test
 

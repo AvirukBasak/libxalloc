@@ -21,7 +21,7 @@ CDBGFLAGS   := -Wall -Ofast -g -D DEBUG
 DBG         := gdb -q
 
 INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)
-LIB         := -L$(LIB_DIR) -ldummy -lm
+LIB         := -L$(LIB_DIR) -lm
 
 # targets
 
@@ -42,10 +42,9 @@ all: mkdirp $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT) $(TARGET)
 OBJECTS     := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
 
 $(OBJECTS): $(SOURCES)
-	@cd $(LIB_DIR) && $(MAKE)
 	@cd $(SRC_DIR) && $(MAKE)
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) $(LIBRARIES)
 	ar rcs $(TARGET) $(BUILD_DIR)/*.$(OBJEXT) $(LIBRARIES)
 
 ## debug build
@@ -55,11 +54,17 @@ dbg: mkdirp $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT) $(DBG_TARGET)
 DBG_OBJECTS := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%-dbg.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
 
 $(DBG_OBJECTS): $(SOURCES)
-	@cd $(LIB_DIR) && $(MAKE)
 	@cd $(SRC_DIR) && $(MAKE) dbg
 
-$(DBG_TARGET): $(DBG_OBJECTS)
+$(DBG_TARGET): $(DBG_OBJECTS) $(LIBRARIES)
 	ar rcs $(DBG_TARGET) $(BUILD_DIR)/*-dbg.$(OBJEXT) $(LIBRARIES)
+
+## lib
+
+$(LIBRARIES):
+	@cd $(LIB_DIR) && $(MAKE)
+
+## headers
 
 $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 	@grep --no-filename -v '^#\s*include\s*"' $(HEADERS) > $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT)
@@ -67,13 +72,13 @@ $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 
 ## execution
 
-test: mkdirp $(TARGET) $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test -L$(BIN_DIR) -lalloc
+test: all $(TESTSRC)
+	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test $(LIB) -L$(BIN_DIR) -lalloc
 	./$(BIN_DIR)/test
 	@#rm ./$(BIN_DIR)/test
 
-testdbg: mkdirp $(LIBRARIES) $(DBG_OBJECTS) $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) $(INCLUDE) $(DBG_OBJECTS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
+testdbg: dbg $(TESTSRC)
+	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
 	$(DBG) $(BIN_DIR)/test-dbg
 	@#rm ./$(BIN_DIR)/test-dbg
 

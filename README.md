@@ -7,18 +7,18 @@ Custom heap memory allocator using `brk` and `sbrk`.
 - Visit [test.c](tests/test.c) for example use.
 
 ## Warning
-- Writing to invalid memory allocated by `liballoc` will break the memory cleanup function.
+- Writing to invalid memory allocated by `libxalloc` will break the memory cleanup function.
 - Segmentation faults during execution can be attributed to `libc`.
 - `libc` will break functionality of library.
 
-## How libc affects liballoc
-`libc` uses `brk` and `sbrk` calls to allocate memory, and `liballoc` also uses the same.
+## How libc affects libxalloc
+`libc` uses `brk` and `sbrk` calls to allocate memory, and `libxalloc` also uses the same.
 
 As a result, the two libraries will end up corrupting the memory tracking data structures of each other.
 
 This will result in undefined behaviour.
 
-To know how `liballoc` works, visit [working.md](docs/working.md).
+To know how `libxalloc` works, visit [working.md](docs/working.md).
 
 ## Test results
 

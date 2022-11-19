@@ -3,15 +3,15 @@
 
 #include <stdlib.h>
 
-typedef void *pointer_t;
+typedef void *ptr_t;
 
 /** alloctes specified size */
-pointer_t allocm(size_t size);
+ptr_t allocm(size_t size);
 
 /** resizes allocated block if possible, or copies data around */
-pointer_t allocre(pointer_t ptr, size_t size);
+ptr_t allocre(ptr_t ptr, size_t size);
 
 /** marks pointer to block for cleanup */
-void alloc_free(pointer_t ptr);
+void alloc_free(ptr_t ptr);
 
 #endif

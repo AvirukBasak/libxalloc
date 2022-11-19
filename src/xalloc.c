@@ -8,10 +8,10 @@
 #define MAX(a,b) (a>b?a:b)
 #define MIN(a,b) (a<b?a:b)
 
-#define XALLOC_COPY_THRESHOLD (4096)
-#define XALLOC_MBLOC_PADDING  (16)
+#define COPY_THRESHOLD (4096)
+#define MBLOC_PADDING  (16)
 
-#define XALLOC_NULLCHECK(ptr) if (!ptr || ptr == (void*) -1) _xalloc_abort("null pointer")
+#define NULLPTR_CHECK(ptr) if (!ptr || ptr == (void*) -1) _xalloc_abort("null pointer")
 
 typedef struct XALLOC_mhead_t XALLOC_mhead_t;
 typedef struct XALLOC_mbloc_t XALLOC_mbloc_t;
@@ -22,7 +22,7 @@ XALLOC_mhead_t *XALLOC_mhead = NULL;
 
 /* functions */
 void _xalloc_abort(const char *s);
-void _xalloc_mhead_allocate();
+void _xalloc_mhead_init();
 void _xalloc_mbloc_link(XALLOC_mbloc_t *node);
 XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size);
 XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr);
@@ -40,7 +40,7 @@ struct XALLOC_mhead_t
 /** data of a memory bloc */
 struct XALLOC_mbloc_t
 {
-    char padding[XALLOC_MBLOC_PADDING];
+    char padding[MBLOC_PADDING];
     bool isfree;
     ptr_t ptr;
     size_t size;
@@ -51,7 +51,7 @@ struct XALLOC_mbloc_t
 /** Abort with error message */
 void _xalloc_abort(const char *s)
 {
-    XALLOC_NULLCHECK(s);
+    NULLPTR_CHECK(s);
     size_t len = strlen(s);
     write(2, "libxalloc: aborted: ", 20);
     write(2, s, len);
@@ -59,7 +59,7 @@ void _xalloc_abort(const char *s)
     abort();
 }
 
-void _xalloc_mhead_allocate()
+void _xalloc_mhead_init()
 {
     if (XALLOC_mhead) return;
     XALLOC_mhead = &_XALLOC_mhead;
@@ -70,7 +70,7 @@ void _xalloc_mhead_allocate()
 
 void _xalloc_mbloc_link(XALLOC_mbloc_t *node)
 {
-    XALLOC_NULLCHECK(node);
+    NULLPTR_CHECK(node);
     // setting last node links
     if (XALLOC_mhead->end)
         XALLOC_mhead->end->nxt = node;
@@ -87,9 +87,9 @@ void _xalloc_mbloc_link(XALLOC_mbloc_t *node)
 XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
 {
     XALLOC_mbloc_t *node = sbrk(sizeof(XALLOC_mbloc_t));
-    XALLOC_NULLCHECK(node);
+    NULLPTR_CHECK(node);
     ptr_t ptr = sbrk(size);
-    XALLOC_NULLCHECK(ptr);
+    NULLPTR_CHECK(ptr);
     node->ptr = ptr;
     node->size = size;
     node->isfree = false;
@@ -100,7 +100,7 @@ XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
 /** searches for a specific bloc data based on its address */
 XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr)
 {
-    XALLOC_NULLCHECK(ptr);
+    NULLPTR_CHECK(ptr);
     XALLOC_mbloc_t *p = XALLOC_mhead->start;
     while (p) {
         if (p->ptr == ptr) return p;
@@ -112,7 +112,7 @@ XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr)
 
 XALLOC_mbloc_t *_xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
-    XALLOC_NULLCHECK(bloc);
+    NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
     if (req_sz > bloc->size) _xalloc_abort("post split size exceeds bloc size");
     size_t leftover_sz = bloc->size - req_sz - sizeof(XALLOC_mbloc_t);
@@ -133,7 +133,7 @@ XALLOC_mbloc_t *_xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
 
 XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
-    XALLOC_NULLCHECK(bloc);
+    NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
     if (bloc->size > req_sz) _xalloc_abort("bloc size exceeds post merge size");
     size_t avlb_sz = bloc->size;
@@ -157,7 +157,7 @@ XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 ptr_t xmalloc(size_t size)
 {
     if (!XALLOC_mhead)
-        _xalloc_mhead_allocate();
+        _xalloc_mhead_init();
 
     // attempting to recycle old empty bloc
     if (XALLOC_mhead->start) {
@@ -188,7 +188,7 @@ ptr_t xrealloc(ptr_t ptr, size_t size)
         return _xalloc_mbloc_split(bloc, size)->ptr;
 
     // if bloc is too large
-    if (bloc->size > XALLOC_COPY_THRESHOLD) {
+    if (bloc->size > COPY_THRESHOLD) {
         // last bloc: update brk
         if (!bloc->nxt) {
             sbrk(size - bloc->size);

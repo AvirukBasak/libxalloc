@@ -17,7 +17,7 @@ typedef struct ALLOC_mhead_t ALLOC_mhead_t;
 typedef struct ALLOC_mbloc_t ALLOC_mbloc_t;
 typedef ALLOC_mbloc_t *node_t;
 
-/** linked list of block data */
+/** linked list of bloc data */
 ALLOC_mhead_t *ALLOC_mhead = NULL;
 
 /* functions */
@@ -26,18 +26,18 @@ void _alloc_mhead_allocate();
 void _alloc_mbloc_link(ALLOC_mbloc_t *node);
 ALLOC_mbloc_t *_alloc_mbloc_new(size_t size);
 ALLOC_mbloc_t *_alloc_mbloc_find(pointer_t ptr);
-ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *block, size_t required_sz);
-ALLOC_mbloc_t *_alloc_mbloc_merge(ALLOC_mbloc_t *block, size_t required_sz);
+ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *bloc, size_t req_sz);
+ALLOC_mbloc_t *_alloc_mbloc_merge(ALLOC_mbloc_t *bloc, size_t req_sz);
 
 /** head of linked list */
 struct ALLOC_mhead_t
 {
-    size_t blockc;
+    size_t blocc;
     ALLOC_mbloc_t *start;
     ALLOC_mbloc_t *end;
 };
 
-/** data of a memory block */
+/** data of a memory bloc */
 struct ALLOC_mbloc_t
 {
     char padding[ALLOC_MBLOCK_PADDING];
@@ -63,7 +63,7 @@ void _alloc_mhead_allocate()
     if (ALLOC_mhead) return;
     ALLOC_mhead = sbrk(sizeof(ALLOC_mhead_t));
     ALLOC_NULLCHECK(ALLOC_mhead);
-    ALLOC_mhead->blockc = 0;
+    ALLOC_mhead->blocc = 0;
     ALLOC_mhead->start = NULL;
     ALLOC_mhead->end = NULL;
 }
@@ -80,7 +80,7 @@ void _alloc_mbloc_link(ALLOC_mbloc_t *node)
     if (!ALLOC_mhead->start)
         ALLOC_mhead->start = node;
     ALLOC_mhead->end = node;
-    ALLOC_mhead->blockc++;
+    ALLOC_mhead->blocc++;
 }
 
 ALLOC_mbloc_t *_alloc_mbloc_new(size_t size)
@@ -96,7 +96,7 @@ ALLOC_mbloc_t *_alloc_mbloc_new(size_t size)
     return node;
 }
 
-/** searches for a specific block data based on its address */
+/** searches for a specific bloc data based on its address */
 ALLOC_mbloc_t *_alloc_mbloc_find(pointer_t ptr)
 {
     node_t p = ALLOC_mhead->start;
@@ -108,46 +108,46 @@ ALLOC_mbloc_t *_alloc_mbloc_find(pointer_t ptr)
     return NULL;
 }
 
-ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *block, size_t required_sz)
+ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *bloc, size_t req_sz)
 {
-    ALLOC_NULLCHECK(block);
-    if (required_sz == block->size) return block;
-    if (required_sz > block->size) _alloc_abort("size post split exceeds available size");
-    size_t leftover_sz = block->size - required_sz - sizeof(ALLOC_mbloc_t);
+    ALLOC_NULLCHECK(bloc);
+    if (req_sz == bloc->size) return bloc;
+    if (req_sz > bloc->size) _alloc_abort("size post split exceeds available size");
+    size_t leftover_sz = bloc->size - req_sz - sizeof(ALLOC_mbloc_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made
      */
-    if (leftover_sz <= 2 * sizeof(ALLOC_mbloc_t)) return block;
-    node_t leftover = (node_t) (block->ptr + required_sz);
+    if (leftover_sz <= 2 * sizeof(ALLOC_mbloc_t)) return bloc;
+    node_t leftover = (node_t) (bloc->ptr + req_sz);
     leftover->isfree = true;
     leftover->ptr = (pointer_t) (leftover + sizeof(ALLOC_mbloc_t));
     leftover->size = leftover_sz;
-    leftover->prv = block;
-    leftover->nxt = block->nxt;
-    block->nxt = leftover;
-    block->size = required_sz;
-    return block;
+    leftover->prv = bloc;
+    leftover->nxt = bloc->nxt;
+    bloc->nxt = leftover;
+    bloc->size = req_sz;
+    return bloc;
 }
 
-ALLOC_mbloc_t *_alloc_mbloc_merge(ALLOC_mbloc_t *block, size_t required_sz)
+ALLOC_mbloc_t *_alloc_mbloc_merge(ALLOC_mbloc_t *bloc, size_t req_sz)
 {
-    ALLOC_NULLCHECK(block);
-    if (required_sz <= block->size) return block;
-    size_t available_sz = block->size;
-    node_t node = block->nxt;
-    while (available_sz < required_sz && node && node->isfree) {
-        available_sz += node->size;
+    ALLOC_NULLCHECK(bloc);
+    if (req_sz <= bloc->size) return bloc;
+    size_t avlb_sz = bloc->size;
+    node_t node = bloc->nxt;
+    while (avlb_sz < req_sz && node && node->isfree) {
+        avlb_sz += node->size;
         node = node->nxt;
     }
-    if (available_sz < required_sz)
+    if (avlb_sz < req_sz)
         return NULL;
-    if (available_sz > required_sz) {
-        node = _alloc_mbloc_split(node, node->size - (available_sz - required_sz));
-        node->nxt->prv = block;
+    if (avlb_sz > req_sz) {
+        node = _alloc_mbloc_split(node, node->size - (avlb_sz - req_sz));
+        node->nxt->prv = bloc;
     }
-    block->nxt = node->nxt;
-    block->size = required_sz;
-    return block;
+    bloc->nxt = node->nxt;
+    bloc->size = req_sz;
+    return bloc;
 }
 
 /** alloctes specified size */
@@ -156,7 +156,7 @@ pointer_t allocm(size_t size)
     if (!ALLOC_mhead)
         _alloc_mhead_allocate();
 
-    // attempting to recycle old empty block
+    // attempting to recycle old empty bloc
     if (ALLOC_mhead->start) {
         node_t reusable = ALLOC_mhead->start;
         while (reusable)
@@ -169,61 +169,61 @@ pointer_t allocm(size_t size)
         }
     }
 
-    // fallback: allocating new block
+    // fallback: allocating new bloc
     return _alloc_mbloc_new(size)->ptr;
 }
 
-/** resizes allocated block if possible, or copies data around */
+/** resizes allocated bloc if possible, or copies data around */
 pointer_t allocre(pointer_t ptr, size_t size)
 {
     if (!ptr) allocm(size);
-    ALLOC_mbloc_t *block = _alloc_mbloc_find(ptr);
-    if (block->size == size) return ptr;
+    ALLOC_mbloc_t *bloc = _alloc_mbloc_find(ptr);
+    if (bloc->size == size) return ptr;
 
-    // splitting blocks if new size is smaller
-    if (size < block->size)
-        return _alloc_mbloc_split(block, size)->ptr;
+    // splitting blocs if new size is smaller
+    if (size < bloc->size)
+        return _alloc_mbloc_split(bloc, size)->ptr;
 
-    // if block is too large
-    if (block->size > ALLOC_COPY_THRESHOLD) {
-        // last block: update brk
-        if (!block->nxt) {
-            sbrk(size - block->size);
-            block->size = size;
+    // if bloc is too large
+    if (bloc->size > ALLOC_COPY_THRESHOLD) {
+        // last bloc: update brk
+        if (!bloc->nxt) {
+            sbrk(size - bloc->size);
+            bloc->size = size;
             return ptr;
         }
-        // consecutive empty blocks
-        else if (block->nxt->isfree) {
-            node_t merged = _alloc_mbloc_merge(block, size);
+        // consecutive empty blocs
+        else if (bloc->nxt->isfree) {
+            node_t merged = _alloc_mbloc_merge(bloc, size);
             if (merged) return merged->ptr;
         }
     }
 
-    // fallback: new block allocation and copy data
+    // fallback: new bloc allocation and copy data
     pointer_t newptr = allocm(size);
-    memcpy(newptr, block->ptr, MIN(block->size, size));
-    block->isfree = true;
+    memcpy(newptr, bloc->ptr, MIN(bloc->size, size));
+    bloc->isfree = true;
     return newptr;
 }
 
-/** marks pointer to block for cleanup */
+/** marks pointer to bloc for cleanup */
 void alloc_free(pointer_t ptr)
 {
     if (!ptr) return;
-    ALLOC_mbloc_t *block = _alloc_mbloc_find(ptr);
-    block->isfree = true;
+    ALLOC_mbloc_t *bloc = _alloc_mbloc_find(ptr);
+    bloc->isfree = true;
 
-    // cleaning up free blocks from the end of list
-    block = ALLOC_mhead->end;
-    while (block && !block->nxt && block->isfree) {
-        ALLOC_mbloc_t *tofree = block;
-        ALLOC_mhead->end = block = tofree->prv;
+    // cleaning up free blocs from the end of list
+    bloc = ALLOC_mhead->end;
+    while (bloc && !bloc->nxt && bloc->isfree) {
+        ALLOC_mbloc_t *tofree = bloc;
+        ALLOC_mhead->end = bloc = tofree->prv;
         if (tofree->prv) tofree->prv->nxt = NULL;
         else {
             ALLOC_mhead->start = NULL;
             ALLOC_mhead->end = NULL;
         }
-        ALLOC_mhead->blockc--;
+        ALLOC_mhead->blocc--;
         brk(tofree);
     }
 }

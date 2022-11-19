@@ -16,7 +16,8 @@
 typedef struct XALLOC_mhead_t XALLOC_mhead_t;
 typedef struct XALLOC_mbloc_t XALLOC_mbloc_t;
 
-/** linked list of bloc data */
+/** bloc data list head allocated in global memory */
+XALLOC_mhead_t _XALLOC_mhead;
 XALLOC_mhead_t *XALLOC_mhead = NULL;
 
 /* functions */
@@ -61,8 +62,7 @@ void _xalloc_abort(const char *s)
 void _xalloc_mhead_allocate()
 {
     if (XALLOC_mhead) return;
-    XALLOC_mhead = sbrk(sizeof(XALLOC_mhead_t));
-    XALLOC_NULLCHECK(XALLOC_mhead);
+    XALLOC_mhead = &_XALLOC_mhead;
     XALLOC_mhead->blocc = 0;
     XALLOC_mhead->start = NULL;
     XALLOC_mhead->end = NULL;

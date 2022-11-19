@@ -117,7 +117,7 @@ ALLOC_mbloc_t *_alloc_mbloc_split(ALLOC_mbloc_t *bloc, size_t req_sz)
      * then no changes are made
      */
     if (leftover_sz <= 2 * sizeof(ALLOC_mbloc_t)) return bloc;
-    ALLOC_mbloc_t *leftover = (node_t) (bloc->ptr + req_sz);
+    ALLOC_mbloc_t *leftover = (ALLOC_mbloc_t*) (bloc->ptr + req_sz);
     leftover->isfree = true;
     leftover->ptr = (ptr_t) (leftover + sizeof(ALLOC_mbloc_t));
     leftover->size = leftover_sz;

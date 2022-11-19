@@ -12,7 +12,7 @@
 
 #define ALLOC_NULLCHECK(ptr) {                    \
     typeof(ptr) _p = ptr;                         \
-    if (_p == (void *) -1 || _p == NULL) {        \
+    if (_p == (void*) -1 || _p == NULL) {        \
         write(2, "liballoc: null pointer\n", 23); \
         abort();                                  \
     }                                             \
@@ -20,15 +20,16 @@
 
 typedef struct ALLOC_mhead_st ALLOC_mhead_t;
 typedef struct ALLOC_membloc_st ALLOC_membloc_t;
+typedef ALLOC_membloc_t *node_t;
 
 /** linked list of block data */
 ALLOC_mhead_t *ALLOC_memhead = NULL;
 
 /* functions */
 void ALLOC_allocate_head();
-void *ALLOC_allocate_new(size_t size);
+pointer_t ALLOC_allocate_new(size_t size);
 void ALLOC_linkup(ALLOC_membloc_t *node);
-ALLOC_membloc_t *ALLOC_mblock_find(void *ptr);
+ALLOC_membloc_t *ALLOC_mblock_find(pointer_t ptr);
 ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz);
 ALLOC_membloc_t *ALLOC_mblock_merge(ALLOC_membloc_t *block, size_t required_sz);
 
@@ -45,7 +46,7 @@ struct ALLOC_membloc_st
 {
     char padding[ALLOC_BLOCKHEAD_PADDING];
     bool free;
-    void *ptr;
+    pointer_t ptr;
     size_t size;
     ALLOC_membloc_t *prv;
     ALLOC_membloc_t *nxt;
@@ -62,11 +63,11 @@ void ALLOC_allocate_head()
     }
 }
 
-void *ALLOC_allocate_new(size_t size)
+pointer_t ALLOC_allocate_new(size_t size)
 {
     ALLOC_membloc_t *node = sbrk(sizeof(ALLOC_membloc_t));
     ALLOC_NULLCHECK(node);
-    void *ptr = sbrk(size);
+    pointer_t ptr = sbrk(size);
     ALLOC_NULLCHECK(ptr);
     node->ptr = ptr;
     node->size = size;
@@ -91,9 +92,8 @@ void ALLOC_linkup(ALLOC_membloc_t *node)
 }
 
 /** searches for a specific block data based on its address */
-ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
+ALLOC_membloc_t *ALLOC_mblock_find(pointer_t ptr)
 {
-    typedef ALLOC_membloc_t *node_t;
     node_t p = ALLOC_memhead->start;
     while (p) {
         if (p->ptr == ptr) return p;
@@ -104,8 +104,6 @@ ALLOC_membloc_t *ALLOC_mblock_find(void *ptr)
 
 ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz)
 {
-    typedef ALLOC_membloc_t *node_t;
-
     ALLOC_NULLCHECK(block);
     if (required_sz >= block->size) return NULL;
     size_t leftover_sz = block->size - required_sz - sizeof(ALLOC_membloc_t);
@@ -115,7 +113,7 @@ ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz)
     if (leftover_sz < 2 * sizeof(ALLOC_membloc_t)) return block;
     node_t leftover = (node_t) (block->ptr + required_sz);
     leftover->free = true;
-    leftover->ptr = (void *) (leftover + sizeof(ALLOC_membloc_t));
+    leftover->ptr = (pointer_t) (leftover + sizeof(ALLOC_membloc_t));
     leftover->size = leftover_sz;
     leftover->prv = block;
     leftover->nxt = block->nxt;
@@ -126,8 +124,6 @@ ALLOC_membloc_t *ALLOC_mblock_split(ALLOC_membloc_t *block, size_t required_sz)
 
 ALLOC_membloc_t *ALLOC_mblock_merge(ALLOC_membloc_t *block, size_t required_sz)
 {
-    typedef ALLOC_membloc_t *node_t;
-
     ALLOC_NULLCHECK(block);
     if (required_sz <= block->size) return block;
     size_t available_sz = block->size;
@@ -148,12 +144,10 @@ ALLOC_membloc_t *ALLOC_mblock_merge(ALLOC_membloc_t *block, size_t required_sz)
 }
 
 /** alloctes specified size */
-void *allocm(size_t size)
+pointer_t allocm(size_t size)
 {
     if (!ALLOC_memhead)
         ALLOC_allocate_head();
-
-    typedef ALLOC_membloc_t *node_t;
 
     // attempting to recycle old empty block
     if (ALLOC_memhead->start) {
@@ -173,10 +167,8 @@ void *allocm(size_t size)
 }
 
 /** resizes allocated block if possible, or copies data around */
-void *allocre(void *ptr, size_t size)
+pointer_t allocre(pointer_t ptr, size_t size)
 {
-    typedef ALLOC_membloc_t *node_t;
-
     if (!ptr) allocm(size);
     ALLOC_membloc_t *block = ALLOC_mblock_find(ptr);
     ALLOC_NULLCHECK(block);
@@ -202,7 +194,7 @@ void *allocre(void *ptr, size_t size)
     }
 
     // fallback: new block allocation and copy data
-    void *newptr = allocm(size);
+    pointer_t newptr = allocm(size);
     ALLOC_NULLCHECK(newptr);
     memcpy(newptr, block->ptr, MIN(block->size, size));
     block->free = true;
@@ -210,7 +202,7 @@ void *allocre(void *ptr, size_t size)
 }
 
 /** marks pointer to block for cleanup */
-void alloc_free(void *ptr)
+void alloc_free(pointer_t ptr)
 {
     if (!ptr) return;
     ALLOC_NULLCHECK(ptr);

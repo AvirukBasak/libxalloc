@@ -21,6 +21,7 @@ This will result in undefined behaviour.
 To know how `libxalloc` works, visit [working.md](docs/working.md).
 
 ## Test results
+Test platform `Termux Linux 4.19.157 aarch64 Android`.
 
 Test command `make testdbg`.
 
@@ -57,3 +58,14 @@ This indicates the allocator is properly deallocating blocks.
 Difference in `sbrk(0)` before and after run = `0B`.
 
 Hence, allocator is functioning as expected.
+
+### Notes
+On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132KB`
+
+It was observed that this allocation happened somewhere before allocation of the first block of memory via `xmalloc`.
+
+- Address of `sbrk(0)` before run = `0x555555559000`
+- Address of 1st allocation = `0x55555557a000`
+- Difference = `0x55555557a000` - `0x555555559000` = `132KB`
+
+We still can conclude that deallocation is successfull as address of 1st allocation of 2nd iteration happened after `1GB`.

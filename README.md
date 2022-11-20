@@ -68,6 +68,6 @@ It was observed that this allocation happened somewhere during allocation of the
 - Address of 1st allocation of 0th iteration = `0x55555557a000`
 - Difference = `0x55555557a000` - `0x555555559000` = `132KB`
 
-We still can conclude that deallocation is successful as address of 1st allocation of 1st iteration happened after `1GB` of 0th iteration.
+We still can conclude that deallocation is successful as address of 1st allocation of 1st iteration happened after `0B` of 0th iteration.
 
 In any case, `132KB` couldn't be traced.

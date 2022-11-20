@@ -62,7 +62,11 @@ Hence, allocator is functioning as expected.
 ### Notes
 On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132KB`
 
-It was observed that this allocation happened somewhere during allocation of the first block of memory via `xmalloc`.
+It was observed that this allocation happened somewhere before the first call to `xmalloc`.
+
+It's possible this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk`.
+
+###### I'll run tests later on on without `printf` to verify this hypothesis.
 
 - Address of `sbrk(0)` before run = `0x555555559000`
 - Address of 1st allocation of 0th iteration = `0x55555557a000`

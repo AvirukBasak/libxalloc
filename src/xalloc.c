@@ -97,6 +97,26 @@ XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
     return node;
 }
 
+bool _xalloc_integrity_verify()
+{
+    XALLOC_mbloc_t *p = XALLOC_mhead->start;
+    while (p) {
+        /* without buffer overflow memory corruption, the following is false:
+         * p->nxt && p->nxt->prev != p
+         * but if memory is corrupted, so will prev and next pointers and above
+         * condition becomes true
+         */
+        if (p->nxt && p->nxt->prv != p) {
+            void *ptr = p->ptr;
+            brk(XALLOC_mhead->start);
+            fprintf(stderr, "libxalloc: aborted: buffer at '%p' overflowed\n",  ptr);
+            abort();
+        }
+        p = p->nxt;
+    }
+    return true;
+}
+
 /** searches for a specific bloc data based on its address */
 XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr)
 {
@@ -159,6 +179,8 @@ ptr_t xmalloc(size_t size)
     if (!XALLOC_mhead)
         _xalloc_mhead_init();
 
+    _xalloc_integrity_verify();
+
     // attempting to recycle old empty bloc
     if (XALLOC_mhead->start) {
         XALLOC_mbloc_t *reusable = XALLOC_mhead->start;
@@ -179,6 +201,8 @@ ptr_t xmalloc(size_t size)
 /** resizes allocated bloc if possible, or copies data around */
 ptr_t xrealloc(ptr_t ptr, size_t size)
 {
+    _xalloc_integrity_verify();
+
     if (!ptr) return xmalloc(size);
     XALLOC_mbloc_t *bloc = _xalloc_mbloc_find(ptr);
     if (bloc->size == size) return ptr;
@@ -212,7 +236,10 @@ ptr_t xrealloc(ptr_t ptr, size_t size)
 /** marks pointer to bloc for cleanup */
 void xfree(ptr_t ptr)
 {
+    _xalloc_integrity_verify();
+
     if (!ptr) return;
+
     XALLOC_mbloc_t *bloc = _xalloc_mbloc_find(ptr);
     bloc->isfree = true;
 

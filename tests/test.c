@@ -18,12 +18,12 @@ int main(int argc, char *argv[])
             s1[i] = i%26 + 0x61;
         }
         char *s2 = xmalloc(SZ);
-        for (int i = 0; i < SZ; i++) {
-            s2[i] = i%26 + 0x61;
-        }
         char *s3 = xmalloc(SZ);
         for (int i = 0; i < SZ; i++) {
             s3[i] = i%26 + 0x61;
+        }
+        for (int i = 0; i < SZ+67; i++) {
+            s2[i] = i%26 + 0x61;
         }
         s3[26] = 0; printf("%d: %s\n", i, s3);
         xfree(s0);

@@ -23,6 +23,7 @@ XALLOC_mhead_t *XALLOC_mhead = NULL;
 /* functions */
 void _xalloc_abort(const char *s);
 void _xalloc_mhead_init();
+bool _xalloc_integrity_verify();
 void _xalloc_mbloc_link(XALLOC_mbloc_t *node);
 XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size);
 XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr);
@@ -68,6 +69,26 @@ void _xalloc_mhead_init()
     XALLOC_mhead->end = NULL;
 }
 
+bool _xalloc_integrity_verify()
+{
+    XALLOC_mbloc_t *p = XALLOC_mhead->start;
+    while (p) {
+        /* without buffer overflow memory corruption, the following is false:
+         * p->nxt && p->nxt->prev != p
+         * but if memory is corrupted, so will prev and next pointers and above
+         * condition becomes true
+         */
+        if (p->nxt && p->nxt->prv != p) {
+            void *ptr = p->ptr;
+            brk(XALLOC_mhead->start);
+            fprintf(stderr, "libxalloc: aborted: buffer at '%p' overflowed\n",  ptr);
+            abort();
+        }
+        p = p->nxt;
+    }
+    return true;
+}
+
 void _xalloc_mbloc_link(XALLOC_mbloc_t *node)
 {
     NULLPTR_CHECK(node);
@@ -95,26 +116,6 @@ XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
     node->isfree = false;
     _xalloc_mbloc_link(node);
     return node;
-}
-
-bool _xalloc_integrity_verify()
-{
-    XALLOC_mbloc_t *p = XALLOC_mhead->start;
-    while (p) {
-        /* without buffer overflow memory corruption, the following is false:
-         * p->nxt && p->nxt->prev != p
-         * but if memory is corrupted, so will prev and next pointers and above
-         * condition becomes true
-         */
-        if (p->nxt && p->nxt->prv != p) {
-            void *ptr = p->ptr;
-            brk(XALLOC_mhead->start);
-            fprintf(stderr, "libxalloc: aborted: buffer at '%p' overflowed\n",  ptr);
-            abort();
-        }
-        p = p->nxt;
-    }
-    return true;
 }
 
 /** searches for a specific bloc data based on its address */

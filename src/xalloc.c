@@ -179,7 +179,7 @@ ptr_t xmalloc(size_t size)
 /** resizes allocated bloc if possible, or copies data around */
 ptr_t xrealloc(ptr_t ptr, size_t size)
 {
-    if (!ptr) xmalloc(size);
+    if (!ptr) return xmalloc(size);
     XALLOC_mbloc_t *bloc = _xalloc_mbloc_find(ptr);
     if (bloc->size == size) return ptr;
 

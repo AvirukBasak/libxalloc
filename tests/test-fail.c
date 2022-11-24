@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < SZ; i++) {
             s2[i] = i%26 + 0x61;
         }
-        for (int i = 0; i < SZ+50; i++) {
+        for (int i = 0; i < SZ+16; i++) {
             s1[i] = i%26 + 0x61;
         }
         char *s3 = xmalloc(SZ);

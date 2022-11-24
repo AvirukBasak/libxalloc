@@ -18,11 +18,11 @@ struct XALLOC_mhead_t
 struct XALLOC_mbloc_t
 {
     char padding[MBLOC_PADDING];
-    bool isfree;
-    ptr_t ptr;
-    size_t size;
     XALLOC_mbloc_t *prv;
     XALLOC_mbloc_t *nxt;
+    ptr_t ptr;
+    size_t size;
+    bool isfree;
 };
 
 /** Abort with error message */

@@ -73,13 +73,25 @@ $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
 ## execution
 
 test: all $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test $(LIB) -L$(BIN_DIR) -lxalloc
+	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/test.$(SRCEXT) -o $(BIN_DIR)/test $(LIB) -L$(BIN_DIR) -lxalloc
 	./$(BIN_DIR)/test
 	@#rm ./$(BIN_DIR)/test
 
 testdbg: dbg $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/*.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
+	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(BIN_DIR)/test-dbg $(LIB)
 	$(DBG) $(BIN_DIR)/test-dbg
+	@#rm ./$(BIN_DIR)/test-dbg
+
+
+
+test-fail: all $(TESTSRC)
+	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(BIN_DIR)/test-fail $(LIB) -L$(BIN_DIR) -lxalloc
+	./$(BIN_DIR)/test-fail
+	@#rm ./$(BIN_DIR)/test
+
+test-fail-dbg: dbg $(TESTSRC)
+	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(BIN_DIR)/test-fail-dbg $(LIB)
+	$(DBG) $(BIN_DIR)/test-fail-dbg
 	@#rm ./$(BIN_DIR)/test-dbg
 
 ## mkdirp

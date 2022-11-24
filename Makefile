@@ -82,8 +82,6 @@ testdbg: dbg $(TESTSRC)
 	$(DBG) $(BIN_DIR)/test-dbg
 	@#rm ./$(BIN_DIR)/test-dbg
 
-
-
 test-fail: all $(TESTSRC)
 	@$(CC) $(CFLAGS) -I $(BIN_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(BIN_DIR)/test-fail $(LIB) -L$(BIN_DIR) -lxalloc
 	./$(BIN_DIR)/test-fail

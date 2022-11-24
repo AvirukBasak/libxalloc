@@ -28,11 +28,11 @@ struct XALLOC_mbloc_t
 /** Abort with error message */
 void _xalloc_abort(const char *s)
 {
-    print_str(2, "libxalloc: aborted");
+    _xalloc_print_str(2, "libxalloc: aborted");
     if (!s) goto abort;
-    print_str(2, ": ");
-    print_str(2, s);
-    print_str(2, "\n");
+    _xalloc_print_str(2, ": ");
+    _xalloc_print_str(2, s);
+    _xalloc_print_str(2, "\n");
     abort: abort();
 }
 
@@ -57,9 +57,9 @@ bool _xalloc_integrity_verify()
         if (p->nxt && p->nxt->prv != p) {
             void *ptr = p->ptr;
             brk(XALLOC_mhead->start);
-            print_str(2, "libxalloc: aborted: buffer at '");
-            print_ptr(2, ptr);
-            print_str(2, "' overflowed\n");
+            _xalloc_print_str(2, "libxalloc: aborted: buffer at '");
+            _xalloc_print_ptr(2, ptr);
+            _xalloc_print_str(2, "' overflowed\n");
             abort();
         }
         p = p->nxt;

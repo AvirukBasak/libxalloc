@@ -31,7 +31,7 @@ DBG_TARGET  := $(BIN_DIR)/$(TARGET_NAME)-dbg.a
 
 SOURCES     := $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT))
 TESTSRC     := $(shell find $(TEST_DIR)/ -name "*."$(SRCEXT))
-HEADERS     := $(shell find $(INCLUDE_DIR)/ -name "*."$(HEADEREXT))
+HEADERS     := $(shell find $(INCLUDE_DIR)/ -name "$(TARGET_NAME).$(HEADEREXT)")
 
 LIBRARIES   := $(LIB_DIR)/libdummy/dummy.o
 
@@ -67,7 +67,7 @@ $(LIBRARIES):
 ## headers
 
 $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT): $(HEADERS)
-	@grep --no-filename -v '^#\s*include\s*"' $(HEADERS) > $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT)
+	@cp $(HEADERS) $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT)
 	$(info make $(BIN_DIR)/$(TARGET_NAME).$(HEADEREXT))
 
 ## execution

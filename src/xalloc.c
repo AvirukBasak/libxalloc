@@ -17,7 +17,6 @@ struct XALLOC_mhead_t
 /** data of a memory bloc */
 struct XALLOC_mbloc_t
 {
-    char padding[MBLOC_PADDING];
     XALLOC_mbloc_t *prv;
     XALLOC_mbloc_t *nxt;
     ptr_t ptr;
@@ -55,10 +54,8 @@ bool _xalloc_integrity_verify()
          * condition becomes true
          */
         if (p->nxt && p->nxt->prv != p) {
-            void *ptr = p->ptr;
-            brk(XALLOC_mhead->start);
             _xalloc_print_str(2, "libxalloc: aborted: buffer at '");
-            _xalloc_print_ptr(2, ptr);
+            _xalloc_print_ptr(2, p->ptr);
             _xalloc_print_str(2, "' overflowed\n");
             abort();
         }

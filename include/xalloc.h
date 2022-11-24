@@ -13,7 +13,7 @@ ptr_t xrealloc(ptr_t ptr, size_t size);
 void xfree(ptr_t ptr);
 
 #define COPY_THRESHOLD (4096)
-#define MBLOC_PADDING  (16)
+#define MBLOC_PADDING  (15)
 
 #define NULLPTR_CHECK(ptr) if (!ptr || ptr == (void*) -1) _xalloc_abort("null pointer")
 

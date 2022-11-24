@@ -88,7 +88,7 @@ test-fail: all $(TESTSRC)
 	@#rm ./$(BIN_DIR)/test
 
 test-fail-dbg: dbg $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(BIN_DIR)/test-fail-dbg $(LIB)
+	@$(CC) $(CDBGFLAGS) $(INCLUDE) -I $(BIN_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(BIN_DIR)/test-fail-dbg $(LIB)
 	$(DBG) $(BIN_DIR)/test-fail-dbg
 	@#rm ./$(BIN_DIR)/test-dbg
 

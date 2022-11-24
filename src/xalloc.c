@@ -1,34 +1,10 @@
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdbool.h>
-
+#include "stdhead.h"
+#include "io.h"
 #include "xalloc.h"
-
-#define MAX(a,b) (a>b?a:b)
-#define MIN(a,b) (a<b?a:b)
-
-#define COPY_THRESHOLD (4096)
-#define MBLOC_PADDING  (16)
-
-#define NULLPTR_CHECK(ptr) if (!ptr || ptr == (void*) -1) _xalloc_abort("null pointer")
-
-typedef struct XALLOC_mhead_t XALLOC_mhead_t;
-typedef struct XALLOC_mbloc_t XALLOC_mbloc_t;
 
 /** bloc data list head allocated in global memory */
 XALLOC_mhead_t _XALLOC_mhead;
 XALLOC_mhead_t *XALLOC_mhead = NULL;
-
-/* functions */
-void _xalloc_abort(const char *s);
-void _xalloc_mhead_init();
-bool _xalloc_integrity_verify();
-void _xalloc_mbloc_link(XALLOC_mbloc_t *node);
-XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size);
-XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr);
-XALLOC_mbloc_t *_xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz);
-XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz);
 
 /** head of linked list */
 struct XALLOC_mhead_t
@@ -52,12 +28,12 @@ struct XALLOC_mbloc_t
 /** Abort with error message */
 void _xalloc_abort(const char *s)
 {
-    NULLPTR_CHECK(s);
-    size_t len = strlen(s);
-    write(2, "libxalloc: aborted: ", 20);
-    write(2, s, len);
-    write(2, "\n", 1);
-    abort();
+    print_str(2, "libxalloc: aborted");
+    if (!s) goto abort;
+    print_str(2, ": ");
+    print_str(2, s);
+    print_str(2, "\n");
+    abort: abort();
 }
 
 void _xalloc_mhead_init()
@@ -81,7 +57,9 @@ bool _xalloc_integrity_verify()
         if (p->nxt && p->nxt->prv != p) {
             void *ptr = p->ptr;
             brk(XALLOC_mhead->start);
-            fprintf(stderr, "libxalloc: aborted: buffer at '%p' overflowed\n",  ptr);
+            print_str(2, "libxalloc: aborted: buffer at '");
+            print_ptr(2, ptr);
+            print_str(2, "' overflowed\n");
             abort();
         }
         p = p->nxt;

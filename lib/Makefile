@@ -6,15 +6,24 @@ HEADEREXT   := h
 
 SRC_DIR     := ../src
 BUILD_DIR   := ../build
-BIN_DIR     := ../bin
+TARGET_DIR  := ../target
 LIB_DIR     := ../lib
 TEST_DIR    := ../tests
 INCLUDE_DIR := ../include
 
+# compiler options
+
+LIB_NAME    := xalloc
+
 CC          := gcc
 CFLAGS      := -Wall -Ofast
-CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
+CDBGFLAGS   := -Wall -g -D DEBUG
 DBG         := gdb -q
+
+INCLUDE     := -I $(INCLUDE_DIR) -I $(LIB_DIR)
+LIB         := -L$(LIB_DIR) -lm
+
+## go on listing your libraries below for compilation
 
 all:
 	@cd libdummy && $(MAKE)

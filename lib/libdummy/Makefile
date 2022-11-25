@@ -11,9 +11,13 @@ LIB_DIR     := ../../lib
 TEST_DIR    := ../../tests
 INCLUDE_DIR := ../../include
 
+# compiler options
+
+LIB_NAME    := libdummy
+
 CC          := gcc
 CFLAGS      := -Wall -Ofast
-CDBGFLAGS   := -Wall -g -ggdb -D DEBUG
+CDBGFLAGS   := -Wall -g -D DEBUG
 DBG         := gdb -q
 
 all: $(LIB_DIR)/libdummy.a

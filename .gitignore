@@ -1,5 +1,6 @@
 build/
 bin/
+target/
 *.o
 *.a
 *.out

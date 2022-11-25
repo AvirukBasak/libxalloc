@@ -73,20 +73,20 @@ $(LIBRARIES):
 ## testing / execution
 
 test: rel $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test.$(SRCEXT) -o $(TARGET_DIR)/test -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
-	./$(TARGET_DIR)/test
+	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test.$(SRCEXT) -o $(TEST_DIR)/test.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
+	./$(TEST_DIR)/test.out
 
 testdbg: dbg $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(TARGET_DIR)/test-dbg $(LIB)
-	$(DBG) $(TARGET_DIR)/test-dbg
+	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(TEST_DIR)/test-dbg.out $(LIB)
+	$(DBG) $(TEST_DIR)/test-dbg.out
 
 test-fail: rel $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TARGET_DIR)/test-fail -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
-	./$(TARGET_DIR)/test-fail
+	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
+	./$(TEST_DIR)/test-fail.out
 
 test-fail-dbg: dbg $(TESTSRC)
-	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TARGET_DIR)/test-fail-dbg $(LIB)
-	$(DBG) $(TARGET_DIR)/test-fail-dbg
+	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail-dbg.out $(LIB)
+	$(DBG) $(TEST_DIR)/test-fail-dbg.out
 
 ## mkdirp
 
@@ -99,6 +99,7 @@ mkdirp:
 clean:
 	@cd $(SRC_DIR) && $(MAKE) clean
 	@cd $(LIB_DIR) && $(MAKE) clean
+	@rm -rf $(TEST_DIR)/*.out
 
 cleaner:
 	@cd $(SRC_DIR) && $(MAKE) cleaner

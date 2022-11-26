@@ -25,7 +25,7 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
         char halfbyte0 = __xalloc_std_to_hex(byte >> 4);
         char halfbyte1 = __xalloc_std_to_hex(byte);
         if (halfbyte0 != '0' || halfbyte1 != '0')
-            msb_zero = false;
+            msbyte_zero = false;
         if (!msbyte_zero) {
             s[j] = halfbyte0;
             s[j+1] = halfbyte1;

@@ -23,7 +23,7 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
         const ui8_t byte = b[i];
         char halfbyte0 = __xalloc_std_to_hex(byte >> 4);
         char halfbyte1 = __xalloc_std_to_hex(byte);
-        if (halfbyte0 != '0' && halfbyte1 != '0')
+        if (halfbyte0 != '0' || halfbyte1 != '0')
             msb_zero = false;
         if (!msb_zero) {
             s[j] = halfbyte0;
@@ -34,5 +34,6 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
         is_bend ? i-- : i++;
     }
     write(fd, "0x", 2);
-    write(fd, s, 2*len);
+    if (len < 1) write(fd, "00", 2);
+    else write(fd, s, 2*len);
 }

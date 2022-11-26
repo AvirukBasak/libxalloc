@@ -40,13 +40,13 @@ TESTSRC     := $(shell find $(TEST_DIR)/ -name "*."$(SRCEXT))
 
 rel: mkdirp $(HDR_TARGET) $(TARGET)
 
-OBJECTS     := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
+OBJECTS     := $(patsubst $(SRC_DIR)/%.$(SRCEXT), $(BUILD_DIR)/%-rel.$(OBJEXT), $(shell find $(SRC_DIR)/ -name "*."$(SRCEXT)))
 
 $(OBJECTS): $(SOURCES) $(HEADERS)
 	@cd $(SRC_DIR) && $(MAKE)
 
 $(TARGET): $(LIBRARIES) $(OBJECTS)
-	ar rcs $(TARGET) $(BUILD_DIR)/*.$(OBJEXT)
+	ar rcs $(TARGET) $(BUILD_DIR)/*-rel.$(OBJEXT)
 
 ## debug build
 
@@ -68,13 +68,13 @@ $(HDR_TARGET): $(INCLUDE_DIR)/$(TARGET_NAME).$(HEADEREXT)
 
 ## build libraries
 $(LIBRARIES):
-	@cd $(LIB_DIR) && make
+	@cd $(LIB_DIR) && $(MAKE)
 
 ## testing / execution
 
 test: rel $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test.$(SRCEXT) -o $(TEST_DIR)/test.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
-	./$(TEST_DIR)/test.out
+	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test.$(SRCEXT) -o $(TEST_DIR)/test-rel.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
+	./$(TEST_DIR)/test-rel.out
 
 testdbg: dbg $(TESTSRC)
 	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test.$(SRCEXT) -o $(TEST_DIR)/test-dbg.out $(LIB)
@@ -82,7 +82,7 @@ testdbg: dbg $(TESTSRC)
 
 test-fail: rel $(TESTSRC)
 	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
-	./$(TEST_DIR)/test-fail.out
+	./$(TEST_DIR)/test-fail-rel.out
 
 test-fail-dbg: dbg $(TESTSRC)
 	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail-dbg.out $(LIB)
@@ -104,5 +104,6 @@ clean:
 cleaner:
 	@cd $(SRC_DIR) && $(MAKE) cleaner
 	@cd $(LIB_DIR) && $(MAKE) cleaner
+	@rm -rf $(TEST_DIR)/*.out
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(TARGET_DIR)

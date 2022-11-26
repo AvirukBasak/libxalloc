@@ -30,11 +30,11 @@ SUB_DIR_DBG := $(SUB_DIRS)
 
 ## release build
 
-OBJECTS     := $(patsubst %.$(SRCEXT), %.$(OBJEXT), $(wildcard *.$(SRCEXT)))
+OBJECTS     := $(patsubst %.$(SRCEXT), %-rel.$(OBJEXT), $(wildcard *.$(SRCEXT)))
 
 rel: mkdirp $(OBJECTS) cpobj
 
-%.$(OBJEXT): %.$(SRCEXT) $(HEADERS)
+%-rel.$(OBJEXT): %.$(SRCEXT) $(HEADERS)
 	$(CC) $(CFLAGS) $(INCLUDE) -c -o $@ $<
 
 ## build subdirs

@@ -3,7 +3,7 @@ Custom heap memory allocator using `brk` and `sbrk`.
 
 ## Usage
 - Build with `make`.
-- Copy library from `bin/`.
+- Copy library from `target/`.
 - Visit [test.c](tests/test.c) for example use.
 
 ## Warning

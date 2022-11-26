@@ -16,7 +16,8 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
     char *b = (char*)(&p);
     char s[16];
     size_t len = 0;
-    bool msb_zero = true;
+    // most significant byte
+    bool msbyte_zero = true;
     bool is_bend = __xalloc_std_is_litle_endian();
     int i = is_bend ? 7 : 0;
     for (int j = 0; (is_bend ? (i >= 0) : (i < 8)) && j < 16;) {
@@ -25,7 +26,7 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
         char halfbyte1 = __xalloc_std_to_hex(byte);
         if (halfbyte0 != '0' || halfbyte1 != '0')
             msb_zero = false;
-        if (!msb_zero) {
+        if (!msbyte_zero) {
             s[j] = halfbyte0;
             s[j+1] = halfbyte1;
             j+=2;

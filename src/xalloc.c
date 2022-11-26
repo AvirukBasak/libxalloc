@@ -25,17 +25,17 @@ struct XALLOC_mbloc_t
 };
 
 /** Abort with error message */
-void _xalloc_abort(const char *s)
+void __xalloc_abort(const char *s)
 {
-    _xalloc_print_str(2, "libxalloc: aborted");
+    __xalloc_print_str(2, "libxalloc: aborted");
     if (!s) goto abort;
-    _xalloc_print_str(2, ": ");
-    _xalloc_print_str(2, s);
-    _xalloc_print_str(2, "\n");
+    __xalloc_print_str(2, ": ");
+    __xalloc_print_str(2, s);
+    __xalloc_print_str(2, "\n");
     abort: abort();
 }
 
-void _xalloc_mhead_init()
+void __xalloc_mhead_init()
 {
     if (XALLOC_mhead) return;
     XALLOC_mhead = &_XALLOC_mhead;
@@ -44,7 +44,7 @@ void _xalloc_mhead_init()
     XALLOC_mhead->end = NULL;
 }
 
-bool _xalloc_integrity_verify()
+bool __xalloc_integrity_verify()
 {
     XALLOC_mbloc_t *p = XALLOC_mhead->start;
     while (p) {
@@ -54,9 +54,9 @@ bool _xalloc_integrity_verify()
          * condition becomes true
          */
         if (p->nxt && p->nxt->prv != p) {
-            _xalloc_print_str(2, "libxalloc: aborted: buffer at '");
-            _xalloc_print_ptr(2, p->ptr);
-            _xalloc_print_str(2, "' overflowed\n");
+            __xalloc_print_str(2, "libxalloc: aborted: buffer at '");
+            __xalloc_print_ptr(2, p->ptr);
+            __xalloc_print_str(2, "' overflowed\n");
             abort();
         }
         p = p->nxt;
@@ -64,7 +64,7 @@ bool _xalloc_integrity_verify()
     return true;
 }
 
-void _xalloc_mbloc_link(XALLOC_mbloc_t *node)
+void __xalloc_mbloc_link(XALLOC_mbloc_t *node)
 {
     NULLPTR_CHECK(node);
     // setting last node links
@@ -80,7 +80,7 @@ void _xalloc_mbloc_link(XALLOC_mbloc_t *node)
     XALLOC_mhead->blocc++;
 }
 
-XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
+XALLOC_mbloc_t *__xalloc_mbloc_new(size_t size)
 {
     XALLOC_mbloc_t *node = sbrk(sizeof(XALLOC_mbloc_t));
     NULLPTR_CHECK(node);
@@ -89,12 +89,12 @@ XALLOC_mbloc_t *_xalloc_mbloc_new(size_t size)
     node->ptr = ptr;
     node->size = size;
     node->isfree = false;
-    _xalloc_mbloc_link(node);
+    __xalloc_mbloc_link(node);
     return node;
 }
 
 /** searches for a specific bloc data based on its address */
-XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr)
+XALLOC_mbloc_t *__xalloc_mbloc_find(ptr_t ptr)
 {
     NULLPTR_CHECK(ptr);
     XALLOC_mbloc_t *p = XALLOC_mhead->start;
@@ -102,15 +102,15 @@ XALLOC_mbloc_t *_xalloc_mbloc_find(ptr_t ptr)
         if (p->ptr == ptr) return p;
         p = p->nxt;
     }
-    _xalloc_abort("invalid pointer");
+    __xalloc_abort("invalid pointer");
     return NULL;
 }
 
-XALLOC_mbloc_t *_xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
+XALLOC_mbloc_t *__xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
     NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
-    if (req_sz > bloc->size) _xalloc_abort("post split size exceeds bloc size");
+    if (req_sz > bloc->size) __xalloc_abort("post split size exceeds bloc size");
     size_t leftover_sz = bloc->size - req_sz - sizeof(XALLOC_mbloc_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made
@@ -127,11 +127,11 @@ XALLOC_mbloc_t *_xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
     return bloc;
 }
 
-XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
+XALLOC_mbloc_t *__xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
     NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
-    if (bloc->size > req_sz) _xalloc_abort("bloc size exceeds post merge size");
+    if (bloc->size > req_sz) __xalloc_abort("bloc size exceeds post merge size");
     size_t avlb_sz = bloc->size;
     XALLOC_mbloc_t *node = bloc->nxt;
     while (avlb_sz < req_sz && node && node->isfree) {
@@ -142,7 +142,7 @@ XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
     if (avlb_sz < req_sz)
         return NULL;
     if (avlb_sz > req_sz)
-        node = _xalloc_mbloc_split(node, node->size - (avlb_sz - req_sz));
+        node = __xalloc_mbloc_split(node, node->size - (avlb_sz - req_sz));
     if (node->nxt) node->nxt->prv = bloc;
     bloc->nxt = node->nxt;
     bloc->size = req_sz;
@@ -153,9 +153,9 @@ XALLOC_mbloc_t *_xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 ptr_t xmalloc(size_t size)
 {
     if (!XALLOC_mhead)
-        _xalloc_mhead_init();
+        __xalloc_mhead_init();
 
-    _xalloc_integrity_verify();
+    __xalloc_integrity_verify();
 
     // attempting to recycle old empty bloc
     if (XALLOC_mhead->start) {
@@ -166,26 +166,26 @@ ptr_t xmalloc(size_t size)
         if (reusable) {
             reusable->isfree = false;
             if (reusable->size == size) return reusable->ptr;
-            return _xalloc_mbloc_split(reusable, size)->ptr;
+            return __xalloc_mbloc_split(reusable, size)->ptr;
         }
     }
 
     // fallback: allocating new bloc
-    return _xalloc_mbloc_new(size)->ptr;
+    return __xalloc_mbloc_new(size)->ptr;
 }
 
 /** resizes allocated bloc if possible, or copies data around */
 ptr_t xrealloc(ptr_t ptr, size_t size)
 {
-    _xalloc_integrity_verify();
+    __xalloc_integrity_verify();
 
     if (!ptr) return xmalloc(size);
-    XALLOC_mbloc_t *bloc = _xalloc_mbloc_find(ptr);
+    XALLOC_mbloc_t *bloc = __xalloc_mbloc_find(ptr);
     if (bloc->size == size) return ptr;
 
     // splitting blocs if new size is smaller
     if (size < bloc->size)
-        return _xalloc_mbloc_split(bloc, size)->ptr;
+        return __xalloc_mbloc_split(bloc, size)->ptr;
 
     // if bloc is too large
     if (bloc->size > COPY_THRESHOLD) {
@@ -197,7 +197,7 @@ ptr_t xrealloc(ptr_t ptr, size_t size)
         }
         // consecutive empty blocs
         else if (bloc->nxt->isfree) {
-            XALLOC_mbloc_t *merged = _xalloc_mbloc_merge(bloc, size);
+            XALLOC_mbloc_t *merged = __xalloc_mbloc_merge(bloc, size);
             if (merged) return merged->ptr;
         }
     }
@@ -212,11 +212,11 @@ ptr_t xrealloc(ptr_t ptr, size_t size)
 /** marks pointer to bloc for cleanup */
 void xfree(ptr_t ptr)
 {
-    _xalloc_integrity_verify();
+    __xalloc_integrity_verify();
 
     if (!ptr) return;
 
-    XALLOC_mbloc_t *bloc = _xalloc_mbloc_find(ptr);
+    XALLOC_mbloc_t *bloc = __xalloc_mbloc_find(ptr);
     bloc->isfree = true;
 
     // cleaning up free blocs from the end of list

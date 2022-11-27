@@ -8,20 +8,20 @@ The test runs `7` iterations, each iteration allocating a total of `1GB`, writin
 
 Breakpoints at lines `12`, `29` and `32`.
 
-### 0th iteration:
+#### 0th iteration:
  - at line 12: `sbrk(0)` = `0x555555a000`
  - at line 29: `sbrk(0)` = `0x559555a0e0`
  - at line 32: `sbrk(0)` = `0x559555a0e0`
 
-### 1st iteration:
+#### 1st iteration:
  - at line 12: `sbrk(0)` = `0x555555a000`
  - at line 29: `sbrk(0)` = `0x559555a0e0`
  - at line 32: `sbrk(0)` = `0x559555a0e0`
 
-### Subsequent iterations:
+#### Subsequent iterations:
 Similar to 1st iteration
 
-### Observations:
+#### Observations:
 
 Difference in `sbrk(0)` in same iteration b/w lines 29 and 12 = `0x559555a0e0` - `0x555555a000` = `1GB`.
 This indicates the allocator is properly allocating blocks.
@@ -32,12 +32,12 @@ This indicates allocator is not updating `brk` unless the last allocated block i
 Difference in `sbrk(0)` b/w two iterations at line 12 of each iteration = `0x555555a000` - `0x555555a000` = `0B`.
 This indicates the allocator is properly deallocating blocks.
 
-### Conclusion
+#### Conclusion
 Difference in `sbrk(0)` before and after run = `0B`.
 
 Hence, allocator is functioning as expected.
 
-### Notes
+#### Notes
 On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132KB`
 
 It was observed that this allocation happened somewhere before the first call to `xmalloc`.

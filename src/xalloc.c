@@ -24,19 +24,25 @@ struct XALLOC_mbloc_t
     bool isfree;
 };
 
-void __xalloc_mhead_init()
+void __xalloc_alloc_init()
 {
     if (XALLOC_mhead) return;
     XALLOC_mhead = &_XALLOC_mhead;
     XALLOC_mhead->blocc = 0;
     XALLOC_mhead->start = NULL;
     XALLOC_mhead->end = NULL;
+    /* initial allocation to avoid excess sbrk calls
+     * this block is large so if it can be split
+     * malloc will attempt to reuse this block
+     */
+    void *ptr = xmalloc(INIT_ALLOCATION);
+    if (ptr) XALLOC_mhead->start->isfree = true;
 }
 
 bool __xalloc_integrity_verify()
 {
     if (!XALLOC_mhead)
-        __xalloc_mhead_init();
+        __xalloc_alloc_init();
     XALLOC_mbloc_t *p = XALLOC_mhead->start;
     while (p) {
         /* without buffer overflow memory corruption, the following is false:

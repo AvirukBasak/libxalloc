@@ -34,8 +34,9 @@ ptr_t xrealloc(ptr_t ptr, size_t size);
  */
 size_t xfree(ptr_t ptr);
 
-#define COPY_THRESHOLD (4096)
-#define MBLOC_PADDING  (15)
+#define INIT_ALLOCATION (132 * 1024)
+#define COPY_THRESHOLD  (4096)
+#define MBLOC_PADDING   (15)
 
 #define NULLPTR_CHECK(ptr) if (!ptr || ptr == (void*) -1) __xalloc_print_err("null pointer")
 
@@ -43,7 +44,7 @@ typedef struct XALLOC_mhead_t XALLOC_mhead_t;
 typedef struct XALLOC_mbloc_t XALLOC_mbloc_t;
 
 /* functions */
-void __xalloc_mhead_init();
+void __xalloc_alloc_init();
 bool __xalloc_integrity_verify();
 void __xalloc_mbloc_link(XALLOC_mbloc_t *node);
 XALLOC_mbloc_t *__xalloc_mbloc_new(size_t size);

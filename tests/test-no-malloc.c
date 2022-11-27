@@ -4,6 +4,8 @@
 #include "libxalloc.h"
 #define SZ (256*1024*1024)
 
+#ifdef DEBUG
+
 /* These functions comes from libxalloc. Since libxalloc
  * doesn't provide the declarations of these functions, I've
  * put the declarations here.
@@ -28,6 +30,8 @@ struct XALLOC_mbloc_t
 /* find function from xalloc */
 struct XALLOC_mbloc_t *__xalloc_mbloc_find(void *ptr);
 
+#endif
+
 /* overriding libc allocators with custom functions.
  * note that if printf calls a heap allocator, it'll
  * call one of the following
@@ -36,38 +40,45 @@ struct XALLOC_mbloc_t *__xalloc_mbloc_find(void *ptr);
 void *malloc(size_t size)
 {
     void *ptr = xmalloc(size);
+#ifdef DEBUG
     __xalloc_print_str(2, "    malloc: ptr = '");
     __xalloc_print_ptr(2, ptr);
     __xalloc_print_str(2, "', size = ");
     __xalloc_print_ui64(2, size);
     __xalloc_print_str(2, " B\n");
+#endif
     return ptr;
 }
 
 void *calloc(size_t count, size_t size)
 {
     void *ptr = xcalloc(count, size);
+#ifdef DEBUG
     __xalloc_print_str(2, "    calloc: ptr = '");
     __xalloc_print_ptr(2, ptr);
     __xalloc_print_str(2, "', size = ");
     __xalloc_print_ui64(2, size);
     __xalloc_print_str(2, " B\n");
+#endif
     return ptr;
 }
 
 void *realloc(void *p, size_t size)
 {
     void *ptr = xrealloc(p, size);
+#ifdef DEBUG
     __xalloc_print_str(2, "    relloc: ptr = '");
     __xalloc_print_ptr(2, ptr);
     __xalloc_print_str(2, "', size = ");
     __xalloc_print_ui64(2, size);
     __xalloc_print_str(2, " B\n");
+#endif
     return ptr;
 }
 
 void free(void *ptr)
 {
+#ifdef DEBUG
     size_t mark_sz = ptr ? __xalloc_mbloc_find(ptr)->size : 0;
     size_t freed_size = xfree(ptr);
     __xalloc_print_str(2, "    free: ptr = '");
@@ -77,6 +88,9 @@ void free(void *ptr)
     __xalloc_print_str(2, " B, freed = ");
     __xalloc_print_ui64(2, freed_size);
     __xalloc_print_str(2, " B\n");
+#else
+    xfree(ptr);
+#endif
 }
 
 int main(int argc, char *argv[])

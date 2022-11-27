@@ -28,6 +28,7 @@ typedef double f64_t;
 
 void abort(void) __attribute__((noreturn));
 unsigned long strlen(const char *);
+void *memset(void *, int, unsigned long);
 void *memcpy(void *, const void *, unsigned long);
 
 #endif

@@ -46,6 +46,8 @@ void __xalloc_mhead_init()
 
 bool __xalloc_integrity_verify()
 {
+    if (!XALLOC_mhead)
+        __xalloc_mhead_init();
     XALLOC_mbloc_t *p = XALLOC_mhead->start;
     while (p) {
         /* without buffer overflow memory corruption, the following is false:
@@ -152,9 +154,6 @@ XALLOC_mbloc_t *__xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 /** alloctes specified size */
 ptr_t xmalloc(size_t size)
 {
-    if (!XALLOC_mhead)
-        __xalloc_mhead_init();
-
     __xalloc_integrity_verify();
 
     // attempting to recycle old empty bloc
@@ -172,6 +171,14 @@ ptr_t xmalloc(size_t size)
 
     // fallback: allocating new bloc
     return __xalloc_mbloc_new(size)->ptr;
+}
+
+ptr_t xcalloc(size_t count, size_t size)
+{
+    __xalloc_integrity_verify();
+    ptr_t p = xmalloc(count * size);
+    memset(p, 0, count * size);
+    return p;
 }
 
 /** resizes allocated bloc if possible, or copies data around */

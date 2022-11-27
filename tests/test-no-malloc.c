@@ -70,7 +70,6 @@ void free(void *ptr)
 {
     size_t mark_sz = ptr ? __xalloc_mbloc_find(ptr)->size : 0;
     size_t freed_size = xfree(ptr);
-#ifdef DEBUG
     __xalloc_print_str(2, "    free: ptr = '");
     __xalloc_print_ptr(2, ptr);
     __xalloc_print_str(2, "', size = ");
@@ -78,7 +77,6 @@ void free(void *ptr)
     __xalloc_print_str(2, " B, freed = ");
     __xalloc_print_ui64(2, freed_size);
     __xalloc_print_str(2, " B\n");
-#endif
 }
 
 int main(int argc, char *argv[])

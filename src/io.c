@@ -13,7 +13,17 @@ void __xalloc_print_str(int fd, const char *s)
 
 void __xalloc_print_ui64(int fd, const ui64_t n)
 {
-    __xalloc_print_ptr(fd, (ptr_t) n);
+    ui64_t nb = n;
+    char s[21];
+    s[20] = 0;    // null termination
+    s[19] = '0';  // default number 0
+    int i = 19;   // location from where string starts
+    while (nb && i >= 0) {
+        s[i--] = (nb % 10) + '0';
+        nb /= 10;
+    }
+    if (i < 19) i++;
+    __xalloc_print_str(fd, &s[i]);
 }
 
 void __xalloc_print_ptr(int fd, const ptr_t p)

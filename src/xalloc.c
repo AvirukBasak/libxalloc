@@ -73,9 +73,9 @@ void __xalloc_mbloc_link(XALLOC_mbloc_t *node)
 
 XALLOC_mbloc_t *__xalloc_mbloc_new(size_t size)
 {
-    XALLOC_mbloc_t *node = sbrk(sizeof(XALLOC_mbloc_t));
+    XALLOC_mbloc_t *node = sbrk(sizeof(XALLOC_mbloc_t) + size);
     NULLPTR_CHECK(node);
-    ptr_t ptr = sbrk(size);
+    ptr_t ptr = (ptr_t) (node + sizeof(XALLOC_mbloc_t));
     NULLPTR_CHECK(ptr);
     node->ptr = ptr;
     node->size = size;
@@ -219,6 +219,7 @@ size_t xfree(ptr_t ptr)
     // cleaning up free blocs from the end of list
     XALLOC_mbloc_t *bloc = XALLOC_mhead->end;
     size_t freed_size = 0;
+    ptr_t brk_ptr = NULL;
     while (bloc && !bloc->nxt && bloc->isfree) {
         XALLOC_mbloc_t *tofree = bloc;
         freed_size += tofree->size;
@@ -229,7 +230,8 @@ size_t xfree(ptr_t ptr)
             XALLOC_mhead->end = NULL;
         }
         XALLOC_mhead->blocc--;
-        brk(tofree);
+        brk_ptr = tofree;
     }
+    if (brk_ptr) brk(brk_ptr);
     return freed_size;
 }

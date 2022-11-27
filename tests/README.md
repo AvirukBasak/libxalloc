@@ -32,12 +32,12 @@ This indicates allocator is not updating `brk` unless the last allocated block i
 Difference in `sbrk(0)` b/w two iterations at line 12 of each iteration = `0x555555a000` - `0x555555a000` = `0B`.
 This indicates the allocator is properly deallocating blocks.
 
-#### Conclusion
+#### Conclusion:
 Difference in `sbrk(0)` before and after run = `0B`.
 
 Hence, allocator is functioning as expected.
 
-#### Notes
+#### Notes:
 On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132KB`
 
 It was observed that this allocation happened somewhere before the first call to `xmalloc`.

@@ -81,12 +81,20 @@ testdbg: dbg $(TESTSRC)
 	$(DBG) $(TEST_DIR)/test-dbg.out
 
 test-fail: rel $(TESTSRC)
-	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
+	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail-rel.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
 	./$(TEST_DIR)/test-fail-rel.out
 
 test-fail-dbg: dbg $(TESTSRC)
 	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-fail.$(SRCEXT) -o $(TEST_DIR)/test-fail-dbg.out $(LIB)
 	$(DBG) $(TEST_DIR)/test-fail-dbg.out
+
+test-no-malloc: rel $(TESTSRC)
+	@$(CC) $(CFLAGS) -I $(TARGET_DIR) $(TEST_DIR)/test-no-malloc.$(SRCEXT) -o $(TEST_DIR)/test-no-malloc-rel.out -L$(TARGET_DIR) -l$(LIB_NAME) $(LIB)
+	./$(TEST_DIR)/test-no-malloc-rel.out
+
+test-no-malloc-dbg: dbg $(TESTSRC)
+	@$(CC) $(CDBGFLAGS) -I $(TARGET_DIR) $(DBG_OBJECTS) $(TEST_DIR)/test-no-malloc.$(SRCEXT) -o $(TEST_DIR)/test-no-malloc-dbg.out $(LIB)
+	$(DBG) $(TEST_DIR)/test-no-malloc-dbg.out
 
 ## mkdirp
 

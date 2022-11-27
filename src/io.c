@@ -28,7 +28,7 @@ void __xalloc_print_ui64(int fd, const ui64_t n)
 
 void __xalloc_print_i64(int fd, const i64_t n)
 {
-    ui64_t nb = labs(n);
+    ui64_t nb = n < 0 ? -n : n;
     if (n < 0) __xalloc_print_str(fd, "-");
     __xalloc_print_ui64(fd, nb);
 }

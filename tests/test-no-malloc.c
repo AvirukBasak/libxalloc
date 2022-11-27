@@ -4,8 +4,6 @@
 #include "libxalloc.h"
 #define SZ (256*1024*1024)
 
-#ifdef DEBUG
-
 /* These functions comes from libxalloc. Since libxalloc
  * doesn't provide the declarations of these functions, I've
  * put the declarations here.
@@ -16,6 +14,8 @@
 void __xalloc_print_str(int fd, const char *s);
 void __xalloc_print_ptr(int fd, const void *ptr);
 void __xalloc_print_ui64(int fd, const size_t size);
+
+#ifdef DEBUG
 
 /* memory data structure from xalloc */
 struct XALLOC_mbloc_t
@@ -95,8 +95,8 @@ void free(void *ptr)
 
 int main(int argc, char *argv[])
 {
-    void *p0, *p1;
-    printf("brk init = %p\n", p0 = sbrk(0));
+    void *p0 = sbrk(0);
+    printf("brk init = %p\n", p0);
     for (int i = 0; i < 7; i++) {
         char *s0 = malloc(SZ);
         for (int i = 0; i < SZ; i++) {
@@ -120,7 +120,11 @@ int main(int argc, char *argv[])
         free(s2);
         free(s3);
     }
-    printf("brk exit = %p\n", p1 = sbrk(0));
+    void *p1 = sbrk(0);
+    printf("brk exit = %p\n", p1);
     printf("brk difference = %zu B\n", (size_t) (p1 - p0));
+    // __xalloc_print_str(1, "brk difference = "); 
+    // __xalloc_print_ui64(1, (size_t) (p1 - p0));
+    // __xalloc_print_str(1, " B\n");
     return 0;
 }

@@ -84,11 +84,26 @@ That is untraceable.
 Inspection of the dump gives no clear clues, but we do notice an allocation of `1080 B` during first `printf` call.
 
 #### Observations:
-- first `printf` causes allocation of `1080 B`.
+Test platform `Termux Linux 4.19.157 aarch64 Android`
+- first `8 B` and `48 B` allocations are not by `printf`.
+- brk init is calculated at this point, before 1st `printf`.
+- first `printf` causes allocation of `1024 B`.
 - after every print, `printf` calls `free(NULL)` for some reason.
-- `printf` never clears the initial `1080 B`.
+- `printf` never clears the initial `1024 B`.
+- brk exit is calculated before 2nd last `printf`.
 - In the end, difference in `sbrk(0)` is `1064 B`.
-- Difference `1080 B` - `1064 B` = `16 B`.
+- Difference `1064 B` - `1024 B` = `40 B`.
+
+I suspect a leaked `XALLOC_mbloc_t` as that struct has size = `40 B`.
+
+On removal of 1st and in-loop `printf` calls, difference in `sbrk(0)` is `0 B`.
+
+The first `printf` always allocates `1024 B`.
+
+Test platform `Linux 5.10.147+ x86_64`
+- first `8 B` and `48 B` never happen.
+- `printf` never calls `free(NULL)`.
+- In the end, difference in `sbrk(0)` is `1064 B`.
 
 #### References:
 - `1 GB` = `1073741824 B`

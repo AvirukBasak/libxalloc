@@ -35,7 +35,7 @@ void __xalloc_alloc_init()
     XALLOC_mhead->end = NULL;
     /* initial allocation to avoid excess sbrk calls
      * this block is large so if it can be split
-     * malloc will attempt to reuse this block
+     * xmalloc will attempt to reuse this block
      */
     void *ptr = xmalloc(INIT_ALLOCATION);
     if (ptr) XALLOC_mhead->start->isfree = true;

@@ -90,7 +90,7 @@ Inspection of the dump gives no clear clues, but we do notice an allocation of `
 - In the end, difference in `sbrk(0)` is `1064B`.
 - Difference `1080B` - `1064B` = `16B`.
 
-Dump of `make test-no-malloc-dbg`:
+Dump of `make test-no-malloc-dbg` (indened stuff are the dumps, unintended stuff is by printf):
 ```
     malloc: ptr = '0x555555b080', size = 0x08 B
     malloc: ptr = '0x555555b0b0', size = 0x30 B

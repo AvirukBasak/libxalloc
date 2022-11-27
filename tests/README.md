@@ -3,7 +3,7 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`.
 
 Test command `make testdbg`.
 
-Tested in `gdb`, file [test.c](tests/test.c).
+Tested in `gdb`, file [test.c](test.c).
 The test runs `7` iterations, each iteration allocating a total of `1GB`, writing a few bytes to it, and then deallocating it.
 
 Breakpoints at lines `12`, `29` and `32`.

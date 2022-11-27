@@ -12,7 +12,21 @@
  * prevent them from interfering with our memory allocation activities.
  */
 void __xalloc_print_str(int fd, const char *s);
+void __xalloc_print_ptr(int fd, const void *ptr);
 void __xalloc_print_ui64(int fd, const size_t size);
+
+/* memory data structure from xalloc */
+struct XALLOC_mbloc_t
+{
+    struct XALLOC_mbloc_t *prv;
+    struct XALLOC_mbloc_t *nxt;
+    void *ptr;
+    size_t size;
+    _Bool isfree;
+};
+
+/* find function from xalloc */
+struct XALLOC_mbloc_t *__xalloc_mbloc_find(void *ptr);
 
 /* overriding libc allocators with custom functions.
  * note that if printf calls a heap allocator, it'll
@@ -21,33 +35,50 @@ void __xalloc_print_ui64(int fd, const size_t size);
 
 void *malloc(size_t size)
 {
-    __xalloc_print_str(2, ">> malloc called with size = '");
+    void *ptr = xmalloc(size);
+    __xalloc_print_str(2, "    malloc: ptr = '");
+    __xalloc_print_ptr(2, ptr);
+    __xalloc_print_str(2, "', size = ");
     __xalloc_print_ui64(2, size);
-    __xalloc_print_str(2, " B'\n");
-    return xmalloc(size);
+    __xalloc_print_str(2, " B\n");
+    return ptr;
 }
 
 void *calloc(size_t count, size_t size)
 {
-    __xalloc_print_str(2, ">> calloc called with size = '");
-    __xalloc_print_ui64(2, count * size);
-    __xalloc_print_str(2, " B'\n");
-    return xcalloc(count, size);
+    void *ptr = xcalloc(count, size);
+    __xalloc_print_str(2, "    calloc: ptr = '");
+    __xalloc_print_ptr(2, ptr);
+    __xalloc_print_str(2, "', size = ");
+    __xalloc_print_ui64(2, size);
+    __xalloc_print_str(2, " B\n");
+    return ptr;
 }
 
 void *realloc(void *p, size_t size)
 {
-    __xalloc_print_str(2, ">> realloc called with size = '");
+    void *ptr = xrealloc(p, size);
+    __xalloc_print_str(2, "    relloc: ptr = '");
+    __xalloc_print_ptr(2, ptr);
+    __xalloc_print_str(2, "', size = ");
     __xalloc_print_ui64(2, size);
-    __xalloc_print_str(2, " B'\n");
-    return xrealloc(p, size);
+    __xalloc_print_str(2, " B\n");
+    return ptr;
 }
 
-void free(void *p)
+void free(void *ptr)
 {
-    __xalloc_print_str(2, ">> free called, freed = '");
-    __xalloc_print_ui64(2, xfree(p));
-    __xalloc_print_str(2, " B'\n");
+    size_t mark_sz = ptr ? __xalloc_mbloc_find(ptr)->size : 0;
+    size_t freed_size = xfree(ptr);
+#ifdef DEBUG
+    __xalloc_print_str(2, "    free: ptr = '");
+    __xalloc_print_ptr(2, ptr);
+    __xalloc_print_str(2, "', size = ");
+    __xalloc_print_ui64(2, mark_sz);
+    __xalloc_print_str(2, " B, freed = ");
+    __xalloc_print_ui64(2, freed_size);
+    __xalloc_print_str(2, " B\n");
+#endif
 }
 
 int main(int argc, char *argv[])

@@ -73,6 +73,7 @@ As a result, memory is corrupted, and `xmalloc` at [`test-fail.c:26`](test-fail.
 File [test-no-malloc.c](test-no-malloc.c) in `gdb`.
 
 The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
+This is to prevent `libc` allocators from interfering with `libxalloc`.
 
 The overrides provide the following dump.
 Inspection of the dump is largely unnecessary.
@@ -81,6 +82,13 @@ It is observed that the difference in `sbrk(0)` at the end of execution is `1064
 That is untraceable.
 
 Inspection of the dump gives no clear clues, but we do notice an allocation of `1080 B` during first `printf` call.
+
+#### Observations:
+- first `printf` causes allocation of `1080B`.
+- after every print, `printf` calls `free(NULL)` for some reason.
+- `printf` never clears the initial `1080B`.
+- In the end, difference in `sbrk(0)` is `1064B`.
+- Difference `1080B` - `1064B` = `16B`.
 
 Dump of `make test-no-malloc-dbg`:
 ```

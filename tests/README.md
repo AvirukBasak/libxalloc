@@ -75,6 +75,8 @@ File [test-no-malloc.c](test-no-malloc.c) in `gdb`.
 The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
 This is to prevent `libc` allocators from interfering with `libxalloc`.
 
+The allocator then provides with the allocation [dump](#allocation-dump).
+
 It is observed that the difference in `sbrk(0)` at the end of execution is `1064 B`.
 
 #### Observations:
@@ -107,6 +109,7 @@ Test platform `Linux 5.10.147+ x86_64`:
 - `1 GB` = `1073741824 B`
 - `256 MB` = `268435456 B`
 
+#### Allocation dump:
 Dump of `make test-no-malloc-dbg` (indened stuff are the dumps, unintended stuff is by printf):
 ```
     malloc: ptr = '0x5a33187028', size = 48 B

@@ -52,7 +52,7 @@ We still can conclude that deallocation is successful as address of 1st allocati
 
 In any case, `132 KB` couldn't be traced.
 
-## Test Fail
+## Test Fail Results
 Running `make test-fail-dbg`
 ```
 brk init = 0x555555b000

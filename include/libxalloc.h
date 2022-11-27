@@ -22,7 +22,7 @@ void *xrealloc(void *ptr, size_t size);
 /**
  * @brief Marks pointer to block for cleanup
  * @param ptr Pointer to be freed
- * @return size_t Size of freed bloc
+ * @return size_t Size actually freed using brk
  */
 size_t xfree(void *ptr);
 

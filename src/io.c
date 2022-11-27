@@ -38,3 +38,13 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
     if (len < 1) write(fd, "00", 2);
     else write(fd, s, 2*len);
 }
+
+void __xalloc_print_err(const char *s)
+{
+    __xalloc_print_str(2, "libxalloc: aborted");
+    if (!s) goto abort;
+    __xalloc_print_str(2, ": ");
+    __xalloc_print_str(2, s);
+    __xalloc_print_str(2, "\n");
+    abort: abort();
+}

@@ -24,17 +24,6 @@ struct XALLOC_mbloc_t
     bool isfree;
 };
 
-/** Abort with error message */
-void __xalloc_abort(const char *s)
-{
-    __xalloc_print_str(2, "libxalloc: aborted");
-    if (!s) goto abort;
-    __xalloc_print_str(2, ": ");
-    __xalloc_print_str(2, s);
-    __xalloc_print_str(2, "\n");
-    abort: abort();
-}
-
 void __xalloc_mhead_init()
 {
     if (XALLOC_mhead) return;
@@ -104,7 +93,7 @@ XALLOC_mbloc_t *__xalloc_mbloc_find(ptr_t ptr)
         if (p->ptr == ptr) return p;
         p = p->nxt;
     }
-    __xalloc_abort("invalid pointer");
+    __xalloc_print_err("invalid pointer");
     return NULL;
 }
 
@@ -112,7 +101,7 @@ XALLOC_mbloc_t *__xalloc_mbloc_split(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
     NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
-    if (req_sz > bloc->size) __xalloc_abort("post split size exceeds bloc size");
+    if (req_sz > bloc->size) __xalloc_print_err("post split size exceeds bloc size");
     size_t leftover_sz = bloc->size - req_sz - sizeof(XALLOC_mbloc_t);
     /* if remaining memory is less-equal double the size of a memory head,
      * then no changes are made
@@ -133,7 +122,7 @@ XALLOC_mbloc_t *__xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 {
     NULLPTR_CHECK(bloc);
     if (req_sz == bloc->size) return bloc;
-    if (bloc->size > req_sz) __xalloc_abort("bloc size exceeds post merge size");
+    if (bloc->size > req_sz) __xalloc_print_err("bloc size exceeds post merge size");
     size_t avlb_sz = bloc->size;
     XALLOC_mbloc_t *node = bloc->nxt;
     while (avlb_sz < req_sz && node && node->isfree) {

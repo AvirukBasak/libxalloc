@@ -6,9 +6,17 @@
 /**
  * @brief Alloctes specified size
  * @param size Size of allocation
- * @return Pointer to new allocation
+ * @return void* Pointer to new allocation
  */
 void *xmalloc(size_t size);
+
+/**
+ * @brief Alloctes specified size and initializes with 0
+ * @param count Count of allocations
+ * @param size Size of 1 allocation
+ * @return void* Pointer to new allocation
+ */
+void *xcalloc(size_t count, size_t size);
 
 /**
  * @brief Reallocates an allocated bloc

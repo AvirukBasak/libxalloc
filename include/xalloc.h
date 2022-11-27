@@ -1,6 +1,8 @@
 #ifndef __XALLOC_H__
 #define __XALLOC_H__
 
+#include <sys/user.h>   // macro: PAGE_SIZE
+
 #include "stdhead.h"
 
 /**
@@ -34,9 +36,9 @@ ptr_t xrealloc(ptr_t ptr, size_t size);
  */
 size_t xfree(ptr_t ptr);
 
-#define INIT_ALLOCATION (132 * 1024)
-#define COPY_THRESHOLD  (4096)
-#define MBLOC_PADDING   (15)
+#define INIT_ALLOCATION (33 * PAGE_SIZE)
+#define COPY_THRESHOLD  (PAGE_SIZE)
+#define MBLOC_PADDING   (16)
 
 #define NULLPTR_CHECK(ptr) if (!ptr || ptr == (void*) -1) __xalloc_print_err("null pointer")
 

@@ -1,8 +1,8 @@
 #ifndef __STDHEAD_H__
 #define __STDHEAD_H__
 
-#include <stddef.h>
-#include <unistd.h>
+#include <stddef.h>    // type: size_t
+#include <unistd.h>    // functions: write, brk, sbrk
 
 typedef void *ptr_t;
 typedef _Bool bool;

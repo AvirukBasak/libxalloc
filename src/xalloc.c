@@ -1,3 +1,5 @@
+#include <unistd.h>    // functions: brk, sbrk
+
 #include "stdhead.h"
 #include "io.h"
 #include "xalloc.h"

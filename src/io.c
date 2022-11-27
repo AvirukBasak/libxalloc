@@ -1,4 +1,4 @@
-#include <unistd.h>
+#include <unistd.h>    // function: write
 
 #include "stdhead.h"
 #include "stdfunc.h"

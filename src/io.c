@@ -11,6 +11,11 @@ void __xalloc_print_str(int fd, const char *s)
     write(fd, s, len);
 }
 
+void __xalloc_print_ui64(int fd, const ui64_t n)
+{
+    __xalloc_print_ptr(fd, (ptr_t) n);
+}
+
 void __xalloc_print_ptr(int fd, const ptr_t p)
 {
     char *b = (char*)(&p);

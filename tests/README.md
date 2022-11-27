@@ -75,16 +75,10 @@ File [test-no-malloc.c](test-no-malloc.c) in `gdb`.
 The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
 This is to prevent `libc` allocators from interfering with `libxalloc`.
 
-The overrides provide the following dump.
-Inspection of the dump is largely unnecessary.
-
 It is observed that the difference in `sbrk(0)` at the end of execution is `1064 B`.
-That is untraceable.
-
-Inspection of the dump gives no clear clues, but we do notice an allocation of `1080 B` during first `printf` call.
 
 #### Observations:
-Test platform `Termux Linux 4.19.157 aarch64 Android`
+Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - first `48 B`, `8 B` and `48 B` allocations are not by `printf`.
 - brk init is calculated at this point, before 1st `printf`.
 - first `printf` causes allocation of `1024 B`.
@@ -94,13 +88,11 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`
 - In the end, difference in `sbrk(0)` is `1064 B`.
 - Difference `1064 B` - `1024 B` = `40 B`.
 - The `1024 B` is held by some buffer for `printf`.
-- The `40 B` is held by the `XALLOC_mbloc_t` heading the `1024 B` bloc.
+- The `40 B` is held by `libxalloc` to manage the `1024 B` bloc.
 
 On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 
-The first `printf` allocates `1024 B`.
-
-Test platform `Linux 5.10.147+ x86_64`
+Test platform `Linux 5.10.147+ x86_64`:
 - first `48 B`, `8 B` and `48 B` allocations never happen.
 - `printf` never calls `free(NULL)`.
 - In the end, difference in `sbrk(0)` is `1064 B`.

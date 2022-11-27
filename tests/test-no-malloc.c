@@ -7,7 +7,7 @@
 /* These functions comes from libxalloc. Since libxalloc
  * doesn't provide the declarations of these functions, I've
  * put the declarations here.
- * These functions simply prints a string/number, but use Linux
+ * These functions simply print a string or a number, but use Linux
  * system calls directly and don't need to allocate memory, which
  * prevent them from interfering with our memory allocation activities.
  */
@@ -17,7 +17,7 @@ void __xalloc_print_ui64(int fd, const size_t size);
 
 #ifdef DEBUG
 
-/* memory data structure from xalloc */
+/* the memory bloc management struct from libxalloc */
 struct XALLOC_mbloc_t
 {
     struct XALLOC_mbloc_t *prv;
@@ -27,7 +27,7 @@ struct XALLOC_mbloc_t
     _Bool isfree;
 };
 
-/* find function from xalloc */
+/* the find function from libxalloc */
 struct XALLOC_mbloc_t *__xalloc_mbloc_find(void *ptr);
 
 #endif

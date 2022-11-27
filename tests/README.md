@@ -93,17 +93,23 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`
 - brk exit is calculated before 2nd last `printf`.
 - In the end, difference in `sbrk(0)` is `1064 B`.
 - Difference `1064 B` - `1024 B` = `40 B`.
+- The `1024 B` is held by some buffer for `printf`.
+- The `40 B` is held by the `XALLOC_mbloc_t` heading the `1024 B` bloc.
 
-I suspect a leaked `XALLOC_mbloc_t` as that struct has size = `40 B`.
+On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 
-On removal of 1st and in-loop `printf` calls, difference in `sbrk(0)` is `0 B`.
-
-The first `printf` always allocates `1024 B`.
+The first `printf` allocates `1024 B`.
 
 Test platform `Linux 5.10.147+ x86_64`
-- first `8 B` and `48 B` never happen.
+- first `8 B` and `48 B` allocations never happen.
 - `printf` never calls `free(NULL)`.
 - In the end, difference in `sbrk(0)` is `1064 B`.
+
+#### Conclusion:
+- first `printf` allocates `1024 B`.
+- `libxalloc` allocates `40 B` to manage the `1024 B`.
+- `printf` never frees the `1024 B`.
+- extra occupied space at exit = `1024 B` + `40 B` = `1064 B`.
 
 #### References:
 - `1 GB` = `1073741824 B`

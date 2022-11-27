@@ -26,6 +26,13 @@ void __xalloc_print_ui64(int fd, const ui64_t n)
     __xalloc_print_str(fd, &s[i]);
 }
 
+void __xalloc_print_i64(int fd, const i64_t n)
+{
+    ui64_t nb = labs(n);
+    if (n < 0) __xalloc_print_str(fd, "-");
+    __xalloc_print_ui64(fd, nb);
+}
+
 void __xalloc_print_ptr(int fd, const ptr_t p)
 {
     char *b = (char*)(&p);

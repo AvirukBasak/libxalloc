@@ -85,7 +85,7 @@ Inspection of the dump gives no clear clues, but we do notice an allocation of `
 
 #### Observations:
 Test platform `Termux Linux 4.19.157 aarch64 Android`
-- first `8 B` and `48 B` allocations are not by `printf`.
+- first `48 B`, `8 B` and `48 B` allocations are not by `printf`.
 - brk init is calculated at this point, before 1st `printf`.
 - first `printf` causes allocation of `1024 B`.
 - after every print, `printf` calls `free(NULL)` for some reason.
@@ -101,7 +101,7 @@ On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 The first `printf` allocates `1024 B`.
 
 Test platform `Linux 5.10.147+ x86_64`
-- first `8 B` and `48 B` allocations never happen.
+- first `48 B`, `8 B` and `48 B` allocations never happen.
 - `printf` never calls `free(NULL)`.
 - In the end, difference in `sbrk(0)` is `1064 B`.
 
@@ -117,6 +117,7 @@ Test platform `Linux 5.10.147+ x86_64`
 
 Dump of `make test-no-malloc-dbg` (indened stuff are the dumps, unintended stuff is by printf):
 ```
+    malloc: ptr = '0x5a33187028', size = 48 B
     malloc: ptr = '0x555555b080', size = 8 B
     malloc: ptr = '0x555555b0b0', size = 48 B
     malloc: ptr = '0x555555b108', size = 1024 B

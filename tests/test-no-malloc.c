@@ -12,7 +12,7 @@
  * prevent them from interfering with our memory allocation activities.
  */
 void __xalloc_print_str(int fd, const char *s);
-void __xalloc_print_ui64(int fd, size_t size);
+void __xalloc_print_ui64(int fd, const size_t size);
 
 /* overriding libc allocators with custom functions.
  * note that if printf calls a heap allocator, it'll
@@ -30,11 +30,9 @@ void *malloc(size_t size)
 void *calloc(size_t count, size_t size)
 {
     __xalloc_print_str(2, ">> calloc called with size = '");
-    __xalloc_print_ui64(2, size);
+    __xalloc_print_ui64(2, count * size);
     __xalloc_print_str(2, " B'\n");
-    void *p = xmalloc(count * size);
-    memset(p, 0, count * size);
-    return p;
+    return xcalloc(count, size);
 }
 
 void *realloc(void *p, size_t size)

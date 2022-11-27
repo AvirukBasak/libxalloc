@@ -110,7 +110,9 @@ Test platform `Linux 5.10.147+ x86_64`:
 - `256 MB` = `268435456 B`
 
 #### Allocation dump:
-Dump of `make test-no-malloc-dbg` (indened stuff are the dumps, unintended stuff is by printf):
+Dump of `make test-no-malloc-dbg`.
+Indened stuff is by the allocator, unintended stuff is by printf.
+
 ```
     malloc: ptr = '0x5a33187028', size = 48 B
     malloc: ptr = '0x555555b080', size = 8 B

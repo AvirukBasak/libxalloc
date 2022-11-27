@@ -210,19 +210,22 @@ ptr_t xrealloc(ptr_t ptr, size_t size)
 }
 
 /** marks pointer to bloc for cleanup */
-void xfree(ptr_t ptr)
+size_t xfree(ptr_t ptr)
 {
     __xalloc_integrity_verify();
 
-    if (!ptr) return;
-
-    XALLOC_mbloc_t *bloc = __xalloc_mbloc_find(ptr);
-    bloc->isfree = true;
+    // marking bloc of current ptr free
+    if (ptr) {
+        XALLOC_mbloc_t *tomark = __xalloc_mbloc_find(ptr);
+        tomark->isfree = true;
+    }
 
     // cleaning up free blocs from the end of list
-    bloc = XALLOC_mhead->end;
+    XALLOC_mbloc_t *bloc = XALLOC_mhead->end;
+    size_t freed_size = 0;
     while (bloc && !bloc->nxt && bloc->isfree) {
         XALLOC_mbloc_t *tofree = bloc;
+        freed_size += tofree->size;
         XALLOC_mhead->end = bloc = tofree->prv;
         if (tofree->prv) tofree->prv->nxt = NULL;
         else {
@@ -232,4 +235,5 @@ void xfree(ptr_t ptr)
         XALLOC_mhead->blocc--;
         brk(tofree);
     }
+    return freed_size;
 }

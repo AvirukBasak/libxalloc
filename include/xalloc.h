@@ -3,14 +3,28 @@
 
 #include "stdhead.h"
 
-/** alloctes specified size */
-ptr_t xmalloc(size_t size);
+/**
+ * @brief Alloctes specified size
+ * @param size Size of allocation
+ * @return Pointer to new allocation
+ */
+void *xmalloc(size_t size);
 
-/** resizes allocated block if possible, or copies data around */
-ptr_t xrealloc(ptr_t ptr, size_t size);
+/**
+ * @brief Reallocates an allocated bloc
+ * Resizes allocated block if possible, or copies data around.
+ * @param ptr Pointer to allocated bloc or NULL
+ * @param size Size of re-allocation
+ * @return void* Pointer to new re-allocation
+ */
+void *xrealloc(void *ptr, size_t size);
 
-/** marks pointer to block for cleanup */
-void xfree(ptr_t ptr);
+/**
+ * @brief Marks pointer to block for cleanup
+ * @param ptr Pointer to be freed
+ * @return size_t Size of freed bloc
+ */
+size_t xfree(void *ptr);
 
 #define COPY_THRESHOLD (4096)
 #define MBLOC_PADDING  (15)

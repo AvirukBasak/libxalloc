@@ -21,4 +21,5 @@ This will result in undefined behaviour.
 To know how `libxalloc` works, visit [working.md](docs/working.md).
 
 ## Test results
-Visit [tests](tests/README.md) for details.
+- Visit [tests](tests/README.md) for details.
+- Visit [test-no-malloc](tests/README.md#test-no-malloc-results) for insight into how the allocator works.

@@ -1,12 +1,13 @@
 ## Test results
-Test platform `Termux Linux 4.19.157 aarch64 Android`.
+Please see [test.c](test.c).
 
-Test command `make testdbg`.
+Running `make testdbg` executes the program in `gdb`.
 
-Tested in `gdb`, file [test.c](test.c).
 The test runs `7` iterations, each iteration allocating a total of `1 GB`, writing a few bytes to it, and then deallocating it.
 
 Breakpoints at lines `12`, `29` and `32`.
+
+Test platform `Termux Linux 4.19.157 aarch64 Android`.
 
 #### 0th iteration:
  - at line 12: `sbrk(0)` = `0x555555a000`
@@ -42,16 +43,20 @@ On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and aft
 
 It was observed that this allocation happened before the first call to `xmalloc`.
 
-Most likely this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see next section).
+Most likely this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see [Test (no malloc) Results](#test-no-malloc-results)).
 
 - Address of `sbrk(0)` before run = `0x555555559000`
 - Address of 1st allocation of 0th iteration = `0x55555557a000`
 - Difference = `0x55555557a000` - `0x555555559000` = `132 KB`
 
-We still can conclude that deallocation is successful as address of 1st allocation of 1st iteration happened after `0 B` of 0th iteration.
+We still can conclude that deallocation is successful by inspection pointers in `gdb`.
 
 ## Test Fail Results
-Running `make test-fail-dbg`
+Please see [test-fail.c](test-fail.c).
+This test is designed to fail.
+
+Running `make test-fail-dbg` executes the program in `gdb`.
+
 ```
 brk init = 0x555555b000
 libxalloc: aborted: buffer at '0x555559b050' overflowed
@@ -68,12 +73,14 @@ Looking at the code at [`test-fail.c:23`](test-fail.c#L23), note that we are ind
 As a result, memory is corrupted, and `xmalloc` at [`test-fail.c:26`](test-fail.c#L26) fails.
 
 ## Test (no malloc) Results
-File [test-no-malloc.c](test-no-malloc.c) in `gdb`.
+Please see [test-no-malloc.c](test-no-malloc.c).
+
+Running `make test-no-malloc-dbg` executes the program in `gdb`.
 
 The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
 This is to prevent `libc` allocators from interfering with `libxalloc`.
 
-The allocator then provides with the allocation [dump](#allocation-dump).
+The custom overrides provide the allocation [dump](#allocation-dump).
 
 It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`.
 
@@ -83,7 +90,7 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - First `48 B` allocation causes allocator initialization.
 - Calling `malloc(0)` doesn't do anything in this case.
 - Brk init is calculated at this point, before 1st `printf`.
-- Brk init is ending address of initial `128 KB` + `40 B` bloc.
+- Brk init is the ending address of initial `128 KB` + `40 B` bloc.
 - First `printf` causes allocation of `1024 B`.
 - After every print, `printf` calls `free(NULL)` for some reason.
 - `printf` never frees the initial `1024 B`.
@@ -98,7 +105,7 @@ Test platform `Linux 5.10.147+ x86_64`:
 - So, `malloc(0)` causes allocator initialization in this case.
 - Otherwise, brk init will end up `128 KB` + `40 B` ahead of brk end.
 - Brk init is calculated at this point, before 1st `printf`.
-- Brk init is ending address of initial `128 KB` + `40 B` bloc.
+- Brk init is the ending address of initial `128 KB` + `40 B` bloc.
 - First `printf` causes allocation of `1024 B`.
 - `printf` never calls `free(NULL)`.
 - `printf` never frees the initial `1024 B`.

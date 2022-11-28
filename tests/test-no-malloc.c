@@ -95,6 +95,14 @@ void free(void *ptr)
 
 int main(int argc, char *argv[])
 {
+    /* Because of differences in when malloc is called in different architectures,
+     * this malloc call is meant to explicitly initialize the allocator.
+     * This will result in an intial allocation of some KB, and brk will be shifted.
+     * This is done to get a consistent reading of brk init across all architectures.
+     * NOTE that malloc(0) does nothing except when allocator is not initialized.
+     * In such a case, it'll call the initializer.
+     */
+    malloc(0);
     void *p0 = sbrk(0);
     printf("brk init = %p\n", p0);
     for (int i = 0; i < 7; i++) {
@@ -123,8 +131,5 @@ int main(int argc, char *argv[])
     void *p1 = sbrk(0);
     printf("brk exit = %p\n", p1);
     printf("brk difference = %zu B\n", (size_t) (p1 - p0));
-    // __xalloc_print_str(1, "brk difference = "); 
-    // __xalloc_print_ui64(1, (size_t) (p1 - p0));
-    // __xalloc_print_str(1, " B\n");
     return 0;
 }

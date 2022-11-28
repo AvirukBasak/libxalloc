@@ -9,6 +9,7 @@
  * @brief Alloctes specified size
  * @param size Size of allocation
  * @return ptr_t Pointer to new allocation
+ * @return NULL If size is zero
  */
 ptr_t xmalloc(size_t size);
 
@@ -17,6 +18,7 @@ ptr_t xmalloc(size_t size);
  * @param count Count of allocations
  * @param size Size of 1 allocation
  * @return ptr_t Pointer to new allocation
+ * @return NULL If count or size is zero
  */
 ptr_t xcalloc(size_t count, size_t size);
 
@@ -26,6 +28,7 @@ ptr_t xcalloc(size_t count, size_t size);
  * @param ptr Pointer to allocated bloc or NULL
  * @param size Size of re-allocation
  * @return ptr_t Pointer to new re-allocation
+ * @return NULL If size is zero
  */
 ptr_t xrealloc(ptr_t ptr, size_t size);
 
@@ -36,7 +39,7 @@ ptr_t xrealloc(ptr_t ptr, size_t size);
  */
 size_t xfree(ptr_t ptr);
 
-#define INIT_ALLOCATION (33 * PAGE_SIZE)
+#define INIT_ALLOCATION (32 * PAGE_SIZE)
 #define COPY_THRESHOLD  (PAGE_SIZE)
 #define MBLOC_PADDING   (16)
 

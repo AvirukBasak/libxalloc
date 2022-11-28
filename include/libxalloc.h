@@ -7,6 +7,7 @@
  * @brief Alloctes specified size
  * @param size Size of allocation
  * @return void* Pointer to new allocation
+ * @return NULL If size is zero
  */
 void *xmalloc(size_t size);
 
@@ -15,6 +16,7 @@ void *xmalloc(size_t size);
  * @param count Count of allocations
  * @param size Size of 1 allocation
  * @return void* Pointer to new allocation
+ * @return NULL If count or size is zero
  */
 void *xcalloc(size_t count, size_t size);
 
@@ -24,6 +26,7 @@ void *xcalloc(size_t count, size_t size);
  * @param ptr Pointer to allocated bloc or NULL
  * @param size Size of re-allocation
  * @return void* Pointer to new re-allocation
+ * @return NULL If size is zero
  */
 void *xrealloc(void *ptr, size_t size);
 

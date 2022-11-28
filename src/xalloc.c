@@ -152,7 +152,7 @@ XALLOC_mbloc_t *__xalloc_mbloc_merge(XALLOC_mbloc_t *bloc, size_t req_sz)
 ptr_t xmalloc(size_t size)
 {
     __xalloc_integrity_verify();
-
+    if (!size) return NULL;
     // attempting to recycle old empty bloc
     if (XALLOC_mhead->start) {
         XALLOC_mbloc_t *reusable = XALLOC_mhead->start;
@@ -173,6 +173,7 @@ ptr_t xmalloc(size_t size)
 ptr_t xcalloc(size_t count, size_t size)
 {
     __xalloc_integrity_verify();
+    if (!(count * size)) return NULL;
     ptr_t p = xmalloc(count * size);
     memset(p, 0, count * size);
     return p;
@@ -182,7 +183,7 @@ ptr_t xcalloc(size_t count, size_t size)
 ptr_t xrealloc(ptr_t ptr, size_t size)
 {
     __xalloc_integrity_verify();
-
+    if (!size) return NULL;
     if (!ptr) return xmalloc(size);
     XALLOC_mbloc_t *bloc = __xalloc_mbloc_find(ptr);
     if (bloc->size == size) return ptr;

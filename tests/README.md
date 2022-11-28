@@ -1,12 +1,13 @@
 ## Test results
-Test platform `Termux Linux 4.19.157 aarch64 Android`.
+Please see [test.c](test.c).
 
-Test command `make testdbg`.
+Running `make testdbg` executes the program in `gdb`.
 
-Tested in `gdb`, file [test.c](test.c).
 The test runs `7` iterations, each iteration allocating a total of `1 GB`, writing a few bytes to it, and then deallocating it.
 
 Breakpoints at lines `12`, `29` and `32`.
+
+Test platform `Termux Linux 4.19.157 aarch64 Android`.
 
 #### 0th iteration:
  - at line 12: `sbrk(0)` = `0x555555a000`
@@ -40,20 +41,22 @@ Hence, allocator is functioning as expected.
 #### Notes:
 On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132 KB`
 
-It was observed that this allocation happened somewhere before the first call to `xmalloc`.
+It was observed that this allocation happened before the first call to `xmalloc`.
 
-It's possible this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see next section).
+Most likely this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see [Test (no malloc) Results](#test-no-malloc-results)).
 
 - Address of `sbrk(0)` before run = `0x555555559000`
 - Address of 1st allocation of 0th iteration = `0x55555557a000`
 - Difference = `0x55555557a000` - `0x555555559000` = `132 KB`
 
-We still can conclude that deallocation is successful as address of 1st allocation of 1st iteration happened after `0 B` of 0th iteration.
-
-In any case, `132 KB` couldn't be traced.
+We still can conclude that deallocation is successful by inspection pointers in `gdb`.
 
 ## Test Fail Results
-Running `make test-fail-dbg`
+Please see [test-fail.c](test-fail.c).
+This test is designed to fail.
+
+Running `make test-fail-dbg` executes the program in `gdb`.
+
 ```
 brk init = 0x555555b000
 libxalloc: aborted: buffer at '0x555559b050' overflowed
@@ -70,40 +73,52 @@ Looking at the code at [`test-fail.c:23`](test-fail.c#L23), note that we are ind
 As a result, memory is corrupted, and `xmalloc` at [`test-fail.c:26`](test-fail.c#L26) fails.
 
 ## Test (no malloc) Results
-File [test-no-malloc.c](test-no-malloc.c) in `gdb`.
+Please see [test-no-malloc.c](test-no-malloc.c).
+
+Running `make test-no-malloc-dbg` executes the program in `gdb`.
 
 The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
 This is to prevent `libc` allocators from interfering with `libxalloc`.
 
-The allocator then provides with the allocation [dump](#allocation-dump).
+The custom overrides provide the allocation [dump](#allocation-dump).
 
-It is observed that the difference in `sbrk(0)` at the end of execution is `1064 B`.
+It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`.
 
 #### Observations:
 Test platform `Termux Linux 4.19.157 aarch64 Android`:
-- first `48 B`, `8 B` and `48 B` allocations are not by `printf`.
-- brk init is calculated at this point, before 1st `printf`.
-- first `printf` causes allocation of `1024 B`.
-- after every print, `printf` calls `free(NULL)` for some reason.
-- `printf` never clears the initial `1024 B`.
-- brk exit is calculated before 2nd last `printf`.
-- In the end, difference in `sbrk(0)` is `1064 B`.
-- Difference `1064 B` - `1024 B` = `40 B`.
-- The `1024 B` is held by some buffer for `printf`.
-- The `40 B` is held by `libxalloc` to manage the `1024 B` bloc.
+- First `48 B`, `8 B` and `48 B` allocations are not by `printf`.
+- First `48 B` allocation causes allocator initialization.
+- Calling `malloc(0)` doesn't do anything in this case.
+- Brk init is calculated at this point, before 1st `printf`.
+- Brk init is the ending address of initial `128 KB` + `40 B` bloc.
+- First `printf` causes allocation of `1024 B`.
+- After every print, `printf` calls `free(NULL)` for some reason.
+- `printf` never frees the initial `1024 B`.
+- Brk exit is calculated before 2nd last `printf`.
+- In the end, difference in `sbrk(0)` is `0 B`.
+- Initial `128 KB` + `40 B` bloc is never freed.
 
 On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 
 Test platform `Linux 5.10.147+ x86_64`:
-- first `48 B`, `8 B` and `48 B` allocations never happen.
+- First `48 B`, `8 B` and `48 B` allocations never happen.
+- So, `malloc(0)` causes allocator initialization in this case.
+- Otherwise, brk init will end up `128 KB` + `40 B` ahead of brk end.
+- Brk init is calculated at this point, before 1st `printf`.
+- Brk init is the ending address of initial `128 KB` + `40 B` bloc.
+- First `printf` causes allocation of `1024 B`.
 - `printf` never calls `free(NULL)`.
-- In the end, difference in `sbrk(0)` is `1064 B`.
+- `printf` never frees the initial `1024 B`.
+- Brk exit is calculated before 2nd last `printf`.
+- In the end, difference in `sbrk(0)` is `0 B`.
+- Initial `128 KB` + `40 B` bloc is never freed.
 
 #### Conclusion:
-- first `printf` allocates `1024 B`.
-- `libxalloc` allocates `40 B` to manage the `1024 B`.
+- First `printf` allocates `1024 B`.
+- `libxalloc` allocates `128 KB` + `40 B` to reduce syscalls.
 - `printf` never frees the `1024 B`.
-- extra occupied space at exit = `1024 B` + `40 B` = `1064 B`.
+- Extra occupied space at exit = `128 KB` + `40 B`.
+- This occupied space can be inspected via `gdb`.
 
 #### References:
 - `1 GB` = `1073741824 B`
@@ -114,84 +129,85 @@ Dump of `make test-no-malloc-dbg`.
 
 Indened stuff is by the allocator, unintended stuff is by printf.
 ```
-    malloc: ptr = '0x5a33187028', size = 48 B
-    malloc: ptr = '0x555555b080', size = 8 B
-    malloc: ptr = '0x555555b0b0', size = 48 B
-    malloc: ptr = '0x555555b108', size = 1024 B
-brk init = 0x555555b0e0
+    malloc: ptr = '0x555555b640', size = 48 B
+    malloc: ptr = '0x555555bcb0', size = 8 B
+    malloc: ptr = '0x555555c2f8', size = 48 B
+    malloc: ptr = '0x00', size = 0 B
+    malloc: ptr = '0x555555c968', size = 1024 B
+brk init = 0x555557b028
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 0: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 1: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 2: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 3: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 4: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 5: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 6: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-brk exit = 0x555555b508
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+brk exit = 0x555557b028
     free: ptr = '0x00', size = 0 B, freed = 0 B
-brk difference = 1064 B
+brk difference = 0 B
     free: ptr = '0x00', size = 0 B, freed = 0 B
 ```

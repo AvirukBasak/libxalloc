@@ -40,17 +40,15 @@ Hence, allocator is functioning as expected.
 #### Notes:
 On testing in a `Linux 5.10.147+ x86_64`, difference in `sbrk(0)` before and after run = `132 KB`
 
-It was observed that this allocation happened somewhere before the first call to `xmalloc`.
+It was observed that this allocation happened before the first call to `xmalloc`.
 
-It's possible this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see next section).
+Most likely this was allocated by `libc` as `printf` uses `malloc` and that in turn uses `sbrk` (see next section).
 
 - Address of `sbrk(0)` before run = `0x555555559000`
 - Address of 1st allocation of 0th iteration = `0x55555557a000`
 - Difference = `0x55555557a000` - `0x555555559000` = `132 KB`
 
 We still can conclude that deallocation is successful as address of 1st allocation of 1st iteration happened after `0 B` of 0th iteration.
-
-In any case, `132 KB` couldn't be traced.
 
 ## Test Fail Results
 Running `make test-fail-dbg`
@@ -77,33 +75,43 @@ This is to prevent `libc` allocators from interfering with `libxalloc`.
 
 The allocator then provides with the allocation [dump](#allocation-dump).
 
-It is observed that the difference in `sbrk(0)` at the end of execution is `1064 B`.
+It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`.
 
 #### Observations:
 Test platform `Termux Linux 4.19.157 aarch64 Android`:
-- first `48 B`, `8 B` and `48 B` allocations are not by `printf`.
-- brk init is calculated at this point, before 1st `printf`.
-- first `printf` causes allocation of `1024 B`.
-- after every print, `printf` calls `free(NULL)` for some reason.
-- `printf` never clears the initial `1024 B`.
-- brk exit is calculated before 2nd last `printf`.
-- In the end, difference in `sbrk(0)` is `1064 B`.
-- Difference `1064 B` - `1024 B` = `40 B`.
-- The `1024 B` is held by some buffer for `printf`.
-- The `40 B` is held by `libxalloc` to manage the `1024 B` bloc.
+- First `48 B`, `8 B` and `48 B` allocations are not by `printf`.
+- First `48 B` allocation causes allocator initialization.
+- Calling `malloc(0)` doesn't do anything in this case.
+- Brk init is calculated at this point, before 1st `printf`.
+- Brk init is ending address of initial `128 KB` + `40 B` bloc.
+- First `printf` causes allocation of `1024 B`.
+- After every print, `printf` calls `free(NULL)` for some reason.
+- `printf` never frees the initial `1024 B`.
+- Brk exit is calculated before 2nd last `printf`.
+- In the end, difference in `sbrk(0)` is `0 B`.
+- Initial `128 KB` + `40 B` bloc is never freed.
 
 On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 
 Test platform `Linux 5.10.147+ x86_64`:
-- first `48 B`, `8 B` and `48 B` allocations never happen.
+- First `48 B`, `8 B` and `48 B` allocations never happen.
+- So, `malloc(0)` causes allocator initialization in this case.
+- Otherwise, brk init will end up `128 KB` + `40 B` ahead of brk end.
+- Brk init is calculated at this point, before 1st `printf`.
+- Brk init is ending address of initial `128 KB` + `40 B` bloc.
+- First `printf` causes allocation of `1024 B`.
 - `printf` never calls `free(NULL)`.
-- In the end, difference in `sbrk(0)` is `1064 B`.
+- `printf` never frees the initial `1024 B`.
+- Brk exit is calculated before 2nd last `printf`.
+- In the end, difference in `sbrk(0)` is `0 B`.
+- Initial `128 KB` + `40 B` bloc is never freed.
 
 #### Conclusion:
-- first `printf` allocates `1024 B`.
-- `libxalloc` allocates `40 B` to manage the `1024 B`.
+- First `printf` allocates `1024 B`.
+- `libxalloc` allocates `128 KB` + `40 B` to reduce syscalls.
 - `printf` never frees the `1024 B`.
-- extra occupied space at exit = `1024 B` + `40 B` = `1064 B`.
+- Extra occupied space at exit = `128 KB` + `40 B`.
+- This occupied space can be inspected via `gdb`.
 
 #### References:
 - `1 GB` = `1073741824 B`

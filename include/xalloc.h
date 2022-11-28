@@ -36,7 +36,7 @@ ptr_t xrealloc(ptr_t ptr, size_t size);
  */
 size_t xfree(ptr_t ptr);
 
-#define INIT_ALLOCATION (33 * PAGE_SIZE)
+#define INIT_ALLOCATION (19 * PAGE_SIZE)
 #define COPY_THRESHOLD  (PAGE_SIZE)
 #define MBLOC_PADDING   (16)
 

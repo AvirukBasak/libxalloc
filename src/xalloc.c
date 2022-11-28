@@ -173,7 +173,7 @@ ptr_t xmalloc(size_t size)
 ptr_t xcalloc(size_t count, size_t size)
 {
     __xalloc_integrity_verify();
-    if (!(count * size)) return NULL;
+    if (!count || !size) return NULL;
     ptr_t p = xmalloc(count * size);
     memset(p, 0, count * size);
     return p;

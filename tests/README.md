@@ -129,84 +129,85 @@ Dump of `make test-no-malloc-dbg`.
 
 Indened stuff is by the allocator, unintended stuff is by printf.
 ```
-    malloc: ptr = '0x5a33187028', size = 48 B
-    malloc: ptr = '0x555555b080', size = 8 B
-    malloc: ptr = '0x555555b0b0', size = 48 B
-    malloc: ptr = '0x555555b108', size = 1024 B
-brk init = 0x555555b0e0
+    malloc: ptr = '0x555555b640', size = 48 B
+    malloc: ptr = '0x555555bcb0', size = 8 B
+    malloc: ptr = '0x555555c2f8', size = 48 B
+    malloc: ptr = '0x00', size = 0 B
+    malloc: ptr = '0x555555c968', size = 1024 B
+brk init = 0x555557b028
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 0: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 1: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 2: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 3: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 4: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 5: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-    malloc: ptr = '0x555555b530', size = 268435456 B
-    malloc: ptr = '0x556555b558', size = 268435456 B
-    malloc: ptr = '0x557555b580', size = 268435456 B
-    malloc: ptr = '0x558555b5a8', size = 268435456 B
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+    malloc: ptr = '0x555557b668', size = 268435456 B
+    malloc: ptr = '0x556557b690', size = 268435456 B
+    malloc: ptr = '0x557557b6b8', size = 268435456 B
+    malloc: ptr = '0x558557b6e0', size = 268435456 B
 6: abcdefghijklmnopqrstuvwxyz
     free: ptr = '0x00', size = 0 B, freed = 0 B
-    free: ptr = '0x555555b530', size = 268435456 B, freed = 0 B
-    free: ptr = '0x556555b558', size = 268435456 B, freed = 0 B
-    free: ptr = '0x557555b580', size = 268435456 B, freed = 0 B
-    free: ptr = '0x558555b5a8', size = 268435456 B, freed = 1073741824 B
-brk exit = 0x555555b508
+    free: ptr = '0x555557b668', size = 268435456 B, freed = 0 B
+    free: ptr = '0x556557b690', size = 268435456 B, freed = 0 B
+    free: ptr = '0x557557b6b8', size = 268435456 B, freed = 0 B
+    free: ptr = '0x558557b6e0', size = 268435456 B, freed = 1073741824 B
+brk exit = 0x555557b028
     free: ptr = '0x00', size = 0 B, freed = 0 B
-brk difference = 1064 B
+brk difference = 0 B
     free: ptr = '0x00', size = 0 B, freed = 0 B
 ```

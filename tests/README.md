@@ -49,7 +49,7 @@ Most likely this was allocated by `libc` as `printf` uses `malloc` and that in t
 - Address of 1st allocation of 0th iteration = `0x55555557a000`
 - Difference = `0x55555557a000` - `0x555555559000` = `132 KB`
 
-We still can conclude that deallocation is successful by inspection pointers in `gdb`.
+We still can conclude that deallocation is successful by inspecting pointers in `gdb`.
 
 ## Test Fail Results
 Please see [test-fail.c](test-fail.c).
@@ -64,7 +64,7 @@ libxalloc: aborted: buffer at '0x555559b050' overflowed
 Program received signal SIGABRT, Aborted
 ```
 
-The address `0x555559b050` is the address of the variable `s1`.
+The address `0x555559b050` is the address of the variable `s1` (see [`test-fail.c:18`](test-fail.c#L18)).
 
 It can be checked by running `p s1` at frame of `main` from `gdb`.
 
@@ -77,7 +77,7 @@ Please see [test-no-malloc.c](test-no-malloc.c).
 
 Running `make test-no-malloc-dbg` executes the program in `gdb`.
 
-The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions with custom overrides.
+The idea is to modify [test.c](test.c), replacing `*alloc` and `free` functions of `libc` with custom overrides.
 This is to prevent `libc` allocators from interfering with `libxalloc`.
 
 The custom overrides provide the allocation [dump](#allocation-dump).
@@ -87,8 +87,8 @@ It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`
 #### Observations:
 Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - First `48 B`, `8 B` and `48 B` allocations are not by `printf`.
-- First `48 B` allocation causes allocator initialization.
-- Calling `malloc(0)` doesn't do anything in this case.
+- First `48 B` allocation causes allocator initialization (see [Allocator Initialization](../docs/working.md#about-allocator-initialization)).
+- Calling `malloc(0)` (see [`test-no-malloc.c:105`](test-no-malloc.c#L105)) doesn't do anything in this case.
 - Brk init is calculated at this point, before 1st `printf`.
 - Brk init is the ending address of initial `128 KB` + `40 B` bloc.
 - First `printf` causes allocation of `1024 B`.
@@ -97,8 +97,6 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - Brk exit is calculated before 2nd last `printf`.
 - In the end, difference in `sbrk(0)` is `0 B`.
 - Initial `128 KB` + `40 B` bloc is never freed.
-
-On removal of `printf` calls, difference in `sbrk(0)` is `0 B` as expected.
 
 Test platform `Linux 5.10.147+ x86_64`:
 - First `48 B`, `8 B` and `48 B` allocations never happen.

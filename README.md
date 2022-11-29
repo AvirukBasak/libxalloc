@@ -61,12 +61,13 @@ The return value of `xfree` isn't the size of that memory bloc.
 Instead, `xfree` returns the amount of bytes of memory that `libxalloc` was able to return to the OS during that `xfree` call.
 
 For allocation and optimization purposes, `xfree` may only mark our memory bloc as free and then reserve it for recycling.
-This is because allocation of new memory is costly (and slow). By reserving and recycling, we avoid that.
+This is because allocation of new memory in the heap is costly (and slow due to system calls involved).
+By reserving and recycling, we avoid that.
 
 If such reserved memory is released back to the OS during `xfree` call then the total of all memory released is returned.
 
 ## Warning
-- Overflowing buffer allocated by `libxalloc` may cause an `abort`.
+- Overflowing buffer allocated by `libxalloc` may cause an `abort` (see [Test Fail](tests/README.md#test-fail-results)).
 - Segmentation faults during execution can be attributed to `libc`.
 - `libc` will break functionality of library.
 

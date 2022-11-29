@@ -52,13 +52,16 @@ If pointer is `NULL`, `xfree` returns `0` and does nothing else.
 
 If pointer is not derived from `libxalloc` or was previously freed, `xfree` will call `abort` with error message `invalid pointer`.
 
+#### Insight into xfree
 Suppose the argument to `xfree` is a pointer `ptr`, and suppose `ptr` points to a valid memory bloc.
 The return value of `xfree` isn't the size of that memory bloc.
 
 Instead, `xfree` returns the amount of bytes of memory that `libxalloc` was able to return to the OS during that `xfree` call.
 
-For allocation and optimization purposes, `libxalloc` may reserve excess memory even when not asked to.
-If such reserved memory is released back to the OS during `xfree` call, that is the size returned.
+For allocation and optimization purposes, `xfree` may only mark our memory bloc as free and then reserve it for recycling.
+This is because allocation of new memory is costly (and slow). By reserving and recycling, we avoid that.
+
+If such reserved memory is released back to the OS during `xfree` call then the total of all memory released is returned.
 
 ## Warning
 - Writing to invalid memory allocated by `libxalloc` will break the memory cleanup function.

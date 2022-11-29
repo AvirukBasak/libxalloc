@@ -4,7 +4,9 @@ Custom heap memory allocator using `brk` and `sbrk`.
 ## Usage
 - Build with `make`.
 - Copy library from `target/`.
+- Copy header file from `target/`.
 - Visit [test.c](tests/test.c) for example use.
+- Follow the api below.
 
 ## API
 `libxalloc` provides an api similar to `*alloc` from `libc`.
@@ -34,17 +36,17 @@ This trend is followed by all the allocator functions as all of them use `xmallo
 - return: non-NULL pointer to allocation
 - return: `NULL` if size is 0
 
-Internally, `xcalloc` calls `xmalloc` and `memsets` and entire bloc with `0`.
+Internally, `xcalloc` calls `xmalloc` and `memsets` the entire bloc with `0`.
 
 #### xrealloc
 - param: pervious pointer
 - param: new allocation size
-- return: pointer to allocation
+- return: non-NULL pointer to allocation
 - return: `NULL` if size is 0
 
 #### xfree
 - param: pointer
-- return: total bytes actually freed
+- return: total bytes released to OS
 
 There are a few things to be noted when it comes to `xfree`.
 
@@ -64,7 +66,7 @@ This is because allocation of new memory is costly (and slow). By reserving and 
 If such reserved memory is released back to the OS during `xfree` call then the total of all memory released is returned.
 
 ## Warning
-- Writing to invalid memory allocated by `libxalloc` will break the memory cleanup function.
+- Overflowing buffer allocated by `libxalloc` may cause an `abort`.
 - Segmentation faults during execution can be attributed to `libc`.
 - `libc` will break functionality of library.
 

@@ -85,7 +85,7 @@ The custom overrides provide the allocation [dump](#allocation-dump).
 It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`.
 
 #### Observations:
-Test platform `Termux Linux 4.19.157 aarch64 Android`:
+##### Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - First `48 B`, `8 B` and `48 B` allocations are not by `printf`.
 - First `48 B` allocation causes allocator initialization (see [Allocator Initialization](../docs/working.md#about-allocator-initialization)).
 - Calling `malloc(0)` (see [`test-no-malloc.c:105`](test-no-malloc.c#L105)) doesn't do anything in this case.
@@ -98,7 +98,7 @@ Test platform `Termux Linux 4.19.157 aarch64 Android`:
 - In the end, difference in `sbrk(0)` is `0 B`.
 - Initial `128 KB` + `40 B` bloc is never freed.
 
-Test platform `Linux 5.10.147+ x86_64`:
+##### Test platform `Linux 5.10.147+ x86_64`:
 - First `48 B`, `8 B` and `48 B` allocations never happen.
 - So, `malloc(0)` causes allocator initialization in this case.
 - Otherwise, brk init will end up `128 KB` + `40 B` ahead of brk end.

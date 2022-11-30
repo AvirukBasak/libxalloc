@@ -125,7 +125,7 @@ It is observed that the difference in `sbrk(0)` at the end of execution is `0 B`
 #### Allocation dump:
 Dump of `make test-no-malloc-dbg`.
 
-Indened stuff is by the allocator, unintended stuff is by printf.
+Indented stuff is by the allocator, unindented stuff is by `printf`.
 ```
     malloc: ptr = '0x555555b640', size = 48 B
     malloc: ptr = '0x555555bcb0', size = 8 B

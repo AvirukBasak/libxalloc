@@ -23,7 +23,7 @@ ptr_t xmalloc(size_t size);
 ptr_t xcalloc(size_t count, size_t size);
 
 /**
- * @brief Reallocates an allocated bloc
+ * @brief Reallocates an allocated bloc.
  * Resizes allocated block if possible, or copies data around.
  * @param ptr Pointer to allocated bloc or NULL
  * @param size Size of re-allocation

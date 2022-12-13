@@ -40,9 +40,9 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
     size_t len = 0;
     // most significant byte
     bool msbyte_zero = true;
-    bool is_bend = __xalloc_std_is_litle_endian();
-    int i = is_bend ? 7 : 0;
-    for (int j = 0; (is_bend ? (i >= 0) : (i < 8)) && j < 16;) {
+    bool is_liend = __xalloc_std_is_litle_endian();
+    int i = is_liend ? 7 : 0;
+    for (int j = 0; (is_liend ? (i >= 0) : (i < 8)) && j < 16;) {
         const ui8_t byte = b[i];
         char halfbyte0 = __xalloc_std_to_hex(byte >> 4);
         char halfbyte1 = __xalloc_std_to_hex(byte);
@@ -54,7 +54,7 @@ void __xalloc_print_ptr(int fd, const ptr_t p)
             j+=2;
             len++;
         }
-        is_bend ? i-- : i++;
+        is_liend ? i-- : i++;
     }
     write(fd, "0x", 2);
     if (len < 1) write(fd, "00", 2);
